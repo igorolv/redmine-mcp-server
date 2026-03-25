@@ -380,11 +380,27 @@ public class RedmineTools {
             for (var att : issue.attachments()) {
                 sb.append("  - [%d] %s (%s)\n".formatted(att.id(), att.filename(), formatSize(att.filesize())));
             }
+
+            // Auto-load markdown attachments inline
+            for (var att : issue.attachments()) {
+                if (isMarkdown(att.filename())) {
+                    byte[] content = client.downloadAttachment(att.contentUrl());
+                    if (content != null) {
+                        sb.append("\n--- %s ---\n".formatted(att.filename()));
+                        sb.append(new String(content, StandardCharsets.UTF_8));
+                        sb.append("\n");
+                    }
+                }
+            }
         }
     }
 
     private String name(IdName idName) {
         return idName != null ? idName.name() : "—";
+    }
+
+    private boolean isMarkdown(String filename) {
+        return filename != null && filename.toLowerCase().endsWith(".md");
     }
 
     private boolean isTextContent(String contentType, String filename) {
