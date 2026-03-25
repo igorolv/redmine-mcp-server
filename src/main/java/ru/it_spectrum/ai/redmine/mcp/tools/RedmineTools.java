@@ -19,6 +19,43 @@ public class RedmineTools {
         this.client = client;
     }
 
+    @McpTool(description = "Get information about the currently authenticated Redmine user. " +
+            "Returns user ID, login, name, email, groups, and project memberships. " +
+            "Useful to find your own user ID for filtering (e.g. assigned_to_id in listIssues).")
+    public String getCurrentUser() {
+        var user = client.getCurrentUser();
+        if (user == null) {
+            return "Could not retrieve current user";
+        }
+
+        var sb = new StringBuilder();
+        sb.append("Current user: %s %s\n".formatted(user.firstname(), user.lastname()));
+        sb.append("ID: %d | Login: %s\n".formatted(user.id(), user.login()));
+        if (user.mail() != null) sb.append("Email: %s\n".formatted(user.mail()));
+        sb.append("Last login: %s\n".formatted(user.lastLoginOn()));
+
+        if (user.groups() != null && !user.groups().isEmpty()) {
+            sb.append("\nGroups:\n");
+            for (var g : user.groups()) {
+                sb.append("  - %s\n".formatted(g.name()));
+            }
+        }
+
+        if (user.memberships() != null && !user.memberships().isEmpty()) {
+            sb.append("\nProject memberships:\n");
+            for (var m : user.memberships()) {
+                if (m.project() != null) {
+                    String roles = m.roles() != null
+                            ? m.roles().stream().map(IdName::name).reduce((a, b) -> a + ", " + b).orElse("")
+                            : "";
+                    sb.append("  - %s — %s\n".formatted(m.project().name(), roles));
+                }
+            }
+        }
+
+        return sb.toString();
+    }
+
     @McpTool(description = "List all projects available in Redmine. " +
             "Returns project names, identifiers, and descriptions. Supports pagination.")
     public String listProjects(
@@ -166,6 +203,26 @@ public class RedmineTools {
         return sb.toString();
     }
 
+    @McpTool(description = "List all wiki pages in a Redmine project. " +
+            "Returns page titles and dates. Use getWikiPage to read a specific page's content.")
+    public String listWikiPages(
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId
+    ) {
+        var pages = client.getWikiIndex(projectId);
+        if (pages.isEmpty()) {
+            return "No wiki pages found in project '%s'".formatted(projectId);
+        }
+
+        var sb = new StringBuilder();
+        sb.append("Wiki pages in project '%s' (%d):\n\n".formatted(projectId, pages.size()));
+        for (var page : pages) {
+            sb.append("- %s".formatted(page.title()));
+            if (page.updatedOn() != null) sb.append(" (updated: %s)".formatted(page.updatedOn()));
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
     @McpTool(description = "List issues in Redmine with flexible filtering by project, status, tracker, " +
             "assignee, priority, and version. Use statusId='*' to include closed issues. " +
             "Supports sorting and pagination.")
@@ -257,6 +314,87 @@ public class RedmineTools {
         return sb.toString();
     }
 
+    @McpTool(description = "List time entries (time tracking / logged hours) in Redmine. " +
+            "Filter by project, issue, user, or date range. " +
+            "Returns hours, activity type, user, date, and comments.")
+    public String listTimeEntries(
+            @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
+            @McpToolParam(description = "Issue ID to filter by (optional)", required = false) Integer issueId,
+            @McpToolParam(description = "User ID to filter by (optional)", required = false) Integer userId,
+            @McpToolParam(description = "From date, YYYY-MM-DD (optional)", required = false) String from,
+            @McpToolParam(description = "To date, YYYY-MM-DD (optional)", required = false) String to,
+            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+    ) {
+        int actualLimit = limit != null ? limit : 25;
+        int actualOffset = offset != null ? offset : 0;
+
+        var page = client.getTimeEntries(projectId, issueId, userId, from, to, actualOffset, actualLimit);
+
+        var sb = new StringBuilder();
+        sb.append("Time entries: %d total (showing %d-%d)\n\n".formatted(
+                page.totalCount(), page.offset() + 1,
+                page.offset() + page.timeEntries().size()));
+
+        for (var entry : page.timeEntries()) {
+            sb.append("- %s | %.2f h | %s | %s".formatted(
+                    entry.spentOn(), entry.hours(),
+                    entry.user() != null ? entry.user().name() : "—",
+                    entry.activity() != null ? entry.activity().name() : "—"));
+            if (entry.issue() != null) {
+                sb.append(" | Issue #%d".formatted(entry.issue().id()));
+            }
+            if (entry.comments() != null && !entry.comments().isBlank()) {
+                sb.append("\n  %s".formatted(entry.comments()));
+            }
+            sb.append("\n");
+        }
+
+        return sb.toString();
+    }
+
+    @McpTool(description = "List all available issue statuses in Redmine. " +
+            "Returns status IDs and names. Use these IDs for filtering in listIssues.")
+    public String listStatuses() {
+        var statuses = client.getIssueStatuses();
+        if (statuses.isEmpty()) {
+            return "No statuses found";
+        }
+        var sb = new StringBuilder("Issue statuses:\n\n");
+        for (var s : statuses) {
+            sb.append("- [%d] %s\n".formatted(s.id(), s.name()));
+        }
+        return sb.toString();
+    }
+
+    @McpTool(description = "List all available trackers in Redmine. " +
+            "Returns tracker IDs and names. Use these IDs for filtering in listIssues.")
+    public String listTrackers() {
+        var trackers = client.getTrackers();
+        if (trackers.isEmpty()) {
+            return "No trackers found";
+        }
+        var sb = new StringBuilder("Trackers:\n\n");
+        for (var t : trackers) {
+            sb.append("- [%d] %s\n".formatted(t.id(), t.name()));
+        }
+        return sb.toString();
+    }
+
+    @McpTool(description = "List all available issue priorities in Redmine. " +
+            "Returns priority IDs and names. Use these IDs for filtering in listIssues.")
+    public String listPriorities() {
+        var priorities = client.getIssuePriorities();
+        if (priorities.isEmpty()) {
+            return "No priorities found";
+        }
+        var sb = new StringBuilder("Issue priorities:\n\n");
+        for (var p : priorities) {
+            sb.append("- [%d] %s\n".formatted(p.id(), p.name()));
+        }
+        return sb.toString();
+    }
+
     @McpTool(description = "Get detailed information about a specific Redmine issue by its ID. " +
             "Returns full issue details including description, status, assignee, dates, and attachments list.")
     public String getIssue(
@@ -344,6 +482,7 @@ public class RedmineTools {
 
     private void appendIssueDetails(StringBuilder sb, RedmineIssue issue) {
         sb.append("Issue #%d: %s\n".formatted(issue.id(), issue.subject()));
+        if (issue.isPrivate()) sb.append("[PRIVATE]\n");
         sb.append("Project: %s\n".formatted(name(issue.project())));
         sb.append("Tracker: %s | Status: %s | Priority: %s\n".formatted(
                 name(issue.tracker()), name(issue.status()), name(issue.priority())));
@@ -351,13 +490,46 @@ public class RedmineTools {
         if (issue.assignedTo() != null) {
             sb.append("Assigned to: %s\n".formatted(issue.assignedTo().name()));
         }
+        if (issue.parent() != null) {
+            sb.append("Parent: #%d %s\n".formatted(issue.parent().id(), issue.parent().name()));
+        }
+        if (issue.fixedVersion() != null) {
+            sb.append("Target version: %s\n".formatted(issue.fixedVersion().name()));
+        }
+        if (issue.category() != null) {
+            sb.append("Category: %s\n".formatted(issue.category().name()));
+        }
         if (issue.startDate() != null) sb.append("Start date: %s\n".formatted(issue.startDate()));
         if (issue.dueDate() != null) sb.append("Due date: %s\n".formatted(issue.dueDate()));
         sb.append("Done: %d%%\n".formatted(issue.doneRatio()));
+        if (issue.estimatedHours() != null) sb.append("Estimated: %.1f h\n".formatted(issue.estimatedHours()));
+        if (issue.spentHours() != null && issue.spentHours() > 0) sb.append("Spent: %.1f h\n".formatted(issue.spentHours()));
         sb.append("Created: %s | Updated: %s\n".formatted(issue.createdOn(), issue.updatedOn()));
 
         if (issue.description() != null && !issue.description().isBlank()) {
             sb.append("\n--- Description ---\n%s\n".formatted(issue.description()));
+        }
+
+        if (issue.customFields() != null && !issue.customFields().isEmpty()) {
+            sb.append("\nCustom fields:\n");
+            for (var cf : issue.customFields()) {
+                String val = cf.value() != null ? cf.value().toString() : "";
+                if (!val.isBlank() && !"[]".equals(val)) {
+                    sb.append("  %s: %s\n".formatted(cf.name(), val));
+                }
+            }
+        }
+
+        if (issue.relations() != null && !issue.relations().isEmpty()) {
+            sb.append("\nRelations:\n");
+            for (var rel : issue.relations()) {
+                int relatedId = rel.issueId() == issue.id() ? rel.issueToId() : rel.issueId();
+                sb.append("  %s #%d".formatted(rel.relationType(), relatedId));
+                if (rel.delay() != null && rel.delay() != 0) {
+                    sb.append(" (delay: %d days)".formatted(rel.delay()));
+                }
+                sb.append("\n");
+            }
         }
 
         if (issue.journals() != null && !issue.journals().isEmpty()) {

@@ -30,8 +30,30 @@ class RedmineClientTest {
         System.out.println("Status: " + issue.status().name());
         System.out.println("Author: " + issue.author().name());
         System.out.println("Created: " + issue.createdOn());
+        System.out.println("Private: " + issue.isPrivate());
         if (issue.assignedTo() != null) {
             System.out.println("Assigned to: " + issue.assignedTo().name());
+        }
+        if (issue.parent() != null) {
+            System.out.println("Parent: #" + issue.parent().id() + " " + issue.parent().name());
+        }
+        if (issue.fixedVersion() != null) {
+            System.out.println("Target version: " + issue.fixedVersion().name());
+        }
+        if (issue.category() != null) {
+            System.out.println("Category: " + issue.category().name());
+        }
+        if (issue.estimatedHours() != null) {
+            System.out.println("Estimated: " + issue.estimatedHours() + " h");
+        }
+        if (issue.spentHours() != null) {
+            System.out.println("Spent: " + issue.spentHours() + " h");
+        }
+        if (issue.customFields() != null && !issue.customFields().isEmpty()) {
+            System.out.println("\nCustom fields (" + issue.customFields().size() + "):");
+            for (var cf : issue.customFields()) {
+                System.out.println("  " + cf.name() + ": " + cf.value());
+            }
         }
         if (issue.description() != null) {
             System.out.println("Description: " + issue.description().substring(0, Math.min(200, issue.description().length())) + "...");
@@ -171,6 +193,91 @@ class RedmineClientTest {
         System.out.println("Global search 'выплата' (" + result.totalCount() + " total, showing 10):");
         for (var item : result.results()) {
             System.out.println("  [" + item.type() + "] #" + item.id() + " " + item.title());
+        }
+    }
+
+    @Test
+    void shouldGetIssueStatuses() {
+        var statuses = redmineClient.getIssueStatuses();
+
+        assertThat(statuses).isNotEmpty();
+
+        System.out.println("Issue statuses (" + statuses.size() + "):");
+        for (var s : statuses) {
+            System.out.println("  [" + s.id() + "] " + s.name());
+        }
+    }
+
+    @Test
+    void shouldGetTrackers() {
+        var trackers = redmineClient.getTrackers();
+
+        assertThat(trackers).isNotEmpty();
+
+        System.out.println("Trackers (" + trackers.size() + "):");
+        for (var t : trackers) {
+            System.out.println("  [" + t.id() + "] " + t.name());
+        }
+    }
+
+    @Test
+    void shouldGetIssuePriorities() {
+        var priorities = redmineClient.getIssuePriorities();
+
+        assertThat(priorities).isNotEmpty();
+
+        System.out.println("Issue priorities (" + priorities.size() + "):");
+        for (var p : priorities) {
+            System.out.println("  [" + p.id() + "] " + p.name());
+        }
+    }
+
+    @Test
+    void shouldGetTimeEntries() {
+        var page = redmineClient.getTimeEntries(null, null, null, null, null, 0, 5);
+
+        assertThat(page).isNotNull();
+        assertThat(page.timeEntries()).isNotEmpty();
+
+        System.out.println("Time entries (" + page.totalCount() + " total, showing 5):");
+        for (var entry : page.timeEntries()) {
+            System.out.println("  " + entry.spentOn() + " | " + entry.hours() + "h | "
+                    + (entry.user() != null ? entry.user().name() : "—") + " | "
+                    + (entry.activity() != null ? entry.activity().name() : "—")
+                    + (entry.issue() != null ? " | #" + entry.issue().id() : ""));
+        }
+    }
+
+    @Test
+    void shouldGetWikiIndex() {
+        var pages = redmineClient.getWikiIndex("asv_microservices");
+
+        assertThat(pages).isNotNull();
+
+        System.out.println("Wiki pages in asv_microservices (" + pages.size() + "):");
+        for (var page : pages) {
+            System.out.println("  " + page.title() + " (updated: " + page.updatedOn() + ")");
+        }
+    }
+
+    @Test
+    void shouldGetCurrentUser() {
+        var user = redmineClient.getCurrentUser();
+
+        assertThat(user).isNotNull();
+        assertThat(user.id()).isGreaterThan(0);
+        assertThat(user.login()).isNotBlank();
+
+        System.out.println("Current user: " + user.firstname() + " " + user.lastname());
+        System.out.println("ID: " + user.id() + " | Login: " + user.login());
+        if (user.mail() != null) System.out.println("Email: " + user.mail());
+        System.out.println("Last login: " + user.lastLoginOn());
+        if (user.groups() != null && !user.groups().isEmpty()) {
+            System.out.println("Groups: " + user.groups().stream()
+                    .map(g -> g.name()).reduce((a, b) -> a + ", " + b).orElse(""));
+        }
+        if (user.memberships() != null) {
+            System.out.println("Memberships: " + user.memberships().size() + " projects");
         }
     }
 }

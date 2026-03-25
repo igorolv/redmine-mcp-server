@@ -60,7 +60,7 @@ Follow these steps:
 
    Use absolute paths. Replace placeholders with real values.
 
-6. **Notify me** that the setup is complete and I should restart the client. After restart, confirm the server is connected by listing available tools — there should be 11 Redmine tools.
+6. **Notify me** that the setup is complete and I should restart the client. After restart, confirm the server is connected by listing available tools — there should be 17 Redmine tools.
 
 If any step fails, show me the error and suggest a fix. Do not skip steps.
 
@@ -76,7 +76,7 @@ If the MCP server is configured but its tools are not available after restart:
    ```
    REDMINE_URL=http://<MY_URL> REDMINE_API_KEY=<MY_KEY> java -jar <ABSOLUTE_PATH>/redmine-mcp-server-0.1.0-SNAPSHOT.jar
    ```
-   It should print `Registered 11 tools` in the startup log. If not — check `REDMINE_URL` format (must include `http://`).
+   It should print `Registered 17 tools` in the startup log. If not — check `REDMINE_URL` format (must include `http://`).
 
 2. **Check the Java path.** The `command` in config must point to a JDK 25+ `java` binary. Use an absolute path if the system `java` is a different version.
 
@@ -86,9 +86,12 @@ If the MCP server is configured but its tools are not available after restart:
 
 ## What the server provides
 
-After setup, the agent gets 11 read-only tools for working with Redmine:
+After setup, the agent gets 17 read-only tools for working with Redmine:
 
+**User:** `getCurrentUser`
 **Projects:** `listProjects`, `getProject`, `listProjectMembers`, `listVersions`
 **Issues:** `listIssues`, `searchIssues`, `getIssue`
 **Search:** `searchAll` (global search across issues, wiki, news, changesets)
-**Files & Wiki:** `listAttachments`, `getAttachmentContent`, `getWikiPage`
+**Files & Wiki:** `listAttachments`, `getAttachmentContent`, `getWikiPage`, `listWikiPages`
+**Time tracking:** `listTimeEntries`
+**Reference data:** `listStatuses`, `listTrackers`, `listPriorities`

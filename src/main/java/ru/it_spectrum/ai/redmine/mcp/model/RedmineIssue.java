@@ -14,17 +14,32 @@ public record RedmineIssue(
         IdName priority,
         IdName author,
         @JsonProperty("assigned_to") IdName assignedTo,
+        IdName parent,
+        @JsonProperty("fixed_version") IdName fixedVersion,
+        IdName category,
         String subject,
         String description,
         @JsonProperty("start_date") String startDate,
         @JsonProperty("due_date") String dueDate,
         @JsonProperty("done_ratio") int doneRatio,
+        @JsonProperty("estimated_hours") Double estimatedHours,
+        @JsonProperty("spent_hours") Double spentHours,
+        @JsonProperty("is_private") boolean isPrivate,
         @JsonProperty("created_on") String createdOn,
         @JsonProperty("updated_on") String updatedOn,
+        @JsonProperty("custom_fields") List<CustomField> customFields,
         List<RedmineAttachment> attachments,
         List<Journal> journals,
         List<Relation> relations
 ) {
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record CustomField(
+            int id,
+            String name,
+            Object value
+    ) {
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Relation(

@@ -2,11 +2,14 @@ package ru.it_spectrum.ai.redmine.mcp.client;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineMembership;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineProject;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineSearchResult;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineTimeEntry;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineVersion;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineWikiPage;
 
@@ -167,6 +170,30 @@ public class RedmineClient {
     }
 
     /**
+     * List all wiki pages in a project.
+     */
+    public List<RedmineWikiPage> getWikiIndex(String projectId) {
+        var response = restClient.get()
+                .uri("/projects/{projectId}/wiki/index.json", projectId)
+                .retrieve()
+                .body(RedmineWikiPage.Index.class);
+
+        return response != null && response.wikiPages() != null ? response.wikiPages() : List.of();
+    }
+
+    /**
+     * Get the currently authenticated user.
+     */
+    public RedmineUser getCurrentUser() {
+        var response = restClient.get()
+                .uri("/users/current.json?include=memberships,groups")
+                .retrieve()
+                .body(RedmineUser.Single.class);
+
+        return response != null ? response.user() : null;
+    }
+
+    /**
      * Global full-text search across all Redmine content (issues, wiki, news, etc).
      */
     public RedmineSearchResult search(String query, int offset, int limit) {
@@ -182,6 +209,64 @@ public class RedmineClient {
                 .body(RedmineSearchResult.class);
 
         return response != null ? response : new RedmineSearchResult(List.of(), 0, offset, limit);
+    }
+
+    /**
+     * Get all issue statuses.
+     */
+    public List<IdName> getIssueStatuses() {
+        var response = restClient.get()
+                .uri("/issue_statuses.json")
+                .retrieve()
+                .body(IdName.IssueStatuses.class);
+
+        return response != null && response.items() != null ? response.items() : List.of();
+    }
+
+    /**
+     * Get all trackers.
+     */
+    public List<IdName> getTrackers() {
+        var response = restClient.get()
+                .uri("/trackers.json")
+                .retrieve()
+                .body(IdName.Trackers.class);
+
+        return response != null && response.trackers() != null ? response.trackers() : List.of();
+    }
+
+    /**
+     * List time entries with optional filtering.
+     */
+    public RedmineTimeEntry.Page getTimeEntries(String projectId, Integer issueId,
+                                                 Integer userId, String from, String to,
+                                                 int offset, int limit) {
+        var sb = new StringBuilder("/time_entries.json?");
+        if (projectId != null && !projectId.isBlank()) sb.append("project_id=").append(projectId).append("&");
+        if (issueId != null) sb.append("issue_id=").append(issueId).append("&");
+        if (userId != null) sb.append("user_id=").append(userId).append("&");
+        if (from != null && !from.isBlank()) sb.append("from=").append(from).append("&");
+        if (to != null && !to.isBlank()) sb.append("to=").append(to).append("&");
+        sb.append("offset=").append(offset).append("&limit=").append(limit);
+
+        var response = restClient.get()
+                .uri(sb.toString())
+                .retrieve()
+                .body(RedmineTimeEntry.Page.class);
+
+        return response != null ? response : new RedmineTimeEntry.Page(List.of(), 0, offset, limit);
+    }
+
+    /**
+     * Get issue priorities.
+     */
+    public List<IdName> getIssuePriorities() {
+        var response = restClient.get()
+                .uri("/enumerations/issue_priorities.json")
+                .retrieve()
+                .body(IdName.IssuePriorities.class);
+
+        return response != null && response.items() != null ? response.items() : List.of();
     }
 
     /**

@@ -84,6 +84,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 
 | Tool | Description |
 |---|---|
+| `getCurrentUser` | Get current authenticated user info (ID, login, groups, memberships). Useful for self-filtering |
 | `listProjects` | List all accessible projects. Params: `limit`, `offset` |
 | `getProject` | Get project details (trackers, modules). Params: `projectId` |
 | `listProjectMembers` | List project members with roles. Params: `projectId`, `limit`, `offset` |
@@ -91,10 +92,15 @@ After adding the configuration, restart the client so it picks up the new MCP se
 | `listIssues` | List issues with filters (project, status, tracker, assignee, priority, version, sort). Params: `projectId`, `statusId`, `trackerId`, `assignedToId`, `priorityId`, `versionId`, `sort`, `limit`, `offset` |
 | `searchIssues` | Full-text search across issues with detailed results. Params: `query`, `projectId`, `limit`, `offset` |
 | `searchAll` | Global search across all content (issues, wiki, news, changesets). Params: `query`, `limit`, `offset` |
-| `getIssue` | Get full issue details (description, notes, relations, attachments). Params: `issueId` |
+| `getIssue` | Get full issue details (description, notes, relations, custom fields, attachments). Params: `issueId` |
 | `listAttachments` | List all attachments of an issue. Params: `issueId` |
 | `getAttachmentContent` | Get content of a text-based attachment (txt, log, xml, json, csv, etc). Returns metadata only for binary files. Params: `attachmentId` |
 | `getWikiPage` | Get wiki page content and attachments. Params: `projectId`, `pageTitle` |
+| `listWikiPages` | List all wiki pages in a project. Params: `projectId` |
+| `listTimeEntries` | List time entries with filters (project, issue, user, date range). Params: `projectId`, `issueId`, `userId`, `from`, `to`, `limit`, `offset` |
+| `listStatuses` | List all available issue statuses (ID + name). Useful for filtering in listIssues |
+| `listTrackers` | List all available trackers (ID + name). Useful for filtering in listIssues |
+| `listPriorities` | List all available issue priorities (ID + name). Useful for filtering in listIssues |
 
 All tools are **read-only**. No data in Redmine is modified.
 

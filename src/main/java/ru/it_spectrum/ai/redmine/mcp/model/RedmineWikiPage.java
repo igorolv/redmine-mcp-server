@@ -20,4 +20,8 @@ public record RedmineWikiPage(
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Single(@JsonProperty("wiki_page") RedmineWikiPage wikiPage) {
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Index(@JsonProperty("wiki_pages") List<RedmineWikiPage> wikiPages) {
+    }
 }
