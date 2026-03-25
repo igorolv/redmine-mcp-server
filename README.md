@@ -54,7 +54,7 @@
 | Tool | Описание |
 |---|---|
 | `listAttachments` | Список вложений задачи с размерами и типами |
-| `getAttachmentContent` | Содержимое текстовых вложений (txt, log, xml, json, csv и др.). Для бинарных — только метаданные |
+| `getAttachmentContent` | Содержимое вложений: текстовые (txt, log, xml, json, csv и др.), PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx). Для изображений и прочих бинарных — только метаданные |
 | `getWikiPage` | Содержимое wiki-страницы проекта |
 | `listWikiPages` | Список всех wiki-страниц проекта |
 
@@ -77,6 +77,8 @@
 ## Стек
 
 - Java 25, Spring Boot 4.0, Spring AI MCP (stdio transport)
+- Apache PDFBox 3.0 — извлечение текста из PDF
+- Apache POI 5.4 — извлечение текста из Word, Excel, PowerPoint
 - Gradle 9.3 с version catalog
 
 ## Сборка

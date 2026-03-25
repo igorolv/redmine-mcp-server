@@ -22,6 +22,8 @@ dependencies {
     implementation(libs.spring.boot.starter)
     implementation(libs.spring.ai.mcp.server)
     implementation("org.springframework:spring-web")
+    implementation(libs.poi.ooxml)
+    implementation(libs.pdfbox)
 
     testImplementation(libs.spring.boot.starter.test)
 }

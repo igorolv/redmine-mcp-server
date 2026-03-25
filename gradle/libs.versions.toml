@@ -1,6 +1,8 @@
 [versions]
 spring-boot = "4.0.0"
 spring-ai = "2.0.0-M3"
+poi = "5.4.0"
+pdfbox = "3.0.5"
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
@@ -10,3 +12,5 @@ spring-dependency-management = { id = "io.spring.dependency-management", version
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 spring-ai-mcp-server = { module = "org.springframework.ai:spring-ai-starter-mcp-server", version.ref = "spring-ai" }
+poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }

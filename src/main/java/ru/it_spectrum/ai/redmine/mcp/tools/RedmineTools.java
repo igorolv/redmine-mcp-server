@@ -8,7 +8,19 @@ import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineProject;
 
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFShape;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTable;
+import org.apache.poi.xslf.usermodel.XSLFTextShape;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+
+import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 @Service
 public class RedmineTools {
@@ -439,9 +451,10 @@ public class RedmineTools {
         return sb.toString();
     }
 
-    @McpTool(description = "Get the content of a text-based attachment from Redmine. " +
-            "Works with text files, logs, XML, JSON, CSV, etc. " +
-            "For binary files (images, PDFs) returns only metadata. " +
+    @McpTool(description = "Get the content of an attachment from Redmine. " +
+            "Supports text files (txt, log, xml, json, csv, etc.), " +
+            "PDF, Word (.docx), Excel (.xlsx), and PowerPoint (.pptx). " +
+            "For images and other binary files returns only metadata. " +
             "Use listAttachments first to get the attachment ID.")
     public String getAttachmentContent(
             @McpToolParam(description = "Attachment ID number") int attachmentId
@@ -457,11 +470,20 @@ public class RedmineTools {
         sb.append("Created: %s by %s\n\n".formatted(attachment.createdOn(),
                 attachment.author() != null ? attachment.author().name() : "unknown"));
 
-        if (isTextContent(attachment.contentType(), attachment.filename())) {
+        String ext = getFileExtension(attachment.filename());
+        String contentType = attachment.contentType() != null ? attachment.contentType() : "";
+
+        if (isDocumentContent(ext, contentType)) {
             byte[] content = client.downloadAttachment(attachment.contentUrl());
             if (content != null) {
                 sb.append("--- Content ---\n");
-                sb.append(new String(content, StandardCharsets.UTF_8));
+                sb.append(truncate(extractDocumentText(ext, contentType, content)));
+            }
+        } else if (isTextContent(contentType, attachment.filename())) {
+            byte[] content = client.downloadAttachment(attachment.contentUrl());
+            if (content != null) {
+                sb.append("--- Content ---\n");
+                sb.append(truncate(new String(content, StandardCharsets.UTF_8)));
             }
         } else {
             sb.append("Binary file — content not displayed. Content URL: %s\n".formatted(attachment.contentUrl()));
@@ -588,6 +610,137 @@ public class RedmineTools {
                     || lower.endsWith(".html") || lower.endsWith(".properties") || lower.endsWith(".conf");
         }
         return false;
+    }
+
+    private static final int MAX_TEXT_LENGTH = 50_000;
+
+    private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("pdf", "docx", "xlsx", "pptx");
+
+    private boolean isDocumentContent(String ext, String contentType) {
+        if (DOCUMENT_EXTENSIONS.contains(ext)) return true;
+        return contentType.equals("application/pdf")
+                || contentType.contains("wordprocessingml")
+                || contentType.contains("spreadsheetml")
+                || contentType.contains("presentationml");
+    }
+
+    private String extractDocumentText(String ext, String contentType, byte[] data) {
+        try {
+            if ("pdf".equals(ext) || contentType.equals("application/pdf")) {
+                return extractPdfText(data);
+            } else if ("docx".equals(ext) || contentType.contains("wordprocessingml")) {
+                return extractDocxText(data);
+            } else if ("xlsx".equals(ext) || contentType.contains("spreadsheetml")) {
+                return extractXlsxText(data);
+            } else if ("pptx".equals(ext) || contentType.contains("presentationml")) {
+                return extractPptxText(data);
+            }
+            return "(unsupported document format)";
+        } catch (Exception e) {
+            return "(failed to extract text: %s)".formatted(e.getMessage());
+        }
+    }
+
+    private String extractPdfText(byte[] data) throws Exception {
+        try (var doc = Loader.loadPDF(data)) {
+            var stripper = new PDFTextStripper();
+            String text = stripper.getText(doc);
+            if (text == null || text.isBlank()) {
+                return "(PDF contains no extractable text — possibly a scanned image)";
+            }
+            return text;
+        }
+    }
+
+    private String extractDocxText(byte[] data) throws Exception {
+        try (var doc = new XWPFDocument(new ByteArrayInputStream(data))) {
+            var sb = new StringBuilder();
+            for (var para : doc.getParagraphs()) {
+                String text = para.getText();
+                if (text != null && !text.isBlank()) {
+                    sb.append(text).append("\n");
+                }
+            }
+            for (var table : doc.getTables()) {
+                sb.append("\n[Table]\n");
+                for (var row : table.getRows()) {
+                    var cells = row.getTableCells().stream()
+                            .map(c -> c.getText().strip())
+                            .toList();
+                    sb.append(String.join(" | ", cells)).append("\n");
+                }
+            }
+            if (sb.isEmpty()) return "(Word document contains no text)";
+            return sb.toString();
+        }
+    }
+
+    private String extractXlsxText(byte[] data) throws Exception {
+        try (var wb = new XSSFWorkbook(new ByteArrayInputStream(data))) {
+            var sb = new StringBuilder();
+            var formatter = new org.apache.poi.ss.usermodel.DataFormatter();
+            for (int i = 0; i < wb.getNumberOfSheets(); i++) {
+                var sheet = wb.getSheetAt(i);
+                sb.append("--- Sheet: %s ---\n".formatted(sheet.getSheetName()));
+                for (var row : sheet) {
+                    var cells = new java.util.ArrayList<String>();
+                    for (var cell : row) {
+                        cells.add(formatter.formatCellValue(cell));
+                    }
+                    if (cells.stream().anyMatch(c -> !c.isEmpty())) {
+                        sb.append(String.join(" | ", cells)).append("\n");
+                    }
+                }
+                sb.append("\n");
+            }
+            if (sb.isEmpty()) return "(Excel file contains no data)";
+            return sb.toString();
+        }
+    }
+
+    private String extractPptxText(byte[] data) throws Exception {
+        try (var pptx = new XMLSlideShow(new ByteArrayInputStream(data))) {
+            var sb = new StringBuilder();
+            int slideNum = 0;
+            for (XSLFSlide slide : pptx.getSlides()) {
+                slideNum++;
+                var texts = new java.util.ArrayList<String>();
+                for (XSLFShape shape : slide.getShapes()) {
+                    if (shape instanceof XSLFTextShape textShape) {
+                        String text = textShape.getText();
+                        if (text != null && !text.isBlank()) {
+                            texts.add(text.strip());
+                        }
+                    }
+                    if (shape instanceof XSLFTable table) {
+                        for (int r = 0; r < table.getNumberOfRows(); r++) {
+                            var cells = new java.util.ArrayList<String>();
+                            for (int c = 0; c < table.getNumberOfColumns(); c++) {
+                                cells.add(table.getCell(r, c).getText().strip());
+                            }
+                            texts.add(String.join(" | ", cells));
+                        }
+                    }
+                }
+                if (!texts.isEmpty()) {
+                    sb.append("--- Slide %d ---\n".formatted(slideNum));
+                    sb.append(String.join("\n", texts)).append("\n\n");
+                }
+            }
+            if (sb.isEmpty()) return "(Presentation contains no text)";
+            return sb.toString();
+        }
+    }
+
+    private String getFileExtension(String filename) {
+        if (filename == null) return "";
+        int dot = filename.lastIndexOf('.');
+        return dot >= 0 ? filename.substring(dot + 1).toLowerCase() : "";
+    }
+
+    private String truncate(String text) {
+        if (text.length() <= MAX_TEXT_LENGTH) return text;
+        return text.substring(0, MAX_TEXT_LENGTH) + "\n\n... (truncated, total length: %d chars)".formatted(text.length());
     }
 
     private String formatSize(long bytes) {

@@ -94,7 +94,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 | `searchAll` | Global search across all content (issues, wiki, news, changesets). Params: `query`, `limit`, `offset` |
 | `getIssue` | Get full issue details (description, notes, relations, custom fields, attachments). Params: `issueId` |
 | `listAttachments` | List all attachments of an issue. Params: `issueId` |
-| `getAttachmentContent` | Get content of a text-based attachment (txt, log, xml, json, csv, etc). Returns metadata only for binary files. Params: `attachmentId` |
+| `getAttachmentContent` | Get content of an attachment. Supports text files (txt, log, xml, json, csv, etc.), PDF, Word (.docx), Excel (.xlsx), and PowerPoint (.pptx). Returns metadata only for images and other binary files. Params: `attachmentId` |
 | `getWikiPage` | Get wiki page content and attachments. Params: `projectId`, `pageTitle` |
 | `listWikiPages` | List all wiki pages in a project. Params: `projectId` |
 | `listTimeEntries` | List time entries with filters (project, issue, user, date range). Params: `projectId`, `issueId`, `userId`, `from`, `to`, `limit`, `offset` |
