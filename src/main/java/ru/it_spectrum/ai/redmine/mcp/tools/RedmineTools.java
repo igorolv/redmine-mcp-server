@@ -85,6 +85,120 @@ public class RedmineTools {
         return sb.toString();
     }
 
+    @McpTool(description = "List members of a Redmine project with their roles.")
+    public String listProjectMembers(
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId,
+            @McpToolParam(description = "Maximum number of results, default 100", required = false) Integer limit,
+            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+    ) {
+        int actualLimit = limit != null ? limit : 100;
+        int actualOffset = offset != null ? offset : 0;
+
+        var page = client.getProjectMembers(projectId, actualOffset, actualLimit);
+
+        var sb = new StringBuilder();
+        sb.append("Members of project '%s': %d total\n\n".formatted(projectId, page.totalCount()));
+
+        for (var m : page.memberships()) {
+            String member = m.user() != null ? m.user().name() : (m.group() != null ? m.group().name() + " (group)" : "unknown");
+            String roles = m.roles() != null
+                    ? m.roles().stream().map(IdName::name).reduce((a, b) -> a + ", " + b).orElse("")
+                    : "";
+            sb.append("- %s — %s\n".formatted(member, roles));
+        }
+
+        return sb.toString();
+    }
+
+    @McpTool(description = "List versions (milestones) of a Redmine project. " +
+            "Returns version names, statuses, due dates, and descriptions.")
+    public String listVersions(
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId
+    ) {
+        var versions = client.getProjectVersions(projectId);
+
+        if (versions.isEmpty()) {
+            return "No versions found for project '%s'".formatted(projectId);
+        }
+
+        var sb = new StringBuilder();
+        sb.append("Versions for project '%s' (%d):\n\n".formatted(projectId, versions.size()));
+
+        for (var v : versions) {
+            sb.append("- %s (status: %s".formatted(v.name(), v.status()));
+            if (v.dueDate() != null) sb.append(", due: %s".formatted(v.dueDate()));
+            sb.append(")\n");
+            if (v.description() != null && !v.description().isBlank()) {
+                sb.append("  %s\n".formatted(v.description()));
+            }
+        }
+
+        return sb.toString();
+    }
+
+    @McpTool(description = "Get a wiki page from a Redmine project. " +
+            "Returns the page title, content (in Textile/Markdown markup), author, and attachments.")
+    public String getWikiPage(
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId,
+            @McpToolParam(description = "Wiki page title (use 'Wiki' for the start page)") String pageTitle
+    ) {
+        var page = client.getWikiPage(projectId, pageTitle);
+        if (page == null) {
+            return "Wiki page '%s' not found in project '%s'".formatted(pageTitle, projectId);
+        }
+
+        var sb = new StringBuilder();
+        sb.append("Wiki: %s\n".formatted(page.title()));
+        if (page.author() != null) sb.append("Author: %s\n".formatted(page.author().name()));
+        sb.append("Version: %d | Updated: %s\n".formatted(page.version(), page.updatedOn()));
+
+        if (page.text() != null) {
+            sb.append("\n--- Content ---\n%s\n".formatted(page.text()));
+        }
+
+        if (page.attachments() != null && !page.attachments().isEmpty()) {
+            sb.append("\nAttachments (%d):\n".formatted(page.attachments().size()));
+            for (var att : page.attachments()) {
+                sb.append("  - [%d] %s (%s)\n".formatted(att.id(), att.filename(), formatSize(att.filesize())));
+            }
+        }
+
+        return sb.toString();
+    }
+
+    @McpTool(description = "List issues in Redmine with flexible filtering by project, status, tracker, " +
+            "assignee, priority, and version. Use statusId='*' to include closed issues. " +
+            "Supports sorting and pagination.")
+    public String listIssues(
+            @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
+            @McpToolParam(description = "Status filter: open, closed, * (all), or numeric status ID (optional)", required = false) String statusId,
+            @McpToolParam(description = "Tracker ID to filter by (optional)", required = false) Integer trackerId,
+            @McpToolParam(description = "Assigned user ID to filter by (optional)", required = false) Integer assignedToId,
+            @McpToolParam(description = "Priority ID to filter by (optional)", required = false) Integer priorityId,
+            @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId,
+            @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc' (optional)", required = false) String sort,
+            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+    ) {
+        int actualLimit = limit != null ? limit : 25;
+        int actualOffset = offset != null ? offset : 0;
+
+        var page = client.listIssues(projectId, statusId, trackerId, assignedToId,
+                priorityId, versionId, sort, actualOffset, actualLimit);
+
+        var sb = new StringBuilder();
+        sb.append("Issues: %d total (showing %d-%d)\n\n".formatted(
+                page.totalCount(), page.offset() + 1,
+                page.offset() + page.issues().size()));
+
+        for (var issue : page.issues()) {
+            appendIssueSummary(sb, issue);
+            sb.append("\n");
+        }
+
+        return sb.toString();
+    }
+
     @McpTool(description = "Search for issues in Redmine using full-text search. " +
             "Returns a list of matching issues with their details (subject, status, assignee, etc). " +
             "Supports pagination via offset/limit parameters.")

@@ -1,0 +1,25 @@
+package ru.it_spectrum.ai.redmine.mcp.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.List;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record RedmineMembership(
+        int id,
+        IdName project,
+        IdName user,
+        IdName group,
+        List<IdName> roles
+) {
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Page(
+            List<RedmineMembership> memberships,
+            @JsonProperty("total_count") int totalCount,
+            int offset,
+            int limit
+    ) {
+    }
+}

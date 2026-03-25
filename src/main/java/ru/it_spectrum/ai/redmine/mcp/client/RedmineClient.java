@@ -4,8 +4,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineMembership;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineProject;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineSearchResult;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineVersion;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineWikiPage;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -101,6 +104,66 @@ public class RedmineClient {
                 .body(RedmineProject.Single.class);
 
         return response != null ? response.project() : null;
+    }
+
+    /**
+     * List issues with flexible filtering.
+     */
+    public RedmineIssue.Page listIssues(String projectId, String statusId, Integer trackerId,
+                                         Integer assignedToId, Integer priorityId, Integer versionId,
+                                         String sort, int offset, int limit) {
+        var sb = new StringBuilder("/issues.json?");
+        if (projectId != null && !projectId.isBlank()) sb.append("project_id=").append(projectId).append("&");
+        if (statusId != null && !statusId.isBlank()) sb.append("status_id=").append(statusId).append("&");
+        if (trackerId != null) sb.append("tracker_id=").append(trackerId).append("&");
+        if (assignedToId != null) sb.append("assigned_to_id=").append(assignedToId).append("&");
+        if (priorityId != null) sb.append("priority_id=").append(priorityId).append("&");
+        if (versionId != null) sb.append("fixed_version_id=").append(versionId).append("&");
+        if (sort != null && !sort.isBlank()) sb.append("sort=").append(sort).append("&");
+        sb.append("offset=").append(offset).append("&limit=").append(limit);
+
+        var response = restClient.get()
+                .uri(sb.toString())
+                .retrieve()
+                .body(RedmineIssue.Page.class);
+
+        return response != null ? response : new RedmineIssue.Page(List.of(), 0, offset, limit);
+    }
+
+    /**
+     * Get project members.
+     */
+    public RedmineMembership.Page getProjectMembers(String projectId, int offset, int limit) {
+        var response = restClient.get()
+                .uri("/projects/{id}/memberships.json?offset={offset}&limit={limit}", projectId, offset, limit)
+                .retrieve()
+                .body(RedmineMembership.Page.class);
+
+        return response != null ? response : new RedmineMembership.Page(List.of(), 0, offset, limit);
+    }
+
+    /**
+     * Get project versions/milestones.
+     */
+    public List<RedmineVersion> getProjectVersions(String projectId) {
+        var response = restClient.get()
+                .uri("/projects/{id}/versions.json", projectId)
+                .retrieve()
+                .body(RedmineVersion.Page.class);
+
+        return response != null && response.versions() != null ? response.versions() : List.of();
+    }
+
+    /**
+     * Get a wiki page by project and page title.
+     */
+    public RedmineWikiPage getWikiPage(String projectId, String pageTitle) {
+        var response = restClient.get()
+                .uri("/projects/{projectId}/wiki/{page}.json?include=attachments", projectId, pageTitle)
+                .retrieve()
+                .body(RedmineWikiPage.Single.class);
+
+        return response != null ? response.wikiPage() : null;
     }
 
     /**

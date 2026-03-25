@@ -100,4 +100,64 @@ class RedmineClientTest {
                     .map(m -> m.name()).reduce((a, b) -> a + ", " + b).orElse(""));
         }
     }
+
+    @Test
+    void shouldListIssuesWithFilters() {
+        var page = redmineClient.listIssues("asv_microservices", null, null, null, null, null,
+                "updated_on:desc", 0, 5);
+
+        assertThat(page).isNotNull();
+        assertThat(page.issues()).isNotEmpty();
+
+        System.out.println("Issues for asv_microservices (" + page.totalCount() + " total, showing 5):");
+        for (var issue : page.issues()) {
+            System.out.println("  #" + issue.id() + " [" + issue.status().name() + "] " + issue.subject());
+        }
+    }
+
+    @Test
+    void shouldListProjectMembers() {
+        var page = redmineClient.getProjectMembers("asv_microservices", 0, 100);
+
+        assertThat(page).isNotNull();
+        assertThat(page.memberships()).isNotEmpty();
+
+        System.out.println("Members of asv_microservices (" + page.totalCount() + "):");
+        for (var m : page.memberships()) {
+            String member = m.user() != null ? m.user().name() : (m.group() != null ? m.group().name() + " (group)" : "unknown");
+            String roles = m.roles() != null
+                    ? m.roles().stream().map(r -> r.name()).reduce((a, b) -> a + ", " + b).orElse("")
+                    : "";
+            System.out.println("  " + member + " — " + roles);
+        }
+    }
+
+    @Test
+    void shouldListProjectVersions() {
+        var versions = redmineClient.getProjectVersions("asv_microservices");
+
+        assertThat(versions).isNotNull();
+
+        System.out.println("Versions of asv_microservices (" + versions.size() + "):");
+        for (var v : versions) {
+            System.out.println("  " + v.name() + " [" + v.status() + "]"
+                    + (v.dueDate() != null ? " due: " + v.dueDate() : ""));
+        }
+    }
+
+    @Test
+    void shouldGetWikiPage() {
+        var page = redmineClient.getWikiPage("asv_microservices", "Wiki");
+
+        if (page != null) {
+            System.out.println("Wiki page: " + page.title());
+            if (page.author() != null) System.out.println("Author: " + page.author().name());
+            System.out.println("Version: " + page.version());
+            if (page.text() != null) {
+                System.out.println("Content: " + page.text().substring(0, Math.min(300, page.text().length())) + "...");
+            }
+        } else {
+            System.out.println("No wiki start page found for asv_microservices");
+        }
+    }
 }
