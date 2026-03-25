@@ -1,0 +1,12 @@
+spring:
+  main:
+    web-application-type: none
+  ai:
+    mcp:
+      server:
+        name: redmine-mcp-server
+        version: 0.1.0
+
+redmine:
+  url: ${REDMINE_URL:}
+  api-key: ${REDMINE_API_KEY:}
