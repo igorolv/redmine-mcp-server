@@ -49,7 +49,7 @@ public class RedmineClient {
      */
     public RedmineIssue getIssue(int issueId) {
         var response = restClient.get()
-                .uri("/issues/{id}.json?include=attachments,journals", issueId)
+                .uri("/issues/{id}.json?include=attachments,journals,relations", issueId)
                 .retrieve()
                 .body(RedmineIssue.Single.class);
 

@@ -36,6 +36,13 @@ class RedmineClientTest {
         if (issue.description() != null) {
             System.out.println("Description: " + issue.description().substring(0, Math.min(200, issue.description().length())) + "...");
         }
+        if (issue.relations() != null) {
+            System.out.println("\nRelations (" + issue.relations().size() + "):");
+            for (var rel : issue.relations()) {
+                int relatedId = rel.issueId() == issue.id() ? rel.issueToId() : rel.issueId();
+                System.out.println("  " + rel.relationType() + " #" + relatedId);
+            }
+        }
         if (issue.journals() != null) {
             System.out.println("\nNotes (" + issue.journals().size() + "):");
             for (var journal : issue.journals()) {

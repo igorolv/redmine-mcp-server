@@ -22,8 +22,19 @@ public record RedmineIssue(
         @JsonProperty("created_on") String createdOn,
         @JsonProperty("updated_on") String updatedOn,
         List<RedmineAttachment> attachments,
-        List<Journal> journals
+        List<Journal> journals,
+        List<Relation> relations
 ) {
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Relation(
+            int id,
+            @JsonProperty("issue_id") int issueId,
+            @JsonProperty("issue_to_id") int issueToId,
+            @JsonProperty("relation_type") String relationType,
+            Integer delay
+    ) {
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Journal(
