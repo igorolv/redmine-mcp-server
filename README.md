@@ -122,6 +122,7 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 | Клиент | Файл конфигурации | Ключ |
 |---|---|---|
 | Claude Code | `~/.claude/settings.json` -> `"mcpServers"` | `"redmine"` |
+| Qwen Code | `~/.qwen/settings.json` -> `"mcpServers"` | `"redmine"` |
 | VS Code | `.vscode/mcp.json` -> `"servers"` | `"redmine"` |
 | Cursor | `.cursor/mcp.json` -> `"mcpServers"` | `"redmine"` |
 | Claude Desktop | `claude_desktop_config.json` -> `"mcpServers"` | `"redmine"` |

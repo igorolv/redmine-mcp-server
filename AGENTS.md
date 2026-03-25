@@ -57,6 +57,7 @@ Add the server to the client's MCP configuration. The format varies by client, b
 | Client | Config file | Server key |
 |---|---|---|
 | Claude Code | `~/.claude/settings.json` → `"mcpServers"` | `"redmine"` |
+| Qwen Code | `~/.qwen/settings.json` → `"mcpServers"` | `"redmine"` |
 | VS Code (Copilot/Continue) | `.vscode/mcp.json` → `"servers"` | `"redmine"` |
 | Cursor | `.cursor/mcp.json` → `"mcpServers"` | `"redmine"` |
 | Claude Desktop | `claude_desktop_config.json` → `"mcpServers"` | `"redmine"` |
