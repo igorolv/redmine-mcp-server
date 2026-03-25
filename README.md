@@ -54,7 +54,8 @@
 | Tool | Описание |
 |---|---|
 | `listAttachments` | Список вложений задачи с размерами и типами |
-| `getAttachmentContent` | Содержимое вложений: текстовые (txt, log, xml, json, csv и др.), PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx). Для изображений и прочих бинарных — только метаданные |
+| `getAttachmentContent` | Содержимое вложений: текстовые (txt, log, xml, json, csv и др.), PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx). Для изображений — `getImageAttachment` |
+| `getImageAttachment` | Скачивание изображений (PNG, JPEG, GIF, BMP, WebP) с автоматическим ресайзом для визуального анализа AI |
 | `getWikiPage` | Содержимое wiki-страницы проекта |
 | `listWikiPages` | Список всех wiki-страниц проекта |
 
@@ -174,7 +175,7 @@ src/main/java/ru/it_spectrum/ai/redmine/mcp/
 │   ├── RedmineUser.java              — пользователь
 │   └── RedmineSearchResult.java      — результат поиска
 └── tools/
-    └── RedmineTools.java              — 17 MCP-инструментов (read-only)
+    └── RedmineTools.java              — 18 MCP-инструментов (read-only)
 ```
 
 ## Troubleshooting

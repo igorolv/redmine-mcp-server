@@ -18,9 +18,18 @@ import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 
+import io.modelcontextprotocol.spec.McpSchema;
+
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.List;
 import java.util.Set;
+import javax.imageio.ImageIO;
 
 @Service
 public class RedmineTools {
@@ -454,7 +463,8 @@ public class RedmineTools {
     @McpTool(description = "Get the content of an attachment from Redmine. " +
             "Supports text files (txt, log, xml, json, csv, etc.), " +
             "PDF, Word (.docx), Excel (.xlsx), and PowerPoint (.pptx). " +
-            "For images and other binary files returns only metadata. " +
+            "For images use getImageAttachment instead. " +
+            "For other binary files returns only metadata. " +
             "Use listAttachments first to get the attachment ID.")
     public String getAttachmentContent(
             @McpToolParam(description = "Attachment ID number") int attachmentId
@@ -490,6 +500,96 @@ public class RedmineTools {
         }
 
         return sb.toString();
+    }
+
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
+    private static final int DEFAULT_MAX_WIDTH = 1024;
+
+    @McpTool(description = "Download an image attachment from Redmine and return it for visual analysis. " +
+            "Supports PNG, JPEG, GIF, BMP, WebP. Automatically resizes large images to save tokens. " +
+            "Use listAttachments first to get the attachment ID.")
+    public McpSchema.CallToolResult getImageAttachment(
+            @McpToolParam(description = "Attachment ID number") int attachmentId,
+            @McpToolParam(description = "Maximum image width in pixels for resizing (default 1024). " +
+                    "Height is scaled proportionally.", required = false) Integer maxWidth
+    ) {
+        var attachment = client.getAttachment(attachmentId);
+        if (attachment == null) {
+            return McpSchema.CallToolResult.builder()
+                    .addTextContent("Attachment #%d not found".formatted(attachmentId))
+                    .isError(true)
+                    .build();
+        }
+
+        String ext = getFileExtension(attachment.filename());
+        String contentType = attachment.contentType() != null ? attachment.contentType() : "";
+
+        if (!IMAGE_EXTENSIONS.contains(ext) && !contentType.startsWith("image/")) {
+            return McpSchema.CallToolResult.builder()
+                    .addTextContent("Attachment #%d (%s) is not an image. Use getAttachmentContent for text/document files."
+                            .formatted(attachmentId, attachment.filename()))
+                    .isError(true)
+                    .build();
+        }
+
+        byte[] imageData = client.downloadAttachment(attachment.contentUrl());
+        if (imageData == null) {
+            return McpSchema.CallToolResult.builder()
+                    .addTextContent("Failed to download attachment #%d".formatted(attachmentId))
+                    .isError(true)
+                    .build();
+        }
+
+        int actualMaxWidth = maxWidth != null && maxWidth > 0 ? maxWidth : DEFAULT_MAX_WIDTH;
+
+        try {
+            String mimeType = contentType.startsWith("image/") ? contentType : "image/" + ext.replace("jpg", "jpeg");
+            byte[] processedData = resizeImageIfNeeded(imageData, actualMaxWidth, ext);
+            String base64 = Base64.getEncoder().encodeToString(processedData);
+
+            // If resized, output format is always PNG
+            if (processedData != imageData) {
+                mimeType = "image/png";
+            }
+
+            String metadata = "Attachment: %s (%s, %s)".formatted(
+                    attachment.filename(), attachment.contentType(), formatSize(attachment.filesize()));
+
+            return McpSchema.CallToolResult.builder()
+                    .addTextContent(metadata)
+                    .addContent(new McpSchema.ImageContent(null, base64, mimeType))
+                    .build();
+        } catch (Exception e) {
+            return McpSchema.CallToolResult.builder()
+                    .addTextContent("Failed to process image #%d: %s".formatted(attachmentId, e.getMessage()))
+                    .isError(true)
+                    .build();
+        }
+    }
+
+    private byte[] resizeImageIfNeeded(byte[] imageData, int maxWidth, String ext) throws Exception {
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageData));
+        if (image == null) {
+            // ImageIO couldn't decode — return raw bytes (e.g. WebP without plugin)
+            return imageData;
+        }
+
+        if (image.getWidth() <= maxWidth) {
+            return imageData;
+        }
+
+        int newWidth = maxWidth;
+        int newHeight = (int) Math.round((double) image.getHeight() * newWidth / image.getWidth());
+
+        var resized = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = resized.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.drawImage(image, 0, 0, newWidth, newHeight, null);
+        g.dispose();
+
+        var out = new ByteArrayOutputStream();
+        ImageIO.write(resized, "png", out);
+        return out.toByteArray();
     }
 
     private void appendIssueSummary(StringBuilder sb, RedmineIssue issue) {
