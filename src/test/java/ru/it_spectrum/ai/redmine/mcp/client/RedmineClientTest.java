@@ -53,4 +53,51 @@ class RedmineClientTest {
             }
         }
     }
+
+    @Test
+    void shouldListProjects() {
+        var page = redmineClient.getProjects(0, 100);
+
+        assertThat(page).isNotNull();
+        assertThat(page.projects()).isNotEmpty();
+
+        System.out.println("Projects (" + page.totalCount() + " total):");
+        for (var project : page.projects()) {
+            System.out.println("  [" + project.identifier() + "] " + project.name() + " (id: " + project.id() + ")");
+        }
+    }
+
+    @Test
+    void shouldGetProjectDetails() {
+        // get first project identifier from list
+        var page = redmineClient.getProjects(0, 1);
+        assertThat(page.projects()).isNotEmpty();
+        String identifier = page.projects().getFirst().identifier();
+
+        var project = redmineClient.getProject(identifier);
+
+        assertThat(project).isNotNull();
+        assertThat(project.name()).isNotBlank();
+        assertThat(project.identifier()).isEqualTo(identifier);
+
+        System.out.println("Project: " + project.name());
+        System.out.println("Identifier: " + project.identifier());
+        System.out.println("ID: " + project.id());
+        if (project.parent() != null) {
+            System.out.println("Parent: " + project.parent().name());
+        }
+        if (project.description() != null && !project.description().isBlank()) {
+            System.out.println("Description: " + project.description());
+        }
+        System.out.println("Public: " + (project.isPublic() ? "yes" : "no"));
+        System.out.println("Created: " + project.createdOn());
+        if (project.trackers() != null) {
+            System.out.println("Trackers: " + project.trackers().stream()
+                    .map(t -> t.name()).reduce((a, b) -> a + ", " + b).orElse(""));
+        }
+        if (project.enabledModules() != null) {
+            System.out.println("Modules: " + project.enabledModules().stream()
+                    .map(m -> m.name()).reduce((a, b) -> a + ", " + b).orElse(""));
+        }
+    }
 }

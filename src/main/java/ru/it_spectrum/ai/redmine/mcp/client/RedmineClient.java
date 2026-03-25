@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineProject;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineSearchResult;
 
 import java.util.List;
@@ -76,6 +77,30 @@ public class RedmineClient {
                 .uri(contentUrl)
                 .retrieve()
                 .body(byte[].class);
+    }
+
+    /**
+     * Get a list of projects with pagination.
+     */
+    public RedmineProject.Page getProjects(int offset, int limit) {
+        var response = restClient.get()
+                .uri("/projects.json?offset={offset}&limit={limit}", offset, limit)
+                .retrieve()
+                .body(RedmineProject.Page.class);
+
+        return response != null ? response : new RedmineProject.Page(List.of(), 0, offset, limit);
+    }
+
+    /**
+     * Get project details by identifier or numeric ID.
+     */
+    public RedmineProject getProject(String projectId) {
+        var response = restClient.get()
+                .uri("/projects/{id}.json?include=trackers,enabled_modules", projectId)
+                .retrieve()
+                .body(RedmineProject.Single.class);
+
+        return response != null ? response.project() : null;
     }
 
     /**
