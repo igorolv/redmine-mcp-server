@@ -23,7 +23,7 @@ Follow these steps:
    - **REDMINE_URL** — the base URL of my Redmine (just IP or hostname is fine, you can add `http://` if missing)
    - **REDMINE_API_KEY** — my personal API key from Redmine (My Account -> API access key in the right sidebar)
 
-   **Important:** `REDMINE_URL` must include the protocol (`http://` or `https://`). If the value is just an IP or hostname (e.g. `192.168.16.17`), prepend `http://` so it becomes `http://192.168.16.17`.
+   **Note:** `REDMINE_URL` can be just an IP or hostname (e.g. `192.168.16.17`) — the server will automatically prepend `http://` if no protocol is specified. For HTTPS, specify the protocol explicitly: `https://redmine.example.com`.
 
 4. **Verify connectivity.** Run:
    ```
