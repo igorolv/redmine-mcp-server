@@ -19,9 +19,11 @@ Follow these steps:
    ```
    The jar will be at `build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar`. Verify the file exists.
 
-3. **Ask me for credentials.** I need to provide:
+3. **Get credentials.** Check if `REDMINE_URL` and `REDMINE_API_KEY` are already set as environment variables (`echo $REDMINE_URL` / `echo %REDMINE_URL%`). If both exist — use them and skip asking the user. If not — ask me to provide:
    - **REDMINE_URL** — the base URL of my Redmine (just IP or hostname is fine, you can add `http://` if missing)
    - **REDMINE_API_KEY** — my personal API key from Redmine (My Account -> API access key in the right sidebar)
+
+   **Important:** `REDMINE_URL` must include the protocol (`http://` or `https://`). If the value is just an IP or hostname (e.g. `192.168.16.17`), prepend `http://` so it becomes `http://192.168.16.17`.
 
 4. **Verify connectivity.** Run:
    ```
@@ -31,7 +33,15 @@ Follow these steps:
 
 5. **Register the MCP server in your config.** Determine which AI client we are in and add the server config:
 
-   - **Claude Code**: edit `~/.claude/settings.json`, add to `mcpServers`:
+   - **Claude Code**: edit `~/.claude/settings.json`, add to `mcpServers`.
+     If `REDMINE_URL` and `REDMINE_API_KEY` are already in the system environment, the `env` block is not needed — the server will inherit them automatically:
+     ```json
+     "redmine": {
+       "command": "java",
+       "args": ["-jar", "<ABSOLUTE_PATH>/redmine-mcp-server-0.1.0-SNAPSHOT.jar"]
+     }
+     ```
+     If the variables are NOT in the environment, pass them explicitly:
      ```json
      "redmine": {
        "command": "java",
@@ -53,6 +63,24 @@ Follow these steps:
 6. **Notify me** that the setup is complete and I should restart the client. After restart, confirm the server is connected by listing available tools — there should be 11 Redmine tools.
 
 If any step fails, show me the error and suggest a fix. Do not skip steps.
+
+**IMPORTANT:** Do NOT fall back to calling Redmine REST API via curl/HTTP if MCP tools are not available. This exposes API keys in the conversation. Instead, troubleshoot the MCP connection.
+
+---
+
+## Troubleshooting
+
+If the MCP server is configured but its tools are not available after restart:
+
+1. **Check the server process.** Run the jar manually and look for errors:
+   ```
+   REDMINE_URL=http://<MY_URL> REDMINE_API_KEY=<MY_KEY> java -jar <ABSOLUTE_PATH>/redmine-mcp-server-0.1.0-SNAPSHOT.jar
+   ```
+   It should print `Registered 11 tools` in the startup log. If not — check `REDMINE_URL` format (must include `http://`).
+
+2. **Check the Java path.** The `command` in config must point to a JDK 25+ `java` binary. Use an absolute path if the system `java` is a different version.
+
+3. **Restart the client.** MCP servers connect at startup. Any config changes require a full restart of the AI client — not just a new conversation.
 
 ---
 
