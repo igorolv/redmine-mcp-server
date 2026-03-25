@@ -1,7 +1,7 @@
 # Redmine MCP Server — Setup Guide for AI Agents
 
 This is a local MCP server that provides read-only access to a corporate Redmine instance.
-It exposes tools for searching issues, reading issue details, and accessing attachments.
+It exposes tools for searching, reading issues, projects, members, versions, wiki, and attachments.
 
 ## Prerequisites
 
@@ -83,10 +83,17 @@ After adding the configuration, restart the client so it picks up the new MCP se
 
 | Tool | Description |
 |---|---|
-| `searchIssues` | Full-text search across issues. Params: `query`, `projectId` (optional), `limit` (default 25), `offset` (default 0) |
-| `getIssue` | Get full details of a single issue. Params: `issueId` |
+| `listProjects` | List all accessible projects. Params: `limit`, `offset` |
+| `getProject` | Get project details (trackers, modules). Params: `projectId` |
+| `listProjectMembers` | List project members with roles. Params: `projectId`, `limit`, `offset` |
+| `listVersions` | List project versions/milestones. Params: `projectId` |
+| `listIssues` | List issues with filters (project, status, tracker, assignee, priority, version, sort). Params: `projectId`, `statusId`, `trackerId`, `assignedToId`, `priorityId`, `versionId`, `sort`, `limit`, `offset` |
+| `searchIssues` | Full-text search across issues with detailed results. Params: `query`, `projectId`, `limit`, `offset` |
+| `searchAll` | Global search across all content (issues, wiki, news, changesets). Params: `query`, `limit`, `offset` |
+| `getIssue` | Get full issue details (description, notes, relations, attachments). Params: `issueId` |
 | `listAttachments` | List all attachments of an issue. Params: `issueId` |
 | `getAttachmentContent` | Get content of a text-based attachment (txt, log, xml, json, csv, etc). Returns metadata only for binary files. Params: `attachmentId` |
+| `getWikiPage` | Get wiki page content and attachments. Params: `projectId`, `pageTitle` |
 
 All tools are **read-only**. No data in Redmine is modified.
 

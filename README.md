@@ -1,7 +1,7 @@
 # Redmine MCP Server
 
 Локальный MCP-сервер для read-only доступа к корпоративному Redmine.
-Позволяет AI-агентам (Claude Code, Cursor, VS Code Copilot и др.) искать задачи, читать описания, примечания и вложения.
+Позволяет AI-агентам (Claude Code, Cursor, VS Code Copilot и др.) работать с задачами, проектами, участниками, версиями, wiki и вложениями.
 
 ## Архитектура
 
@@ -20,18 +20,42 @@
 
 ## Инструменты
 
+### Проекты
+
 | Tool | Описание |
 |---|---|
-| `searchIssues` | Полнотекстовый поиск задач. Параметры: `query`, `projectId` (опц.), `limit` (по умолч. 25), `offset` (по умолч. 0) |
-| `getIssue` | Детали задачи по ID: описание, статус, назначенный, даты, примечания, вложения |
+| `listProjects` | Список всех доступных проектов |
+| `getProject` | Детали проекта: трекеры, модули, описание |
+| `listProjectMembers` | Участники проекта с ролями |
+| `listVersions` | Версии (майлстоуны) проекта |
+
+### Задачи
+
+| Tool | Описание |
+|---|---|
+| `listIssues` | Список задач с фильтрами: проект, статус, трекер, назначенный, приоритет, версия, сортировка |
+| `searchIssues` | Полнотекстовый поиск задач с детальными результатами |
+| `getIssue` | Детали задачи: описание, статус, назначенный, даты, примечания, связи, вложения |
+
+### Поиск
+
+| Tool | Описание |
+|---|---|
+| `searchAll` | Глобальный поиск по всему Redmine: задачи, wiki, новости, коммиты и др. |
+
+### Вложения и Wiki
+
+| Tool | Описание |
+|---|---|
 | `listAttachments` | Список вложений задачи с размерами и типами |
-| `getAttachmentContent` | Содержимое текстовых вложений (txt, log, xml, json, csv и др.). Для бинарных файлов — только метаданные |
+| `getAttachmentContent` | Содержимое текстовых вложений (txt, log, xml, json, csv и др.). Для бинарных — только метаданные |
+| `getWikiPage` | Содержимое wiki-страницы проекта |
 
 Все инструменты **read-only** — данные в Redmine не изменяются.
 
 ## Стек
 
-- Java 25, Spring Boot 3.4, Spring AI MCP (stdio transport)
+- Java 25, Spring Boot 4.0, Spring AI MCP (stdio transport)
 - Gradle 9.3 с version catalog
 
 ## Сборка
@@ -111,16 +135,20 @@ src/main/java/ru/it_spectrum/ai/redmine/mcp/
 ├── RedmineMcpServerApplication.java   — точка входа Spring Boot
 ├── config/
 │   ├── RedmineProperties.java         — url + apiKey из env
-│   └── RedmineConfig.java             — RestClient и регистрация MCP tools
+│   └── RedmineConfig.java             — RestClient с автодобавлением http://
 ├── client/
 │   └── RedmineClient.java             — обёртка над Redmine REST API
 ├── model/
 │   ├── IdName.java                    — пара id/name (проект, статус, и т.д.)
-│   ├── RedmineIssue.java             — задача + Journal (примечания)
+│   ├── RedmineIssue.java             — задача + Journal + Relation
+│   ├── RedmineProject.java           — проект
+│   ├── RedmineMembership.java        — участник проекта
+│   ├── RedmineVersion.java           — версия/майлстоун
+│   ├── RedmineWikiPage.java          — wiki-страница
 │   ├── RedmineAttachment.java        — вложение
 │   └── RedmineSearchResult.java      — результат поиска
 └── tools/
-    └── RedmineTools.java              — 4 MCP-инструмента
+    └── RedmineTools.java              — 11 MCP-инструментов (read-only)
 ```
 
 ## Troubleshooting
