@@ -160,4 +160,17 @@ class RedmineClientTest {
             System.out.println("No wiki start page found for asv_microservices");
         }
     }
+
+    @Test
+    void shouldSearchAll() {
+        var result = redmineClient.search("выплата", 0, 10);
+
+        assertThat(result).isNotNull();
+        assertThat(result.results()).isNotEmpty();
+
+        System.out.println("Global search 'выплата' (" + result.totalCount() + " total, showing 10):");
+        for (var item : result.results()) {
+            System.out.println("  [" + item.type() + "] #" + item.id() + " " + item.title());
+        }
+    }
 }

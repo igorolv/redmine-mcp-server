@@ -199,6 +199,37 @@ public class RedmineTools {
         return sb.toString();
     }
 
+    @McpTool(description = "Search across all Redmine content — issues, wiki pages, news, documents, etc. " +
+            "Returns results of all types with title, type, URL, and description excerpt. " +
+            "Use searchIssues if you only need issues with full details.")
+    public String searchAll(
+            @McpToolParam(description = "Search query text") String query,
+            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+    ) {
+        int actualLimit = limit != null ? limit : 25;
+        int actualOffset = offset != null ? offset : 0;
+
+        var result = client.search(query, actualOffset, actualLimit);
+
+        var sb = new StringBuilder();
+        sb.append("Search results for '%s': %d total (showing %d-%d)\n\n".formatted(
+                query, result.totalCount(), result.offset() + 1,
+                result.offset() + result.results().size()));
+
+        for (var item : result.results()) {
+            sb.append("[%s] #%d %s\n".formatted(item.type(), item.id(), item.title()));
+            if (item.description() != null && !item.description().isBlank()) {
+                sb.append("  %s\n".formatted(item.description().length() > 150
+                        ? item.description().substring(0, 150) + "..."
+                        : item.description()));
+            }
+            sb.append("  %s | %s\n\n".formatted(item.url(), item.datetime()));
+        }
+
+        return sb.toString();
+    }
+
     @McpTool(description = "Search for issues in Redmine using full-text search. " +
             "Returns a list of matching issues with their details (subject, status, assignee, etc). " +
             "Supports pagination via offset/limit parameters.")

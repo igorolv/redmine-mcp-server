@@ -167,6 +167,24 @@ public class RedmineClient {
     }
 
     /**
+     * Global full-text search across all Redmine content (issues, wiki, news, etc).
+     */
+    public RedmineSearchResult search(String query, int offset, int limit) {
+        var uri = "/search.json?q=" + query
+                + "&all_words=1"
+                + "&titles_only=0"
+                + "&offset=" + offset
+                + "&limit=" + limit;
+
+        var response = restClient.get()
+                .uri(uri)
+                .retrieve()
+                .body(RedmineSearchResult.class);
+
+        return response != null ? response : new RedmineSearchResult(List.of(), 0, offset, limit);
+    }
+
+    /**
      * Fetch issues by a list of IDs using /issues.json?issue_id=1,2,3
      */
     private List<RedmineIssue> fetchIssuesByIds(List<Integer> ids) {
