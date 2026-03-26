@@ -1,5 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.client;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -7,6 +8,7 @@ import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Tag("integration")
 @SpringBootTest
 class RedmineClientTest {
 
