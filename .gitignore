@@ -21,5 +21,8 @@ Thumbs.db
 # Claude Code
 .claude/
 
+# Qwen
+.qwen/
+
 # Config with secrets
 application-local.yml
