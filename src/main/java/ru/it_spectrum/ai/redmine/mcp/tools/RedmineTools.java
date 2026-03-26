@@ -446,6 +446,41 @@ public class RedmineTools {
         return sb.toString();
     }
 
+    @McpTool(description = "List issues assigned to the currently authenticated user. " +
+            "Convenient shortcut — no need to call getCurrentUser first. " +
+            "Supports filtering by project, status, and sorting. Uses statusId='open' by default.")
+    public String getMyIssues(
+            @McpToolParam(description = "Project identifier to filter by (optional)", required = false) String projectId,
+            @McpToolParam(description = "Status filter: open (default), closed, * (all), or numeric status ID (optional)", required = false) String statusId,
+            @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc' (optional)", required = false) String sort,
+            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+    ) {
+        var user = client.getCurrentUser();
+        if (user == null) {
+            return "Could not retrieve current user";
+        }
+
+        int actualLimit = limit != null ? limit : 25;
+        int actualOffset = offset != null ? offset : 0;
+
+        var page = client.listIssues(projectId, statusId, null, user.id(),
+                null, null, sort, actualOffset, actualLimit);
+
+        var sb = new StringBuilder();
+        sb.append("My issues (%s, %d total, showing %d-%d):\n\n".formatted(
+                user.firstname() + " " + user.lastname(),
+                page.totalCount(), page.offset() + 1,
+                page.offset() + page.issues().size()));
+
+        for (var issue : page.issues()) {
+            appendIssueSummary(sb, issue);
+            sb.append("\n");
+        }
+
+        return sb.toString();
+    }
+
     @McpTool(description = "Get detailed information about a specific Redmine issue by its ID. " +
             "Returns full issue details including description, status, assignee, dates, and attachments list.")
     public String getIssue(

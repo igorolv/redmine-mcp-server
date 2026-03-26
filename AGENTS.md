@@ -102,6 +102,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 | `listStatuses` | List all available issue statuses (ID + name). Useful for filtering in listIssues |
 | `listTrackers` | List all available trackers (ID + name). Useful for filtering in listIssues |
 | `listPriorities` | List all available issue priorities (ID + name). Useful for filtering in listIssues |
+| `getMyIssues` | List issues assigned to the current user. Params: `projectId`, `statusId`, `sort`, `limit`, `offset` (all optional) |
 | `listIssueCategories` | List issue categories for a project (ID + name). Params: `projectId` |
 | `listTimeEntryActivities` | List all time entry activity types (ID + name). Useful when logging time |
 

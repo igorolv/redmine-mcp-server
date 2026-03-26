@@ -7,6 +7,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
 
 import java.util.List;
 
@@ -24,6 +26,69 @@ class RedmineToolsTest {
     @BeforeEach
     void setUp() {
         tools = new RedmineTools(client);
+    }
+
+    // --- getMyIssues ---
+
+    @Test
+    void shouldReturnMyIssues() {
+        var user = new RedmineUser(42, "jdoe", "John", "Doe",
+                null, null, null, null, null, null, null);
+        when(client.getCurrentUser()).thenReturn(user);
+
+        var issues = List.of(
+                issue(101, "Fix login bug", "In Progress", "my-project"),
+                issue(102, "Update docs", "New", "my-project")
+        );
+        when(client.listIssues(null, null, null, 42, null, null, null, 0, 25))
+                .thenReturn(new RedmineIssue.Page(issues, 2, 0, 25));
+
+        String result = tools.getMyIssues(null, null, null, null, null);
+
+        assertThat(result).contains("My issues (John Doe, 2 total");
+        assertThat(result).contains("#101");
+        assertThat(result).contains("Fix login bug");
+        assertThat(result).contains("#102");
+        assertThat(result).contains("Update docs");
+    }
+
+    @Test
+    void shouldReturnMyIssuesFilteredByProject() {
+        var user = new RedmineUser(42, "jdoe", "John", "Doe",
+                null, null, null, null, null, null, null);
+        when(client.getCurrentUser()).thenReturn(user);
+
+        var issues = List.of(issue(201, "Deploy service", "New", "backend"));
+        when(client.listIssues("backend", "open", null, 42, null, null, "updated_on:desc", 0, 10))
+                .thenReturn(new RedmineIssue.Page(issues, 1, 0, 10));
+
+        String result = tools.getMyIssues("backend", "open", "updated_on:desc", 10, 0);
+
+        assertThat(result).contains("My issues (John Doe, 1 total");
+        assertThat(result).contains("#201");
+        assertThat(result).contains("Deploy service");
+    }
+
+    @Test
+    void shouldReturnEmptyMyIssues() {
+        var user = new RedmineUser(42, "jdoe", "John", "Doe",
+                null, null, null, null, null, null, null);
+        when(client.getCurrentUser()).thenReturn(user);
+        when(client.listIssues(null, null, null, 42, null, null, null, 0, 25))
+                .thenReturn(new RedmineIssue.Page(List.of(), 0, 0, 25));
+
+        String result = tools.getMyIssues(null, null, null, null, null);
+
+        assertThat(result).contains("My issues (John Doe, 0 total");
+    }
+
+    @Test
+    void shouldHandleCurrentUserNotAvailable() {
+        when(client.getCurrentUser()).thenReturn(null);
+
+        String result = tools.getMyIssues(null, null, null, null, null);
+
+        assertThat(result).isEqualTo("Could not retrieve current user");
     }
 
     // --- listIssueCategories ---
@@ -78,5 +143,25 @@ class RedmineToolsTest {
         String result = tools.listTimeEntryActivities();
 
         assertThat(result).isEqualTo("No time entry activities found");
+    }
+
+    // --- helpers ---
+
+    private static RedmineIssue issue(int id, String subject, String status, String project) {
+        return new RedmineIssue(
+                id,
+                new IdName(1, project),
+                new IdName(1, "Bug"),
+                new IdName(1, status),
+                new IdName(2, "Normal"),
+                new IdName(42, "John Doe"),
+                new IdName(42, "John Doe"),
+                null, null, null,
+                subject, null,
+                null, null, 0,
+                null, null, false,
+                "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
+                null, null, null, null
+        );
     }
 }
