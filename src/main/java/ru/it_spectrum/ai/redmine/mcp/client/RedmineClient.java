@@ -7,6 +7,7 @@ import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineMembership;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineProject;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineQuery;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineTimeEntry;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
@@ -115,8 +116,19 @@ public class RedmineClient {
     public RedmineIssue.Page listIssues(String projectId, String statusId, Integer trackerId,
                                          Integer assignedToId, Integer priorityId, Integer versionId,
                                          String sort, int offset, int limit) {
+        return listIssues(projectId, statusId, trackerId, assignedToId, priorityId, versionId,
+                sort, null, offset, limit);
+    }
+
+    /**
+     * List issues with flexible filtering, optionally using a saved query.
+     */
+    public RedmineIssue.Page listIssues(String projectId, String statusId, Integer trackerId,
+                                         Integer assignedToId, Integer priorityId, Integer versionId,
+                                         String sort, Integer queryId, int offset, int limit) {
         var sb = new StringBuilder("/issues.json?");
         if (projectId != null && !projectId.isBlank()) sb.append("project_id=").append(projectId).append("&");
+        if (queryId != null) sb.append("query_id=").append(queryId).append("&");
         if (statusId != null && !statusId.isBlank()) sb.append("status_id=").append(statusId).append("&");
         if (trackerId != null) sb.append("tracker_id=").append(trackerId).append("&");
         if (assignedToId != null) sb.append("assigned_to_id=").append(assignedToId).append("&");
@@ -291,6 +303,18 @@ public class RedmineClient {
                 .body(IdName.TimeEntryActivities.class);
 
         return response != null && response.items() != null ? response.items() : List.of();
+    }
+
+    /**
+     * Get saved queries with pagination.
+     */
+    public RedmineQuery.Page getQueries(int offset, int limit) {
+        var response = restClient.get()
+                .uri("/queries.json?offset={offset}&limit={limit}", offset, limit)
+                .retrieve()
+                .body(RedmineQuery.Page.class);
+
+        return response != null ? response : new RedmineQuery.Page(List.of(), 0, offset, limit);
     }
 
     /**

@@ -89,7 +89,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 | `getProject` | Get project details (trackers, modules). Params: `projectId` |
 | `listProjectMembers` | List project members with roles. Params: `projectId`, `limit`, `offset` |
 | `listVersions` | List project versions/milestones. Params: `projectId` |
-| `listIssues` | List issues with filters (project, status, tracker, assignee, priority, version, sort). Params: `projectId`, `statusId`, `trackerId`, `assignedToId`, `priorityId`, `versionId`, `sort`, `limit`, `offset` |
+| `listIssues` | List issues with filters (project, status, tracker, assignee, priority, version, saved query, sort). Params: `projectId`, `statusId`, `trackerId`, `assignedToId`, `priorityId`, `versionId`, `queryId`, `sort`, `limit`, `offset` |
 | `searchIssues` | Full-text search across issues with detailed results. Params: `query`, `projectId`, `limit`, `offset` |
 | `searchAll` | Global search across all content (issues, wiki, news, changesets). Params: `query`, `limit`, `offset` |
 | `getIssue` | Get full issue details (description, notes, relations, custom fields, attachments). Params: `issueId` |
@@ -104,6 +104,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 | `listPriorities` | List all available issue priorities (ID + name). Useful for filtering in listIssues |
 | `getMyIssues` | List issues assigned to the current user. Params: `projectId`, `statusId`, `sort`, `limit`, `offset` (all optional) |
 | `listIssueCategories` | List issue categories for a project (ID + name). Params: `projectId` |
+| `listQueries` | List saved queries (custom filters) available in Redmine. Params: `limit`, `offset` |
 | `listTimeEntryActivities` | List all time entry activity types (ID + name). Useful when logging time |
 
 All tools are **read-only**. No data in Redmine is modified.

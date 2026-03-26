@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineQuery;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
 
 import java.util.List;
@@ -143,6 +144,47 @@ class RedmineToolsTest {
         String result = tools.listTimeEntryActivities();
 
         assertThat(result).isEqualTo("No time entry activities found");
+    }
+
+    // --- listQueries ---
+
+    @Test
+    void shouldListQueries() {
+        when(client.getQueries(0, 25)).thenReturn(new RedmineQuery.Page(List.of(
+                new RedmineQuery(1, "My open bugs", false, 5),
+                new RedmineQuery(2, "Sprint backlog", true, null),
+                new RedmineQuery(3, "Overdue tasks", false, 10)
+        ), 3, 0, 25));
+
+        String result = tools.listQueries(null, null);
+
+        assertThat(result).contains("Saved queries: 3 total");
+        assertThat(result).contains("- [1] My open bugs (project #5)");
+        assertThat(result).contains("- [2] Sprint backlog [public]");
+        assertThat(result).contains("- [3] Overdue tasks (project #10)");
+    }
+
+    @Test
+    void shouldReturnMessageWhenNoQueriesFound() {
+        when(client.getQueries(0, 25)).thenReturn(new RedmineQuery.Page(List.of(), 0, 0, 25));
+
+        String result = tools.listQueries(null, null);
+
+        assertThat(result).isEqualTo("No saved queries found");
+    }
+
+    // --- listIssues with queryId ---
+
+    @Test
+    void shouldListIssuesWithQueryId() {
+        var issues = List.of(issue(301, "Filtered issue", "Open", "test-project"));
+        when(client.listIssues(null, null, null, null, null, null, null, 7, 0, 25))
+                .thenReturn(new RedmineIssue.Page(issues, 1, 0, 25));
+
+        String result = tools.listIssues(null, null, null, null, null, null, 7, null, null, null);
+
+        assertThat(result).contains("#301");
+        assertThat(result).contains("Filtered issue");
     }
 
     // --- helpers ---

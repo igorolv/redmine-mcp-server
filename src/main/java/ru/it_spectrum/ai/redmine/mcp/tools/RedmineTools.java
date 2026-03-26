@@ -245,7 +245,8 @@ public class RedmineTools {
     }
 
     @McpTool(description = "List issues in Redmine with flexible filtering by project, status, tracker, " +
-            "assignee, priority, and version. Use statusId='*' to include closed issues. " +
+            "assignee, priority, version, or saved query. Use statusId='*' to include closed issues. " +
+            "Use queryId to apply a saved Redmine query (custom filter) — get available IDs via listQueries. " +
             "Supports sorting and pagination.")
     public String listIssues(
             @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
@@ -254,6 +255,7 @@ public class RedmineTools {
             @McpToolParam(description = "Assigned user ID to filter by (optional)", required = false) Integer assignedToId,
             @McpToolParam(description = "Priority ID to filter by (optional)", required = false) Integer priorityId,
             @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId,
+            @McpToolParam(description = "Saved query ID to apply (optional). Use listQueries to find available queries.", required = false) Integer queryId,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc' (optional)", required = false) String sort,
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
@@ -262,7 +264,7 @@ public class RedmineTools {
         int actualOffset = offset != null ? offset : 0;
 
         var page = client.listIssues(projectId, statusId, trackerId, assignedToId,
-                priorityId, versionId, sort, actualOffset, actualLimit);
+                priorityId, versionId, sort, queryId, actualOffset, actualLimit);
 
         var sb = new StringBuilder();
         sb.append("Issues: %d total (showing %d-%d)\n\n".formatted(
@@ -443,6 +445,40 @@ public class RedmineTools {
         for (var a : activities) {
             sb.append("- [%d] %s\n".formatted(a.id(), a.name()));
         }
+        return sb.toString();
+    }
+
+    @McpTool(description = "List saved queries (custom filters) available in Redmine. " +
+            "Returns query IDs and names. Use the query ID with listIssues(queryId) " +
+            "to apply a saved filter — especially useful for queries that use custom fields.")
+    public String listQueries(
+            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+    ) {
+        int actualLimit = limit != null ? limit : 25;
+        int actualOffset = offset != null ? offset : 0;
+
+        var page = client.getQueries(actualOffset, actualLimit);
+        if (page.queries().isEmpty()) {
+            return "No saved queries found";
+        }
+
+        var sb = new StringBuilder();
+        sb.append("Saved queries: %d total (showing %d-%d)\n\n".formatted(
+                page.totalCount(), page.offset() + 1,
+                page.offset() + page.queries().size()));
+
+        for (var q : page.queries()) {
+            sb.append("- [%d] %s".formatted(q.id(), q.name()));
+            if (q.projectId() != null) {
+                sb.append(" (project #%d)".formatted(q.projectId()));
+            }
+            if (q.isPublic()) {
+                sb.append(" [public]");
+            }
+            sb.append("\n");
+        }
+
         return sb.toString();
     }
 
