@@ -21,6 +21,7 @@ repositories {
 dependencies {
     implementation(libs.spring.boot.starter)
     implementation(libs.spring.ai.mcp.server)
+    implementation(libs.spring.ai.mcp.server.webmvc)
     implementation("org.springframework:spring-web")
     implementation(libs.poi.ooxml)
     implementation(libs.pdfbox)

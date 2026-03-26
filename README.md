@@ -5,6 +5,10 @@
 
 ## Архитектура
 
+Сервер поддерживает два режима транспорта:
+
+### Stdio (по умолчанию)
+
 ```
 ┌─────────────┐     stdio      ┌──────────────────┐    REST API    ┌──────────┐
 │  AI-агент   │ <------------> │  redmine-mcp-    │ -------------> │ Redmine  │
@@ -13,10 +17,19 @@
 └─────────────┘                └──────────────────┘                └──────────┘
 ```
 
-1. AI-клиент при старте запускает `java -jar redmine-mcp-server.jar` как дочерний процесс
-2. Клиент и сервер обмениваются сообщениями по протоколу MCP через stdin/stdout
-3. Сервер сообщает клиенту список доступных инструментов с описаниями и параметрами
-4. При запросе пользователя AI-агент вызывает нужный инструмент, сервер выполняет запрос к Redmine REST API и возвращает результат
+AI-клиент запускает сервер как дочерний процесс, обмен по протоколу MCP через stdin/stdout.
+
+### SSE (Server-Sent Events)
+
+```
+┌─────────────┐     HTTP/SSE    ┌──────────────────┐    REST API    ┌──────────┐
+│  AI-агент   │ <-------------> │  redmine-mcp-    │ -------------> │ Redmine  │
+│ (Claude Code│   порт 8080    │  server (Java)   │   HTTP + API   │ (корп.)  │
+│  Cursor...) │                │  Docker / host   │   Key          │          │
+└─────────────┘                └──────────────────┘                └──────────┘
+```
+
+Сервер работает как HTTP-сервис (можно запустить в Docker). AI-клиент подключается по URL.
 
 ## Инструменты
 
@@ -81,7 +94,7 @@
 
 ## Стек
 
-- Java 25, Spring Boot 4.0, Spring AI MCP (stdio transport)
+- Java 25, Spring Boot 4.0, Spring AI MCP (stdio + SSE transport)
 - Apache PDFBox 3.0 — извлечение текста из PDF
 - Apache POI 5.4 — извлечение текста из Word, Excel, PowerPoint
 - Gradle 9.3 с version catalog
@@ -130,7 +143,36 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 
 > Если блок «Ключ доступа к API» не отображается, обратитесь к администратору Redmine — возможно, REST API отключён в настройках.
 
+## Запуск
+
+### Stdio (по умолчанию)
+
+```bash
+REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
+  java -jar build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
+```
+
+### SSE
+
+```bash
+REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
+  java -jar build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar --spring.profiles.active=sse
+```
+
+Сервер поднимется на порту 8080 (настраивается через `SERVER_PORT`).
+
+### Docker
+
+```bash
+cd docker
+REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose up
+```
+
+В Docker сервер всегда работает в SSE-режиме. Порт настраивается через `SERVER_PORT` (по умолчанию 8080).
+
 ## Подключение к AI-клиенту
+
+### Stdio-режим
 
 Добавить в конфигурацию клиента:
 
@@ -142,6 +184,14 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
     "REDMINE_URL": "https://redmine.example.com",
     "REDMINE_API_KEY": "your_api_key"
   }
+}
+```
+
+### SSE-режим (в т.ч. Docker)
+
+```json
+{
+  "url": "http://localhost:8080/sse"
 }
 ```
 
@@ -160,27 +210,34 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 ## Структура проекта
 
 ```
-src/main/java/ru/it_spectrum/ai/redmine/mcp/
-├── RedmineMcpServerApplication.java   — точка входа Spring Boot
-├── config/
-│   ├── RedmineProperties.java         — url + apiKey из env
-│   └── RedmineConfig.java             — RestClient с автодобавлением http://
-├── client/
-│   └── RedmineClient.java             — обёртка над Redmine REST API
-├── model/
-│   ├── IdName.java                    — пара id/name (проект, статус, и т.д.)
-│   ├── RedmineIssue.java             — задача + Journal + Relation
-│   ├── RedmineProject.java           — проект
-│   ├── RedmineMembership.java        — участник проекта
-│   ├── RedmineVersion.java           — версия/майлстоун
-│   ├── RedmineWikiPage.java          — wiki-страница
-│   ├── RedmineAttachment.java        — вложение
-│   ├── RedmineTimeEntry.java         — запись трудозатрат
-│   ├── RedmineUser.java              — пользователь
-│   ├── RedmineQuery.java             — сохранённый запрос (фильтр)
-│   └── RedmineSearchResult.java      — результат поиска
-└── tools/
-    └── RedmineTools.java              — 22 MCP-инструмента (read-only)
+├── docker/
+│   ├── Dockerfile                     — мультиэтапная сборка образа
+│   ├── docker-compose.yml             — запуск в SSE-режиме
+│   └── .dockerignore
+├── src/main/java/ru/it_spectrum/ai/redmine/mcp/
+│   ├── RedmineMcpServerApplication.java   — точка входа Spring Boot
+│   ├── config/
+│   │   ├── RedmineProperties.java         — url + apiKey из env
+│   │   └── RedmineConfig.java             — RestClient с автодобавлением http://
+│   ├── client/
+│   │   └── RedmineClient.java             — обёртка над Redmine REST API
+│   ├── model/
+│   │   ├── IdName.java                    — пара id/name (проект, статус, и т.д.)
+│   │   ├── RedmineIssue.java             — задача + Journal + Relation
+│   │   ├── RedmineProject.java           — проект
+│   │   ├── RedmineMembership.java        — участник проекта
+│   │   ├── RedmineVersion.java           — версия/майлстоун
+│   │   ├── RedmineWikiPage.java          — wiki-страница
+│   │   ├── RedmineAttachment.java        — вложение
+│   │   ├── RedmineTimeEntry.java         — запись трудозатрат
+│   │   ├── RedmineUser.java              — пользователь
+│   │   ├── RedmineQuery.java             — сохранённый запрос (фильтр)
+│   │   └── RedmineSearchResult.java      — результат поиска
+│   └── tools/
+│       └── RedmineTools.java              — 22 MCP-инструмента (read-only)
+└── src/main/resources/
+    ├── application.yml                    — основная конфигурация (stdio)
+    └── application-sse.yml                — профиль SSE (HTTP-сервер)
 ```
 
 ## Troubleshooting
