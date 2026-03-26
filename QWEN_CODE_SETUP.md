@@ -246,13 +246,17 @@ qwen
 
 2. Убедитесь, что MCP-сервер подключился — в логе запуска должно быть видно подключение к `redmine`.
 
-3. Попробуйте задать вопрос, связанный с Redmine:
+3. Попробуйте задать вопросы, связанные с Redmine:
 
 ```
 Покажи мои задачи в Redmine
 ```
 
-Qwen Code вызовет инструменты MCP-сервера (`getMyIssues`, `listIssues` и др.) и покажет результат.
+```
+По каким рабочим дням в марте я внёс трудозатраты меньше 8 часов?
+```
+
+Qwen Code вызовет инструменты MCP-сервера (`getMyIssues`, `getMyTimeEntries` и др.) и покажет результат.
 
 ### Доступные инструменты
 
@@ -266,7 +270,7 @@ MCP-сервер предоставляет инструменты только 
 | Поиск | `searchAll` |
 | Вложения | `listAttachments`, `getAttachmentContent`, `getImageAttachment` |
 | Wiki | `listWikiPages`, `getWikiPage` |
-| Трудозатраты | `listTimeEntries` |
+| Трудозатраты | `listTimeEntries`, `getMyTimeEntries` |
 | Справочники | `listQueries`, `listStatuses`, `listTrackers`, `listPriorities`, `listIssueCategories`, `listTimeEntryActivities` |
 
 ---
@@ -283,7 +287,7 @@ MCP-сервер предоставляет инструменты только 
 java -jar /путь/к/redmine-mcp-server-0.1.0-SNAPSHOT.jar
 ```
 
-В логе должно появиться: `Started RedmineMcpServerApplication` и `Registered tools: 22`.
+В логе должно появиться: `Started RedmineMcpServerApplication` и `Registered tools: 23`.
 
 **Нет доступа к Redmine**
 Проверьте, что `REDMINE_URL` и `REDMINE_API_KEY` верны:

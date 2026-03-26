@@ -376,6 +376,50 @@ public class RedmineTools {
         return sb.toString();
     }
 
+    @McpTool(description = "List time entries for the currently authenticated user. " +
+            "Convenient shortcut — no need to call getCurrentUser first. " +
+            "Filter by project, issue, or date range. " +
+            "Returns hours, activity type, date, and comments.")
+    public String getMyTimeEntries(
+            @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
+            @McpToolParam(description = "Issue ID to filter by (optional)", required = false) Integer issueId,
+            @McpToolParam(description = "From date, YYYY-MM-DD (optional)", required = false) String from,
+            @McpToolParam(description = "To date, YYYY-MM-DD (optional)", required = false) String to,
+            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+    ) {
+        var user = client.getCurrentUser();
+        if (user == null) {
+            return "Could not retrieve current user";
+        }
+
+        int actualLimit = limit != null ? limit : 25;
+        int actualOffset = offset != null ? offset : 0;
+
+        var page = client.getTimeEntries(projectId, issueId, user.id(), from, to, actualOffset, actualLimit);
+
+        var sb = new StringBuilder();
+        sb.append("My time entries (%s, %d total, showing %d-%d):\n\n".formatted(
+                user.firstname() + " " + user.lastname(),
+                page.totalCount(), page.offset() + 1,
+                page.offset() + page.timeEntries().size()));
+
+        for (var entry : page.timeEntries()) {
+            sb.append("- %s | %.2f h | %s".formatted(
+                    entry.spentOn(), entry.hours(),
+                    entry.activity() != null ? entry.activity().name() : "—"));
+            if (entry.issue() != null) {
+                sb.append(" | Issue #%d".formatted(entry.issue().id()));
+            }
+            if (entry.comments() != null && !entry.comments().isBlank()) {
+                sb.append("\n  %s".formatted(entry.comments()));
+            }
+            sb.append("\n");
+        }
+
+        return sb.toString();
+    }
+
     @McpTool(description = "List all available issue statuses in Redmine. " +
             "Returns status IDs and names. Use these IDs for filtering in listIssues.")
     public String listStatuses() {

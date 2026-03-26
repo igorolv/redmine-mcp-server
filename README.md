@@ -77,6 +77,7 @@ AI-клиент запускает сервер как дочерний проц
 | Tool | Описание |
 |---|---|
 | `listTimeEntries` | Залогированное время с фильтрами: проект, задача, пользователь, период |
+| `getMyTimeEntries` | Залогированное время текущего пользователя. Параметры: `projectId`, `issueId`, `from`, `to`, `limit`, `offset` |
 
 ### Справочники
 
@@ -234,7 +235,7 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose 
 │   │   ├── RedmineQuery.java             — сохранённый запрос (фильтр)
 │   │   └── RedmineSearchResult.java      — результат поиска
 │   └── tools/
-│       └── RedmineTools.java              — 22 MCP-инструмента (read-only)
+│       └── RedmineTools.java              — 23 MCP-инструмента (read-only)
 └── src/main/resources/
     ├── application.yml                    — основная конфигурация (stdio)
     └── application-sse.yml                — профиль SSE (HTTP-сервер)

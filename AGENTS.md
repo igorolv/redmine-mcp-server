@@ -120,6 +120,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 | `getWikiPage` | Get wiki page content and attachments. Params: `projectId`, `pageTitle` |
 | `listWikiPages` | List all wiki pages in a project. Params: `projectId` |
 | `listTimeEntries` | List time entries with filters (project, issue, user, date range). Params: `projectId`, `issueId`, `userId`, `from`, `to`, `limit`, `offset` |
+| `getMyTimeEntries` | List time entries for the current user. Params: `projectId`, `issueId`, `from`, `to`, `limit`, `offset` (all optional) |
 | `listStatuses` | List all available issue statuses (ID + name). Useful for filtering in listIssues |
 | `listTrackers` | List all available trackers (ID + name). Useful for filtering in listIssues |
 | `listPriorities` | List all available issue priorities (ID + name). Useful for filtering in listIssues |
