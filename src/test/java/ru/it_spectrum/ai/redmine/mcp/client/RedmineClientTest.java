@@ -261,6 +261,35 @@ class RedmineClientTest {
     }
 
     @Test
+    void shouldGetIssueCategories() {
+        // use first project from the list
+        var page = redmineClient.getProjects(0, 1);
+        assertThat(page.projects()).isNotEmpty();
+        String projectId = page.projects().getFirst().identifier();
+
+        var categories = redmineClient.getIssueCategories(projectId);
+
+        assertThat(categories).isNotNull();
+
+        System.out.println("Issue categories for " + projectId + " (" + categories.size() + "):");
+        for (var c : categories) {
+            System.out.println("  [" + c.id() + "] " + c.name());
+        }
+    }
+
+    @Test
+    void shouldGetTimeEntryActivities() {
+        var activities = redmineClient.getTimeEntryActivities();
+
+        assertThat(activities).isNotEmpty();
+
+        System.out.println("Time entry activities (" + activities.size() + "):");
+        for (var a : activities) {
+            System.out.println("  [" + a.id() + "] " + a.name());
+        }
+    }
+
+    @Test
     void shouldGetCurrentUser() {
         var user = redmineClient.getCurrentUser();
 

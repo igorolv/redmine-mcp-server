@@ -72,6 +72,8 @@
 | `listStatuses` | Все статусы задач (ID + название) — для фильтрации в `listIssues` |
 | `listTrackers` | Все трекеры (ID + название) — для фильтрации в `listIssues` |
 | `listPriorities` | Все приоритеты (ID + название) — для фильтрации в `listIssues` |
+| `listIssueCategories` | Категории задач проекта (ID + название) |
+| `listTimeEntryActivities` | Типы активностей для трудозатрат (ID + название) |
 
 Все инструменты **read-only** — данные в Redmine не изменяются.
 
@@ -175,7 +177,7 @@ src/main/java/ru/it_spectrum/ai/redmine/mcp/
 │   ├── RedmineUser.java              — пользователь
 │   └── RedmineSearchResult.java      — результат поиска
 └── tools/
-    └── RedmineTools.java              — 18 MCP-инструментов (read-only)
+    └── RedmineTools.java              — 20 MCP-инструментов (read-only)
 ```
 
 ## Troubleshooting

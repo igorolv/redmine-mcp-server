@@ -19,4 +19,12 @@ public record IdName(int id, String name) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record IssuePriorities(@JsonProperty("issue_priorities") List<IdName> items) {
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record IssueCategories(@JsonProperty("issue_categories") List<IdName> items) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record TimeEntryActivities(@JsonProperty("time_entry_activities") List<IdName> items) {
+    }
 }

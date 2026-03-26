@@ -270,6 +270,30 @@ public class RedmineClient {
     }
 
     /**
+     * Get issue categories for a project.
+     */
+    public List<IdName> getIssueCategories(String projectId) {
+        var response = restClient.get()
+                .uri("/projects/{id}/issue_categories.json", projectId)
+                .retrieve()
+                .body(IdName.IssueCategories.class);
+
+        return response != null && response.items() != null ? response.items() : List.of();
+    }
+
+    /**
+     * Get time entry activities.
+     */
+    public List<IdName> getTimeEntryActivities() {
+        var response = restClient.get()
+                .uri("/enumerations/time_entry_activities.json")
+                .retrieve()
+                .body(IdName.TimeEntryActivities.class);
+
+        return response != null && response.items() != null ? response.items() : List.of();
+    }
+
+    /**
      * Fetch issues by a list of IDs using /issues.json?issue_id=1,2,3
      */
     private List<RedmineIssue> fetchIssuesByIds(List<Integer> ids) {

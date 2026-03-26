@@ -416,6 +416,36 @@ public class RedmineTools {
         return sb.toString();
     }
 
+    @McpTool(description = "List issue categories for a specific Redmine project. " +
+            "Returns category IDs and names. Categories are project-specific.")
+    public String listIssueCategories(
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId
+    ) {
+        var categories = client.getIssueCategories(projectId);
+        if (categories.isEmpty()) {
+            return "No issue categories found for project: " + projectId;
+        }
+        var sb = new StringBuilder("Issue categories for project %s:\n\n".formatted(projectId));
+        for (var c : categories) {
+            sb.append("- [%d] %s\n".formatted(c.id(), c.name()));
+        }
+        return sb.toString();
+    }
+
+    @McpTool(description = "List all available time entry activity types in Redmine. " +
+            "Returns activity IDs and names. Use these IDs when logging time entries.")
+    public String listTimeEntryActivities() {
+        var activities = client.getTimeEntryActivities();
+        if (activities.isEmpty()) {
+            return "No time entry activities found";
+        }
+        var sb = new StringBuilder("Time entry activities:\n\n");
+        for (var a : activities) {
+            sb.append("- [%d] %s\n".formatted(a.id(), a.name()));
+        }
+        return sb.toString();
+    }
+
     @McpTool(description = "Get detailed information about a specific Redmine issue by its ID. " +
             "Returns full issue details including description, status, assignee, dates, and attachments list.")
     public String getIssue(
