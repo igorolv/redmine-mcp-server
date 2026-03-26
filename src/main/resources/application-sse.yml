@@ -1,6 +1,10 @@
 spring:
   main:
     web-application-type: servlet
+  ai:
+    mcp:
+      server:
+        stdio: false
 
 server:
   port: ${SERVER_PORT:8080}
