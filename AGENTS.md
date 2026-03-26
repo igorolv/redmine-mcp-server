@@ -3,6 +3,8 @@
 This is a local MCP server that provides read-only access to a corporate Redmine instance.
 It exposes tools for searching, reading issues, projects, members, versions, wiki, and attachments.
 
+Step-by-step setup guides: [Claude Code](CLAUDE_CODE_SETUP.md) | [Qwen Code](QWEN_CODE_SETUP.md)
+
 ## Prerequisites
 
 - JDK 25+ installed (check with `java -version`)

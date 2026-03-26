@@ -3,6 +3,17 @@
 Локальный MCP-сервер для read-only доступа к корпоративному Redmine.
 Позволяет AI-агентам (Claude Code, Cursor, VS Code Copilot и др.) работать с задачами, проектами, участниками, версиями, wiki и вложениями.
 
+## Быстрый старт
+
+Пошаговые инструкции по настройке «с нуля» для конкретного AI-клиента:
+
+| Клиент | Инструкция | Примечание |
+|---|---|---|
+| **Qwen Code** | [QWEN_CODE_SETUP.md](QWEN_CODE_SETUP.md) | Работает без VPN. Рекомендуется для начала — проще всего настроить |
+| **Claude Code** | [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md) | Требует VPN с tunnel splitting (например [Amnezia](https://amnezia.org)) для одновременного доступа к Claude и корпоративному Redmine |
+
+> Если вы раньше не работали с AI-ассистентами в терминале — начните с **Qwen Code**. Он может использовать бесплатные модели через OpenRouter, не требует VPN, а в случае использования платных моделей оплата из РФ относительно простая.
+
 ## Архитектура
 
 Сервер поддерживает два режима транспорта:
@@ -55,6 +66,7 @@ AI-клиент запускает сервер как дочерний проц
 | `listIssues` | Список задач с фильтрами: проект, статус, трекер, назначенный, приоритет, версия, сохранённый запрос, сортировка |
 | `searchIssues` | Полнотекстовый поиск задач с детальными результатами |
 | `getIssue` | Детали задачи: описание, статус, назначенный, даты, примечания, связи, кастомные поля, вложения |
+| `getMyIssues` | Задачи текущего пользователя. Параметры: `projectId`, `statusId`, `sort`, `limit`, `offset` |
 
 ### Поиск
 
@@ -87,7 +99,6 @@ AI-клиент запускает сервер как дочерний проц
 | `listStatuses` | Все статусы задач (ID + название) — для фильтрации в `listIssues` |
 | `listTrackers` | Все трекеры (ID + название) — для фильтрации в `listIssues` |
 | `listPriorities` | Все приоритеты (ID + название) — для фильтрации в `listIssues` |
-| `getMyIssues` | Задачи текущего пользователя. Параметры: `projectId`, `statusId`, `sort`, `limit`, `offset` |
 | `listIssueCategories` | Категории задач проекта (ID + название) |
 | `listTimeEntryActivities` | Типы активностей для трудозатрат (ID + название) |
 
@@ -96,9 +107,9 @@ AI-клиент запускает сервер как дочерний проц
 ## Стек
 
 - Java 25, Spring Boot 4.0, Spring AI MCP (stdio + SSE transport)
-- Apache PDFBox 3.0 — извлечение текста из PDF
+- Apache PDFBox 3.0.5 — извлечение текста из PDF
 - Apache POI 5.4 — извлечение текста из Word, Excel, PowerPoint
-- Gradle 9.3 с version catalog
+- Gradle 9.3.1 с version catalog
 
 ## Сборка
 
@@ -238,7 +249,8 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose 
 │       └── RedmineTools.java              — 23 MCP-инструмента (read-only)
 └── src/main/resources/
     ├── application.yml                    — основная конфигурация (stdio)
-    └── application-sse.yml                — профиль SSE (HTTP-сервер)
+    ├── application-sse.yml                — профиль SSE (HTTP-сервер)
+    └── logback-spring.xml               — конфигурация логирования
 ```
 
 ## Troubleshooting
