@@ -209,13 +209,15 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose 
 
 Куда именно:
 
-| Клиент | Файл конфигурации | Ключ |
-|---|---|---|
-| Claude Code | `~/.claude/settings.json` -> `"mcpServers"` | `"redmine"` |
-| Qwen Code | `~/.qwen/settings.json` -> `"mcpServers"` | `"redmine"` |
-| VS Code | `.vscode/mcp.json` -> `"servers"` | `"redmine"` |
-| Cursor | `.cursor/mcp.json` -> `"mcpServers"` | `"redmine"` |
-| Claude Desktop | `claude_desktop_config.json` -> `"mcpServers"` | `"redmine"` |
+| Клиент | Способ подключения |
+|---|---|
+| Claude Code | `claude mcp add --scope user -e REDMINE_URL=... -e REDMINE_API_KEY=... -- redmine java -jar /path/to/redmine-mcp-server-0.1.0-SNAPSHOT.jar` |
+| Qwen Code | `~/.qwen/settings.json` -> `"mcpServers"` -> `"redmine"` |
+| VS Code | `.vscode/mcp.json` -> `"servers"` -> `"redmine"` |
+| Cursor | `.cursor/mcp.json` -> `"mcpServers"` -> `"redmine"` |
+| Claude Desktop | `claude_desktop_config.json` -> `"mcpServers"` -> `"redmine"` |
+
+Для Claude Code без `--scope user` сервер добавится только для текущего проекта. Проверить подключение: `claude mcp list`.
 
 После добавления перезапустить клиент.
 

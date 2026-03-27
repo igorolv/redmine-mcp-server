@@ -128,35 +128,18 @@ build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
 
 ## 4. Подключение MCP-сервера к Claude Code
 
-Создайте (или отредактируйте, если уже есть) файл `C:\Users\<ваше_имя>\.claude\settings.json` и добавьте секцию `mcpServers`:
-
-```json
-{
-  "mcpServers": {
-    "redmine": {
-      "command": "java",
-      "args": [
-        "-jar",
-        "C:/полный/путь/к/redmine-mcp-server/build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar"
-      ],
-      "env": {
-        "REDMINE_URL": "http://адрес-вашего-redmine",
-        "REDMINE_API_KEY": "ваш-redmine-api-ключ"
-      }
-    }
-  }
-}
-```
-
-> Секция `env` нужна только если переменные `REDMINE_URL` и `REDMINE_API_KEY` не заданы в системе. Если вы уже настроили их как переменные среды пользователя — секцию `env` можно не указывать.
-
-> На Windows используйте прямые слеши (`/`) или двойные обратные (`\\`) в путях.
-
-Или добавьте MCP-сервер прямо из терминала командой:
+Выполните в терминале:
 
 ```bash
-claude mcp add redmine -- java -jar "C:/полный/путь/к/redmine-mcp-server-0.1.0-SNAPSHOT.jar"
+claude mcp add --scope user \
+  -e REDMINE_URL=http://адрес-вашего-redmine \
+  -e REDMINE_API_KEY=ваш-redmine-api-ключ \
+  -- redmine java -jar "C:/полный/путь/к/redmine-mcp-server/build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar"
 ```
+
+> Флаг `--scope user` добавляет сервер глобально (для всех проектов). Без него сервер добавится только для текущего проекта.
+
+> Если переменные `REDMINE_URL` и `REDMINE_API_KEY` уже заданы как переменные среды — флаги `-e` можно не указывать.
 
 ---
 
@@ -230,4 +213,7 @@ curl -H "X-Redmine-API-Key: ваш-ключ" http://адрес-redmine/users/cur
 Должен вернуться JSON с данными вашего пользователя.
 
 **Claude Code не видит MCP-сервер после настройки**
-Claude Code загружает MCP-серверы при запуске. После изменения `settings.json` нужно полностью перезапустить Claude Code — не просто начать новый диалог, а закрыть и открыть заново.
+Claude Code загружает MCP-серверы при запуске. После изменения конфигурации нужно полностью перезапустить Claude Code — не просто начать новый диалог, а закрыть и открыть заново. Проверить статус серверов: `claude mcp list`.
+
+**MCP-сервер добавлен, но не отображается в `/mcp`**
+Если вы добавляли сервер вручную, возможно, конфиг был записан не в тот файл. Удалите ручную конфигурацию и добавьте через CLI: `claude mcp add --scope user ...` — команда сама запишет в нужное место.
