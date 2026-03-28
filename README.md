@@ -120,7 +120,7 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 ./gradlew build
 ```
 
-Результат: `build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar`
+Результат: `build/libs/redmine-mcp-server.jar`
 
 ## Настройка
 
@@ -161,14 +161,14 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 
 ```bash
 REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
-  java -jar build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
+  java -jar build/libs/redmine-mcp-server.jar
 ```
 
 ### SSE
 
 ```bash
 REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
-  java -jar build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar --spring.profiles.active=sse
+  java -jar build/libs/redmine-mcp-server.jar --spring.profiles.active=sse
 ```
 
 Сервер поднимется на порту 8080 (настраивается через `SERVER_PORT`).
@@ -191,7 +191,7 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose 
 ```json
 {
   "command": "java",
-  "args": ["-jar", "<абсолютный-путь>/redmine-mcp-server-0.1.0-SNAPSHOT.jar"],
+  "args": ["-jar", "<абсолютный-путь>/redmine-mcp-server.jar"],
   "env": {
     "REDMINE_URL": "https://redmine.example.com",
     "REDMINE_API_KEY": "your_api_key"
@@ -211,7 +211,7 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose 
 
 | Клиент | Способ подключения |
 |---|---|
-| Claude Code | `claude mcp add --scope user -e REDMINE_URL=... -e REDMINE_API_KEY=... -- redmine java -jar /path/to/redmine-mcp-server-0.1.0-SNAPSHOT.jar` |
+| Claude Code | `claude mcp add --scope user -e REDMINE_URL=... -e REDMINE_API_KEY=... -- redmine java -jar /path/to/redmine-mcp-server.jar` |
 | Qwen Code | `~/.qwen/settings.json` -> `"mcpServers"` -> `"redmine"` |
 | VS Code | `.vscode/mcp.json` -> `"servers"` -> `"redmine"` |
 | Cursor | `.cursor/mcp.json` -> `"mcpServers"` -> `"redmine"` |
