@@ -29,7 +29,13 @@ dependencies {
 }
 
 tasks.jar {
-    archiveFileName.set("redmine-mcp-server.jar")
+    enabled = false
+}
+
+tasks.bootJar {
+    archiveBaseName.set("redmine-mcp-server")
+    archiveVersion.set("")
+    archiveClassifier.set("")
 }
 
 tasks.withType<JavaCompile> {
