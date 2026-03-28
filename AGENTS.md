@@ -26,13 +26,13 @@ cd <path-to-this-project>
 ./gradlew build
 ```
 
-The resulting jar: `build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar`
+The resulting jar: `build/libs/redmine-mcp-server.jar`
 
 ## Step 3: Verify the server starts
 
 ```bash
 REDMINE_URL=<url-from-user> REDMINE_API_KEY=<key-from-user> \
-  java -jar build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
+  java -jar build/libs/redmine-mcp-server.jar
 ```
 
 The server communicates via stdio (stdin/stdout) by default. It will not open any HTTP ports.
@@ -42,7 +42,7 @@ To start in SSE mode (HTTP server on port 8080):
 
 ```bash
 REDMINE_URL=<url-from-user> REDMINE_API_KEY=<key-from-user> \
-  java -jar build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar --spring.profiles.active=sse
+  java -jar build/libs/redmine-mcp-server.jar --spring.profiles.active=sse
 ```
 
 Or via Docker:
@@ -60,7 +60,7 @@ Add the server to the client's MCP configuration. The format varies by client, b
 ```json
 {
   "command": "java",
-  "args": ["-jar", "<absolute-path-to>/redmine-mcp-server-0.1.0-SNAPSHOT.jar"],
+  "args": ["-jar", "<absolute-path-to>/redmine-mcp-server.jar"],
   "env": {
     "REDMINE_URL": "<url-from-user>",
     "REDMINE_API_KEY": "<key-from-user>"
@@ -91,7 +91,7 @@ Add the server to the client's MCP configuration. The format varies by client, b
   "mcpServers": {
     "redmine": {
       "command": "java",
-      "args": ["-jar", "<absolute-path-to>/redmine-mcp-server-0.1.0-SNAPSHOT.jar"],
+      "args": ["-jar", "<absolute-path-to>/redmine-mcp-server.jar"],
       "env": {
         "REDMINE_URL": "<url-from-user>",
         "REDMINE_API_KEY": "<key-from-user>"

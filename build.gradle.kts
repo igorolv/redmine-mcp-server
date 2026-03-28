@@ -5,7 +5,6 @@ plugins {
 }
 
 group = "ru.it_spectrum.ai.redmine.mcp"
-version = "0.1.0-SNAPSHOT"
 
 java {
     toolchain {
@@ -27,6 +26,10 @@ dependencies {
     implementation(libs.pdfbox)
 
     testImplementation(libs.spring.boot.starter.test)
+}
+
+tasks.jar {
+    archiveFileName.set("redmine-mcp-server.jar")
 }
 
 tasks.withType<JavaCompile> {
