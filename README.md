@@ -80,6 +80,8 @@ AI-клиент запускает сервер как дочерний проц
 |---|---|
 | `listAttachments` | Список вложений задачи с размерами и типами |
 | `getAttachmentContent` | Содержимое вложений: текстовые (txt, log, xml, json, csv и др.), PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx). Для изображений — `getImageAttachment` |
+| `getAttachmentTextInfo` | Метаданные извлечённого текста вложения: тип извлечения, общий объём текста и план чанков для больших документов |
+| `getAttachmentTextChunk` | Один чанк извлечённого текста вложения для последующего анализа/summary. Параметры: `attachmentId`, `chunkIndex`, `chunkSize` |
 | `getImageAttachment` | Скачивание изображений (PNG, JPEG, GIF, BMP, WebP) с автоматическим ресайзом для визуального анализа AI |
 | `getWikiPage` | Содержимое wiki-страницы проекта |
 | `listWikiPages` | Список всех wiki-страниц проекта |

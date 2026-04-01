@@ -114,7 +114,7 @@ gradlew.bat bootJar
 После успешной сборки JAR-файл появится по пути:
 
 ```
-build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
+build/libs/redmine-mcp-server.jar
 ```
 
 ### Получение API-ключа Redmine
@@ -132,14 +132,39 @@ build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
 
 ```bash
 claude mcp add --scope user \
-  -e REDMINE_URL=http://адрес-вашего-redmine \
-  -e REDMINE_API_KEY=ваш-redmine-api-ключ \
-  -- redmine java -jar "C:/полный/путь/к/redmine-mcp-server/build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar"
+  --env REDMINE_URL=http://адрес-вашего-redmine \
+  --env REDMINE_API_KEY=ваш-redmine-api-ключ \
+  -- redmine java -jar "C:/полный/путь/к/redmine-mcp-server/build/libs/redmine-mcp-server.jar"
 ```
 
 > Флаг `--scope user` добавляет сервер глобально (для всех проектов). Без него сервер добавится только для текущего проекта.
 
-> Если переменные `REDMINE_URL` и `REDMINE_API_KEY` уже заданы как переменные среды — флаги `-e` можно не указывать.
+> Если переменные `REDMINE_URL` и `REDMINE_API_KEY` уже заданы как переменные среды — флаги `--env` можно не указывать.
+
+### Регистрация и удаление через CLI
+
+Claude Code обычно удобнее настраивать именно через CLI, без ручного редактирования конфигурации.
+
+**Зарегистрировать сервер:**
+
+```bash
+claude mcp add --scope user \
+  --env REDMINE_URL=http://адрес-вашего-redmine \
+  --env REDMINE_API_KEY=ваш-redmine-api-ключ \
+  -- redmine "C:/Program Files/Java/jdk-26/bin/java.exe" -jar "C:/полный/путь/к/redmine-mcp-server/build/libs/redmine-mcp-server.jar"
+```
+
+**Проверить статус:**
+
+```bash
+claude mcp list
+```
+
+**Удалить сервер из конфигурации:**
+
+```bash
+claude mcp remove --scope user redmine
+```
 
 ---
 
@@ -198,7 +223,7 @@ MCP-сервер предоставляет инструменты только 
 Проверьте, что путь к JAR-файлу указан правильно и файл существует. Попробуйте запустить вручную:
 
 ```bash
-java -jar /путь/к/redmine-mcp-server-0.1.0-SNAPSHOT.jar
+java -jar /путь/к/redmine-mcp-server.jar
 ```
 
 В логе должно появиться: `Started RedmineMcpServerApplication` и `Registered tools: 23`.

@@ -4,7 +4,10 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineProject;
 
@@ -26,6 +29,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Set;
@@ -33,6 +37,14 @@ import javax.imageio.ImageIO;
 
 @Service
 public class RedmineTools {
+    private static final int MAX_TEXT_LENGTH = 50_000;
+    private static final int DEFAULT_CHUNK_SIZE = 12_000;
+    private static final int MIN_CHUNK_SIZE = 2_000;
+    private static final int MAX_CHUNK_SIZE = 20_000;
+    private static final int DEFAULT_CHUNK_OVERLAP = 1_200;
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
+    private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("pdf", "docx", "xlsx", "pptx");
+    private static final int DEFAULT_MAX_WIDTH = 1024;
 
     private final RedmineClient client;
 
@@ -647,8 +659,66 @@ public class RedmineTools {
         return sb.toString();
     }
 
-    private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
-    private static final int DEFAULT_MAX_WIDTH = 1024;
+    @McpTool(description = "Get metadata about extracted attachment text and the chunking plan. " +
+            "Useful before requesting chunks from large text, PDF, DOCX, XLSX, or PPTX attachments.")
+    public AttachmentTextInfo getAttachmentTextInfo(
+            @McpToolParam(description = "Attachment ID number") int attachmentId
+    ) {
+        var attachment = client.getAttachment(attachmentId);
+        if (attachment == null) {
+            throw new IllegalArgumentException("Attachment #%d not found".formatted(attachmentId));
+        }
+
+        String text = extractAttachmentTextOrThrow(attachment);
+        int chunkCount = countChunks(text, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP);
+
+        return new AttachmentTextInfo(
+                attachment.id(),
+                attachment.filename(),
+                attachment.contentType(),
+                true,
+                detectExtractionType(attachment),
+                text.length(),
+                DEFAULT_CHUNK_SIZE,
+                chunkCount,
+                text.length() > MAX_TEXT_LENGTH
+        );
+    }
+
+    @McpTool(description = "Get one chunk of extracted attachment text for large documents. " +
+            "Use getAttachmentTextInfo first to determine chunk count and recommended chunk size.")
+    public AttachmentTextChunk getAttachmentTextChunk(
+            @McpToolParam(description = "Attachment ID number") int attachmentId,
+            @McpToolParam(description = "Chunk index starting from 0") int chunkIndex,
+            @McpToolParam(description = "Chunk size in characters, default 12000", required = false) Integer chunkSize
+    ) {
+        var attachment = client.getAttachment(attachmentId);
+        if (attachment == null) {
+            throw new IllegalArgumentException("Attachment #%d not found".formatted(attachmentId));
+        }
+
+        String text = extractAttachmentTextOrThrow(attachment);
+        int actualChunkSize = normalizeChunkSize(chunkSize);
+        var chunks = splitIntoChunks(text, actualChunkSize, DEFAULT_CHUNK_OVERLAP);
+
+        if (chunkIndex < 0 || chunkIndex >= chunks.size()) {
+            throw new IllegalArgumentException(
+                    "Chunk index %d out of range, available 0..%d"
+                            .formatted(chunkIndex, Math.max(0, chunks.size() - 1))
+            );
+        }
+
+        var chunk = chunks.get(chunkIndex);
+        return new AttachmentTextChunk(
+                attachment.id(),
+                attachment.filename(),
+                chunkIndex,
+                chunks.size(),
+                chunk.startChar(),
+                chunk.endChar(),
+                chunk.text()
+        );
+    }
 
     @McpTool(description = "Download an image attachment from Redmine and return it for visual analysis. " +
             "Supports PNG, JPEG, GIF, BMP, WebP. Automatically resizes large images to save tokens. " +
@@ -857,10 +927,6 @@ public class RedmineTools {
         return false;
     }
 
-    private static final int MAX_TEXT_LENGTH = 50_000;
-
-    private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("pdf", "docx", "xlsx", "pptx");
-
     private boolean isDocumentContent(String ext, String contentType) {
         if (DOCUMENT_EXTENSIONS.contains(ext)) return true;
         return contentType.equals("application/pdf")
@@ -983,6 +1049,131 @@ public class RedmineTools {
         return dot >= 0 ? filename.substring(dot + 1).toLowerCase() : "";
     }
 
+    private String extractAttachmentTextOrThrow(RedmineAttachment attachment) {
+        String ext = getFileExtension(attachment.filename());
+        String contentType = attachment.contentType() != null ? attachment.contentType() : "";
+
+        if (!isDocumentContent(ext, contentType) && !isTextContent(contentType, attachment.filename())) {
+            throw new IllegalArgumentException(
+                    "Attachment #%d (%s) is not text-extractable"
+                            .formatted(attachment.id(), attachment.filename())
+            );
+        }
+
+        byte[] content = client.downloadAttachment(attachment.contentUrl());
+        if (content == null) {
+            throw new IllegalStateException("Failed to download attachment #%d".formatted(attachment.id()));
+        }
+
+        String text;
+        if (isDocumentContent(ext, contentType)) {
+            text = extractDocumentText(ext, contentType, content);
+        } else {
+            text = new String(content, StandardCharsets.UTF_8);
+        }
+
+        return normalizeExtractedText(text);
+    }
+
+    private String detectExtractionType(RedmineAttachment attachment) {
+        String ext = getFileExtension(attachment.filename());
+        String contentType = attachment.contentType() != null ? attachment.contentType() : "";
+
+        if ("pdf".equals(ext) || contentType.equals("application/pdf")) return "pdf";
+        if ("docx".equals(ext) || contentType.contains("wordprocessingml")) return "docx";
+        if ("xlsx".equals(ext) || contentType.contains("spreadsheetml")) return "xlsx";
+        if ("pptx".equals(ext) || contentType.contains("presentationml")) return "pptx";
+        return "text";
+    }
+
+    private String normalizeExtractedText(String text) {
+        if (text == null) return "";
+
+        String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
+        normalized = normalized.replaceAll("[\\t\\x0B\\f]+", " ");
+        normalized = normalized.replaceAll("\n{3,}", "\n\n");
+        return normalized.strip();
+    }
+
+    private int normalizeChunkSize(Integer chunkSize) {
+        if (chunkSize == null) return DEFAULT_CHUNK_SIZE;
+        return Math.max(MIN_CHUNK_SIZE, Math.min(MAX_CHUNK_SIZE, chunkSize));
+    }
+
+    private int countChunks(String text, int chunkSize, int overlap) {
+        return splitIntoChunks(text, chunkSize, overlap).size();
+    }
+
+    private List<TextChunk> splitIntoChunks(String text, int chunkSize, int overlap) {
+        if (text.isBlank()) {
+            return List.of(new TextChunk(0, 0, ""));
+        }
+
+        var chunks = new ArrayList<TextChunk>();
+        int start = 0;
+
+        while (start < text.length()) {
+            int preferredEnd = Math.min(start + chunkSize, text.length());
+            int end = findChunkBoundary(text, start, preferredEnd);
+            if (end <= start) {
+                end = preferredEnd;
+            }
+
+            String rawChunk = text.substring(start, end);
+            String chunkText = rawChunk.strip();
+            if (!chunkText.isEmpty()) {
+                int leadingTrim = 0;
+                while (leadingTrim < rawChunk.length() && Character.isWhitespace(rawChunk.charAt(leadingTrim))) {
+                    leadingTrim++;
+                }
+
+                int trailingTrim = 0;
+                while (trailingTrim < rawChunk.length() - leadingTrim
+                        && Character.isWhitespace(rawChunk.charAt(rawChunk.length() - 1 - trailingTrim))) {
+                    trailingTrim++;
+                }
+
+                chunks.add(new TextChunk(
+                        start + leadingTrim,
+                        end - trailingTrim,
+                        chunkText
+                ));
+            }
+
+            if (end >= text.length()) {
+                break;
+            }
+
+            start = Math.max(end - overlap, start + 1);
+        }
+
+        return chunks;
+    }
+
+    private int findChunkBoundary(String text, int start, int preferredEnd) {
+        if (preferredEnd >= text.length()) {
+            return text.length();
+        }
+
+        int paragraphBreak = text.lastIndexOf("\n\n", preferredEnd);
+        if (paragraphBreak > start + 1000) {
+            return paragraphBreak;
+        }
+
+        int lineBreak = text.lastIndexOf('\n', preferredEnd);
+        if (lineBreak > start + 500) {
+            return lineBreak;
+        }
+
+        int sentenceBreak = Math.max(text.lastIndexOf(". ", preferredEnd), text.lastIndexOf("! ", preferredEnd));
+        sentenceBreak = Math.max(sentenceBreak, text.lastIndexOf("? ", preferredEnd));
+        if (sentenceBreak > start + 500) {
+            return sentenceBreak + 1;
+        }
+
+        return preferredEnd;
+    }
+
     private String truncate(String text) {
         if (text.length() <= MAX_TEXT_LENGTH) return text;
         return text.substring(0, MAX_TEXT_LENGTH) + "\n\n... (truncated, total length: %d chars)".formatted(text.length());
@@ -992,5 +1183,8 @@ public class RedmineTools {
         if (bytes < 1024) return bytes + " B";
         if (bytes < 1024 * 1024) return "%.1f KB".formatted(bytes / 1024.0);
         return "%.1f MB".formatted(bytes / (1024.0 * 1024));
+    }
+
+    private record TextChunk(int startChar, int endChar, String text) {
     }
 }

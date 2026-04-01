@@ -118,6 +118,8 @@ After adding the configuration, restart the client so it picks up the new MCP se
 | `getIssue` | Get full issue details (description, notes, relations, custom fields, attachments). Params: `issueId` |
 | `listAttachments` | List all attachments of an issue. Params: `issueId` |
 | `getAttachmentContent` | Get content of an attachment. Supports text files (txt, log, xml, json, csv, etc.), PDF, Word (.docx), Excel (.xlsx), and PowerPoint (.pptx). For images use `getImageAttachment`. Params: `attachmentId` |
+| `getAttachmentTextInfo` | Get extracted-text metadata for a text/document attachment, including extraction type, total text size, and chunking plan for large files. Params: `attachmentId` |
+| `getAttachmentTextChunk` | Get one chunk of extracted attachment text for large text/document files. Useful for agent-side summarization pipelines. Params: `attachmentId`, `chunkIndex`, `chunkSize` (optional) |
 | `getImageAttachment` | Download an image attachment (PNG, JPEG, GIF, BMP, WebP) with automatic resizing for AI visual analysis. Params: `attachmentId`, `maxWidth` (optional, default 1024) |
 | `getWikiPage` | Get wiki page content and attachments. Params: `projectId`, `pageTitle` |
 | `listWikiPages` | List all wiki pages in a project. Params: `projectId` |

@@ -148,7 +148,7 @@ gradlew.bat bootJar
 После успешной сборки JAR-файл появится по пути:
 
 ```
-build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
+build/libs/redmine-mcp-server.jar
 ```
 
 ### Получение API-ключа Redmine
@@ -171,7 +171,7 @@ build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
       "command": "java",
       "args": [
         "-jar",
-        "C:/полный/путь/к/redmine-mcp-server/build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar"
+        "C:/полный/путь/к/redmine-mcp-server/build/libs/redmine-mcp-server.jar"
       ],
       "env": {
         "REDMINE_URL": "http://адрес-вашего-redmine",
@@ -183,6 +183,30 @@ build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
 ```
 
 > Секция `env` нужна только если переменные `REDMINE_URL` и `REDMINE_API_KEY` не заданы в системе. Если вы уже настроили их как переменные среды пользователя — секцию `env` можно не указывать.
+>
+> Если Qwen Code не показывает сервер как подключенный, в первую очередь попробуйте указать полный путь к `java.exe` вместо `"java"`. На некоторых Windows-машинах `java` доступна в обычном терминале, но недоступна в окружении, из которого Qwen запускает MCP-сервер.
+
+### Регистрация и удаление через CLI
+
+Вместо ручного редактирования `settings.json` можно управлять MCP-сервером через CLI Qwen Code.
+
+**Зарегистрировать сервер:**
+
+```bash
+qwen mcp add --scope user -e REDMINE_URL=http://адрес-вашего-redmine -e REDMINE_API_KEY=ваш-redmine-api-ключ redmine "C:/Program Files/Java/jdk-26/bin/java.exe" -jar "C:/полный/путь/к/redmine-mcp-server/build/libs/redmine-mcp-server.jar"
+```
+
+**Проверить статус:**
+
+```bash
+qwen mcp list
+```
+
+**Удалить сервер из конфигурации:**
+
+```bash
+qwen mcp remove --scope user redmine
+```
 
 **Пример полного `settings.json`** со всеми настройками:
 
@@ -217,10 +241,10 @@ build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar
   },
   "mcpServers": {
     "redmine": {
-      "command": "java",
+      "command": "C:/Program Files/Java/jdk-26/bin/java.exe",
       "args": [
         "-jar",
-        "C:/projects/redmine-mcp-server/build/libs/redmine-mcp-server-0.1.0-SNAPSHOT.jar"
+        "C:/projects/redmine-mcp-server/build/libs/redmine-mcp-server.jar"
       ],
       "env": {
         "REDMINE_URL": "http://192.168.1.100",
@@ -281,13 +305,32 @@ MCP-сервер предоставляет инструменты только 
 Закройте и откройте терминал заново. Проверьте `JAVA_HOME` и `Path`.
 
 **MCP-сервер не подключается**
-Проверьте, что путь к JAR-файлу указан правильно и файл существует. Попробуйте запустить вручную:
+Проверьте по шагам:
 
-```bash
-java -jar /путь/к/redmine-mcp-server-0.1.0-SNAPSHOT.jar
+1. Убедитесь, что путь к JAR-файлу указан правильно и файл существует. В текущем проекте после сборки получается файл `build/libs/redmine-mcp-server.jar`.
+2. Если в конфигурации указано `"command": "java"`, попробуйте заменить его на полный путь к `java.exe`, например:
+
+```json
+"command": "C:/Program Files/Java/jdk-26/bin/java.exe"
 ```
 
-В логе должно появиться: `Started RedmineMcpServerApplication` и `Registered tools: 23`.
+3. Попробуйте вручную запустить ровно тот же JAR с теми же переменными окружения. Для PowerShell:
+
+```powershell
+$env:REDMINE_URL="<REDMINE_URL>"; $env:REDMINE_API_KEY="<REDMINE_API_KEY>"; & "<полный-путь-к-java.exe-или-java>" -jar "<полный-путь-к-redmine-mcp-server.jar>"
+```
+
+Например:
+
+```powershell
+$env:REDMINE_URL="https://redmine.example.com"; $env:REDMINE_API_KEY="0123456789abcdef"; & "C:/Program Files/Java/jdk-26/bin/java.exe" -jar "C:/projects/redmine-mcp-server/build/libs/redmine-mcp-server.jar"
+```
+
+Что должно получиться:
+
+- В консоли должны появиться стартовые строки приложения, например с `Starting RedmineMcpServerApplication`.
+- Процесс не должен завершаться сразу с ошибкой.
+- В `stdio`-режиме сервер после успешного старта просто остается запущенным и ждет MCP-запросы по stdin/stdout.
 
 **Нет доступа к Redmine**
 Проверьте, что `REDMINE_URL` и `REDMINE_API_KEY` верны:
