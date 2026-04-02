@@ -1,7 +1,7 @@
 # Redmine MCP Server — Setup Guide for AI Agents
 
 This is a local MCP server that provides read-only access to a corporate Redmine instance.
-It exposes tools for searching, reading issues, projects, members, versions, wiki, and attachments.
+It exposes 25 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, and Redmine reference data.
 
 Step-by-step setup guides: [Claude Code](CLAUDE_CODE_SETUP.md) | [Qwen Code](QWEN_CODE_SETUP.md)
 
@@ -104,6 +104,8 @@ Add the server to the client's MCP configuration. The format varies by client, b
 After adding the configuration, restart the client so it picks up the new MCP server.
 
 ## Available tools
+
+The current implementation exposes **25 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, and reference-data domains.
 
 | Tool | Description |
 |---|---|

@@ -1,7 +1,7 @@
 # Redmine MCP Server
 
 Локальный MCP-сервер для read-only доступа к корпоративному Redmine.
-Позволяет AI-агентам (Claude Code, Cursor, VS Code Copilot и др.) работать с задачами, проектами, участниками, версиями, wiki и вложениями.
+Позволяет AI-агентам (Claude Code, Cursor, VS Code Copilot и др.) работать с задачами, проектами, участниками, версиями, wiki, вложениями, трудозатратами и справочными данными.
 
 ## Быстрый старт
 
@@ -43,6 +43,8 @@ AI-клиент запускает сервер как дочерний проц
 Сервер работает как HTTP-сервис (можно запустить в Docker). AI-клиент подключается по URL.
 
 ## Инструменты
+
+Сервер экспортирует **25 read-only MCP tools**.
 
 ### Пользователь
 
@@ -236,25 +238,34 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose 
 │   │   ├── RedmineProperties.java         — url + apiKey из env
 │   │   └── RedmineConfig.java             — RestClient с автодобавлением http://
 │   ├── client/
-│   │   └── RedmineClient.java             — обёртка над Redmine REST API
+│   │   ├── RedmineClient.java             — обёртка над Redmine REST API
+│   │   └── AttachmentTextCache.java       — кэш извлечённого текста вложений
 │   ├── model/
 │   │   ├── IdName.java                    — пара id/name (проект, статус, и т.д.)
-│   │   ├── RedmineIssue.java             — задача + Journal + Relation
-│   │   ├── RedmineProject.java           — проект
-│   │   ├── RedmineMembership.java        — участник проекта
-│   │   ├── RedmineVersion.java           — версия/майлстоун
-│   │   ├── RedmineWikiPage.java          — wiki-страница
-│   │   ├── RedmineAttachment.java        — вложение
-│   │   ├── RedmineTimeEntry.java         — запись трудозатрат
-│   │   ├── RedmineUser.java              — пользователь
-│   │   ├── RedmineQuery.java             — сохранённый запрос (фильтр)
-│   │   └── RedmineSearchResult.java      — результат поиска
+│   │   ├── AttachmentTextChunk.java       — чанк извлечённого текста вложения
+│   │   ├── AttachmentTextInfo.java        — метаданные и план чанков для текста вложения
+│   │   ├── RedmineAttachment.java         — вложение
+│   │   ├── RedmineIssue.java              — задача + Journal + Relation
+│   │   ├── RedmineMembership.java         — участник проекта
+│   │   ├── RedmineProject.java            — проект
+│   │   ├── RedmineQuery.java              — сохранённый запрос (фильтр)
+│   │   ├── RedmineSearchResult.java       — результат поиска
+│   │   ├── RedmineTimeEntry.java          — запись трудозатрат
+│   │   ├── RedmineUser.java               — пользователь
+│   │   ├── RedmineVersion.java            — версия/майлстоун
+│   │   └── RedmineWikiPage.java           — wiki-страница
 │   └── tools/
-│       └── RedmineTools.java              — 23 MCP-инструмента (read-only)
+│       ├── AttachmentTools.java           — 5 MCP-инструментов для вложений и изображений
+│       ├── IssueTools.java                — 5 MCP-инструментов для задач и поиска
+│       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
+│       ├── ReferenceDataTools.java        — 6 MCP-инструментов для справочников
+│       ├── TimeEntryTools.java            — 2 MCP-инструмента для трудозатрат
+│       ├── UserTools.java                 — 1 MCP-инструмент для текущего пользователя
+│       └── WikiTools.java                 — 2 MCP-инструмента для wiki
 └── src/main/resources/
     ├── application.yml                    — основная конфигурация (stdio)
     ├── application-sse.yml                — профиль SSE (HTTP-сервер)
-    └── logback-spring.xml               — конфигурация логирования
+    └── logback-spring.xml                 — конфигурация логирования
 ```
 
 ## Troubleshooting
