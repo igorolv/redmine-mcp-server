@@ -33,11 +33,11 @@ class DocumentExtractionTest {
     @Mock
     private RedmineClient client;
 
-    private RedmineTools tools;
+    private AttachmentTools tools;
 
     @BeforeEach
     void setUp() {
-        tools = new RedmineTools(client, new AttachmentTextCache());
+        tools = new AttachmentTools(client, new AttachmentTextCache());
     }
 
     // --- PDF ---

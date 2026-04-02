@@ -5,11 +5,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
+import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssues;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineQuery;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
 
 import java.util.List;
@@ -18,16 +18,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class RedmineToolsTest {
+class IssueToolsTest {
 
     @Mock
     private RedmineClient client;
 
-    private RedmineTools tools;
+    private IssueTools tools;
 
     @BeforeEach
     void setUp() {
-        tools = new RedmineTools(client, new AttachmentTextCache());
+        tools = new IssueTools(client);
     }
 
     // --- getMyIssues ---
@@ -91,87 +91,6 @@ class RedmineToolsTest {
         String result = tools.getMyIssues(null, null, null, null, null);
 
         assertThat(result).isEqualTo("Could not retrieve current user");
-    }
-
-    // --- listIssueCategories ---
-
-    @Test
-    void shouldListIssueCategories() {
-        when(client.getIssueCategories("my-project")).thenReturn(List.of(
-                new IdName(1, "Backend"),
-                new IdName(2, "Frontend"),
-                new IdName(3, "DevOps")
-        ));
-
-        String result = tools.listIssueCategories("my-project");
-
-        assertThat(result).contains("Issue categories for project my-project");
-        assertThat(result).contains("- [1] Backend");
-        assertThat(result).contains("- [2] Frontend");
-        assertThat(result).contains("- [3] DevOps");
-    }
-
-    @Test
-    void shouldReturnMessageWhenNoCategoriesFound() {
-        when(client.getIssueCategories("empty-project")).thenReturn(List.of());
-
-        String result = tools.listIssueCategories("empty-project");
-
-        assertThat(result).isEqualTo("No issue categories found for project: empty-project");
-    }
-
-    // --- listTimeEntryActivities ---
-
-    @Test
-    void shouldListTimeEntryActivities() {
-        when(client.getTimeEntryActivities()).thenReturn(List.of(
-                new IdName(8, "Design"),
-                new IdName(9, "Development"),
-                new IdName(10, "Testing")
-        ));
-
-        String result = tools.listTimeEntryActivities();
-
-        assertThat(result).contains("Time entry activities:");
-        assertThat(result).contains("- [8] Design");
-        assertThat(result).contains("- [9] Development");
-        assertThat(result).contains("- [10] Testing");
-    }
-
-    @Test
-    void shouldReturnMessageWhenNoActivitiesFound() {
-        when(client.getTimeEntryActivities()).thenReturn(List.of());
-
-        String result = tools.listTimeEntryActivities();
-
-        assertThat(result).isEqualTo("No time entry activities found");
-    }
-
-    // --- listQueries ---
-
-    @Test
-    void shouldListQueries() {
-        when(client.getQueries(0, 25)).thenReturn(new RedmineQuery.Page(List.of(
-                new RedmineQuery(1, "My open bugs", false, 5),
-                new RedmineQuery(2, "Sprint backlog", true, null),
-                new RedmineQuery(3, "Overdue tasks", false, 10)
-        ), 3, 0, 25));
-
-        String result = tools.listQueries(null, null);
-
-        assertThat(result).contains("Saved queries: 3 total");
-        assertThat(result).contains("- [1] My open bugs (project #5)");
-        assertThat(result).contains("- [2] Sprint backlog [public]");
-        assertThat(result).contains("- [3] Overdue tasks (project #10)");
-    }
-
-    @Test
-    void shouldReturnMessageWhenNoQueriesFound() {
-        when(client.getQueries(0, 25)).thenReturn(new RedmineQuery.Page(List.of(), 0, 0, 25));
-
-        String result = tools.listQueries(null, null);
-
-        assertThat(result).isEqualTo("No saved queries found");
     }
 
     // --- listIssues with queryId ---
@@ -239,6 +158,54 @@ class RedmineToolsTest {
         String result = tools.getIssue(999);
 
         assertThat(result).isEqualTo("Issue #999 not found");
+    }
+
+    // --- searchAll ---
+
+    @Test
+    void shouldSearchAll() {
+        var results = List.of(
+                new RedmineSearchResult.ResultItem(101, "Login bug", "issue",
+                        "http://redmine/issues/101", "Cannot login with LDAP", "2025-03-01T10:00:00Z"),
+                new RedmineSearchResult.ResultItem(5, "Auth Guide", "wiki-page",
+                        "http://redmine/wiki/Auth_Guide", "Authentication setup guide", "2025-02-15T08:00:00Z")
+        );
+        when(client.search("auth", 0, 25))
+                .thenReturn(new RedmineSearchResult(results, 2, 0, 25));
+
+        String result = tools.searchAll("auth", null, null);
+
+        assertThat(result).contains("Search results for 'auth': 2 total");
+        assertThat(result).contains("[issue] #101 Login bug");
+        assertThat(result).contains("Cannot login with LDAP");
+        assertThat(result).contains("[wiki-page] #5 Auth Guide");
+    }
+
+    // --- searchIssues ---
+
+    @Test
+    void shouldSearchIssues() {
+        var issues = List.of(issue(101, "Login bug", "Open", "backend"));
+        when(client.searchIssues("login", null, 0, 25))
+                .thenReturn(new SearchWithIssues(issues, 1, 0, 25));
+
+        String result = tools.searchIssues("login", null, null, null);
+
+        assertThat(result).contains("Found 1 total results");
+        assertThat(result).contains("#101");
+        assertThat(result).contains("Login bug");
+    }
+
+    @Test
+    void shouldSearchIssuesInProject() {
+        var issues = List.of(issue(201, "Deploy failure", "New", "infra"));
+        when(client.searchIssues("deploy", "infra", 0, 10))
+                .thenReturn(new SearchWithIssues(issues, 1, 0, 10));
+
+        String result = tools.searchIssues("deploy", "infra", 10, 0);
+
+        assertThat(result).contains("#201");
+        assertThat(result).contains("Deploy failure");
     }
 
     // --- helpers ---
