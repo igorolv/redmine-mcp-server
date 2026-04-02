@@ -16,9 +16,9 @@
 
 ## Архитектура
 
-Сервер поддерживает два режима транспорта:
+Сервер поддерживает только транспорт `stdio`.
 
-### Stdio (по умолчанию)
+### Stdio
 
 ```
 ┌─────────────┐     stdio      ┌──────────────────┐    REST API    ┌──────────┐
@@ -29,18 +29,6 @@
 ```
 
 AI-клиент запускает сервер как дочерний процесс, обмен по протоколу MCP через stdin/stdout.
-
-### SSE (Server-Sent Events)
-
-```
-┌─────────────┐     HTTP/SSE    ┌──────────────────┐    REST API    ┌──────────┐
-│  AI-агент   │ <-------------> │  redmine-mcp-    │ -------------> │ Redmine  │
-│ (Claude Code│   порт 8080    │  server (Java)   │   HTTP + API   │ (корп.)  │
-│  Cursor...) │                │  Docker / host   │   Key          │          │
-└─────────────┘                └──────────────────┘                └──────────┘
-```
-
-Сервер работает как HTTP-сервис (можно запустить в Docker). AI-клиент подключается по URL.
 
 ## Инструменты
 
@@ -110,7 +98,7 @@ AI-клиент запускает сервер как дочерний проц
 
 ## Стек
 
-- Java 25, Spring Boot 4.0, Spring AI MCP (stdio + SSE transport)
+- Java 25, Spring Boot 4.0, Spring AI MCP (stdio transport)
 - Apache PDFBox 3.0.5 — извлечение текста из PDF
 - Apache POI 5.4 — извлечение текста из Word, Excel, PowerPoint
 - Gradle 9.3.1 с version catalog
@@ -161,34 +149,12 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 
 ## Запуск
 
-### Stdio (по умолчанию)
-
 ```bash
 REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
   java -jar build/libs/redmine-mcp-server.jar
 ```
 
-### SSE
-
-```bash
-REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
-  java -jar build/libs/redmine-mcp-server.jar --spring.profiles.active=sse
-```
-
-Сервер поднимется на порту 8080 (настраивается через `SERVER_PORT`).
-
-### Docker
-
-```bash
-cd docker
-REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose up
-```
-
-В Docker сервер всегда работает в SSE-режиме. Порт настраивается через `SERVER_PORT` (по умолчанию 8080).
-
 ## Подключение к AI-клиенту
-
-### Stdio-режим
 
 Добавить в конфигурацию клиента:
 
@@ -200,14 +166,6 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose 
     "REDMINE_URL": "https://redmine.example.com",
     "REDMINE_API_KEY": "your_api_key"
   }
-}
-```
-
-### SSE-режим (в т.ч. Docker)
-
-```json
-{
-  "url": "http://localhost:8080/sse"
 }
 ```
 
@@ -228,10 +186,6 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose 
 ## Структура проекта
 
 ```
-├── docker/
-│   ├── Dockerfile                     — мультиэтапная сборка образа
-│   ├── docker-compose.yml             — запуск в SSE-режиме
-│   └── .dockerignore
 ├── src/main/java/ru/it_spectrum/ai/redmine/mcp/
 │   ├── RedmineMcpServerApplication.java   — точка входа Spring Boot
 │   ├── config/
@@ -263,8 +217,7 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key docker compose 
 │       ├── UserTools.java                 — 1 MCP-инструмент для текущего пользователя
 │       └── WikiTools.java                 — 2 MCP-инструмента для wiki
 └── src/main/resources/
-    ├── application.yml                    — основная конфигурация (stdio)
-    ├── application-sse.yml                — профиль SSE (HTTP-сервер)
+    ├── application.yml                    — конфигурация MCP-сервера (stdio)
     └── logback-spring.xml                 — конфигурация логирования
 ```
 

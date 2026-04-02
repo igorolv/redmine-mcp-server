@@ -38,20 +38,6 @@ REDMINE_URL=<url-from-user> REDMINE_API_KEY=<key-from-user> \
 The server communicates via stdio (stdin/stdout) by default. It will not open any HTTP ports.
 If it starts without errors, it is ready to be connected to an MCP client.
 
-To start in SSE mode (HTTP server on port 8080):
-
-```bash
-REDMINE_URL=<url-from-user> REDMINE_API_KEY=<key-from-user> \
-  java -jar build/libs/redmine-mcp-server.jar --spring.profiles.active=sse
-```
-
-Or via Docker:
-
-```bash
-cd docker
-REDMINE_URL=<url-from-user> REDMINE_API_KEY=<key-from-user> docker compose up
-```
-
 ## Step 4: Connect to an MCP client
 
 Add the server to the client's MCP configuration. The format varies by client, but the content is the same:
@@ -65,13 +51,6 @@ Add the server to the client's MCP configuration. The format varies by client, b
     "REDMINE_URL": "<url-from-user>",
     "REDMINE_API_KEY": "<key-from-user>"
   }
-}
-```
-
-**SSE configuration (JSON) — when running via Docker or `--spring.profiles.active=sse`:**
-```json
-{
-  "url": "http://localhost:8080/sse"
 }
 ```
 
