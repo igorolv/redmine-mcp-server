@@ -30,8 +30,17 @@ public record RedmineIssue(
         @JsonProperty("custom_fields") List<CustomField> customFields,
         List<RedmineAttachment> attachments,
         List<Journal> journals,
-        List<Relation> relations
+        List<Relation> relations,
+        List<Child> children
 ) {
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Child(
+            int id,
+            IdName tracker,
+            String subject
+    ) {
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record CustomField(

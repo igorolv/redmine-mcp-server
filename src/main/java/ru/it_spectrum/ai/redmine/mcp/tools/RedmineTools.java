@@ -3,6 +3,7 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
@@ -19,7 +20,10 @@ import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
 
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -47,9 +51,11 @@ public class RedmineTools {
     private static final int DEFAULT_MAX_WIDTH = 1024;
 
     private final RedmineClient client;
+    private final AttachmentTextCache textCache;
 
-    public RedmineTools(RedmineClient client) {
+    public RedmineTools(RedmineClient client, AttachmentTextCache textCache) {
         this.client = client;
+        this.textCache = textCache;
     }
 
     @McpTool(description = "Get information about the currently authenticated Redmine user. " +
@@ -574,7 +580,8 @@ public class RedmineTools {
     }
 
     @McpTool(description = "Get detailed information about a specific Redmine issue by its ID. " +
-            "Returns full issue details including description, status, assignee, dates, and attachments list.")
+            "Returns full issue details including description, status, assignee, dates, " +
+            "subtasks (children), relations, notes (journals), and attachments list.")
     public String getIssue(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
@@ -869,6 +876,17 @@ public class RedmineTools {
             }
         }
 
+        if (issue.children() != null && !issue.children().isEmpty()) {
+            sb.append("\nSubtasks (%d):\n".formatted(issue.children().size()));
+            for (var child : issue.children()) {
+                sb.append("  - #%d %s".formatted(child.id(), child.subject()));
+                if (child.tracker() != null) {
+                    sb.append(" [%s]".formatted(child.tracker().name()));
+                }
+                sb.append("\n");
+            }
+        }
+
         if (issue.journals() != null && !issue.journals().isEmpty()) {
             var notes = issue.journals().stream()
                     .filter(j -> j.notes() != null && !j.notes().isBlank())
@@ -966,19 +984,21 @@ public class RedmineTools {
     private String extractDocxText(byte[] data) throws Exception {
         try (var doc = new XWPFDocument(new ByteArrayInputStream(data))) {
             var sb = new StringBuilder();
-            for (var para : doc.getParagraphs()) {
-                String text = para.getText();
-                if (text != null && !text.isBlank()) {
-                    sb.append(text).append("\n");
-                }
-            }
-            for (var table : doc.getTables()) {
-                sb.append("\n[Table]\n");
-                for (var row : table.getRows()) {
-                    var cells = row.getTableCells().stream()
-                            .map(c -> c.getText().strip())
-                            .toList();
-                    sb.append(String.join(" | ", cells)).append("\n");
+            for (IBodyElement element : doc.getBodyElements()) {
+                if (element instanceof XWPFParagraph para) {
+                    String text = para.getText();
+                    if (text != null && !text.isBlank()) {
+                        sb.append(text).append("\n");
+                    }
+                } else if (element instanceof XWPFTable table) {
+                    sb.append("\n[Table]\n");
+                    for (var row : table.getRows()) {
+                        var cells = row.getTableCells().stream()
+                                .map(c -> c.getText().strip())
+                                .toList();
+                        sb.append(String.join(" | ", cells)).append("\n");
+                    }
+                    sb.append("\n");
                 }
             }
             if (sb.isEmpty()) return "(Word document contains no text)";
@@ -1050,6 +1070,11 @@ public class RedmineTools {
     }
 
     private String extractAttachmentTextOrThrow(RedmineAttachment attachment) {
+        String cached = textCache.get(attachment.id());
+        if (cached != null) {
+            return cached;
+        }
+
         String ext = getFileExtension(attachment.filename());
         String contentType = attachment.contentType() != null ? attachment.contentType() : "";
 
@@ -1072,7 +1097,9 @@ public class RedmineTools {
             text = new String(content, StandardCharsets.UTF_8);
         }
 
-        return normalizeExtractedText(text);
+        text = normalizeExtractedText(text);
+        textCache.put(attachment.id(), text);
+        return text;
     }
 
     private String detectExtractionType(RedmineAttachment attachment) {

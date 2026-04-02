@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
@@ -26,7 +27,7 @@ class RedmineToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new RedmineTools(client);
+        tools = new RedmineTools(client, new AttachmentTextCache());
     }
 
     // --- getMyIssues ---
@@ -187,6 +188,59 @@ class RedmineToolsTest {
         assertThat(result).contains("Filtered issue");
     }
 
+    // --- getIssue ---
+
+    @Test
+    void shouldDisplayChildrenInGetIssue() {
+        var children = List.of(
+                new RedmineIssue.Child(501, new IdName(1, "Bug"), "Fix null pointer"),
+                new RedmineIssue.Child(502, new IdName(2, "Task"), "Write tests")
+        );
+        var issue = new RedmineIssue(
+                100,
+                new IdName(1, "my-project"),
+                new IdName(1, "Bug"),
+                new IdName(1, "Open"),
+                new IdName(2, "Normal"),
+                new IdName(42, "John Doe"),
+                new IdName(42, "John Doe"),
+                null, null, null,
+                "Parent issue", "Some description",
+                null, null, 0,
+                null, null, false,
+                "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
+                null, null, null, null, children
+        );
+        when(client.getIssue(100)).thenReturn(issue);
+
+        String result = tools.getIssue(100);
+
+        assertThat(result).contains("Issue #100: Parent issue");
+        assertThat(result).contains("Subtasks (2):");
+        assertThat(result).contains("#501 Fix null pointer [Bug]");
+        assertThat(result).contains("#502 Write tests [Task]");
+    }
+
+    @Test
+    void shouldNotDisplaySubtasksSectionWhenNoChildren() {
+        var issue = issue(200, "No children issue", "Open", "my-project");
+        when(client.getIssue(200)).thenReturn(issue);
+
+        String result = tools.getIssue(200);
+
+        assertThat(result).contains("Issue #200: No children issue");
+        assertThat(result).doesNotContain("Subtasks");
+    }
+
+    @Test
+    void shouldHandleIssueNotFound() {
+        when(client.getIssue(999)).thenReturn(null);
+
+        String result = tools.getIssue(999);
+
+        assertThat(result).isEqualTo("Issue #999 not found");
+    }
+
     // --- helpers ---
 
     private static RedmineIssue issue(int id, String subject, String status, String project) {
@@ -203,7 +257,7 @@ class RedmineToolsTest {
                 null, null, 0,
                 null, null, false,
                 "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
-                null, null, null, null
+                null, null, null, null, null
         );
     }
 }

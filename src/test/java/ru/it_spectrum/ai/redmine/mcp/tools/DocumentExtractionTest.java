@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
@@ -36,7 +37,7 @@ class DocumentExtractionTest {
 
     @BeforeEach
     void setUp() {
-        tools = new RedmineTools(client);
+        tools = new RedmineTools(client, new AttachmentTextCache());
     }
 
     // --- PDF ---
