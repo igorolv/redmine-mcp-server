@@ -147,6 +147,100 @@ class AttachmentToolsTest {
                 .contains("Failed to download");
     }
 
+    // --- searchAttachmentContent ---
+
+    @Test
+    void shouldFindTextInAttachment() {
+        var att = new RedmineAttachment(50, "spec.txt", 100, "text/plain",
+                "http://redmine/download/50/spec.txt", null,
+                new IdName(1, "Alice"), "2025-03-01");
+        var issue = issueWithAttachments(100, List.of(att));
+        when(client.getIssue(100)).thenReturn(issue);
+        when(client.downloadAttachment(att.contentUrl()))
+                .thenReturn("The system uses OAuth for authentication and JWT for sessions".getBytes());
+
+        String result = tools.searchAttachmentContent("OAuth", 100, null, null);
+
+        assertThat(result).contains("Attachment content search for \"OAuth\" in issue #100");
+        assertThat(result).contains("Issue #100: Test issue");
+        assertThat(result).contains("[50] spec.txt");
+        assertThat(result).contains("OAuth");
+        assertThat(result).contains("Found 1 matches in 1 attachments across 1 issues");
+    }
+
+    @Test
+    void shouldReturnNoMatchesWhenQueryNotFound() {
+        var att = new RedmineAttachment(50, "spec.txt", 100, "text/plain",
+                "http://redmine/download/50/spec.txt", null,
+                new IdName(1, "Alice"), "2025-03-01");
+        var issue = issueWithAttachments(100, List.of(att));
+        when(client.getIssue(100)).thenReturn(issue);
+        when(client.downloadAttachment(att.contentUrl()))
+                .thenReturn("Nothing relevant here".getBytes());
+
+        String result = tools.searchAttachmentContent("OAuth", 100, null, null);
+
+        assertThat(result).contains("No matches found");
+    }
+
+    @Test
+    void shouldSkipBinaryAttachments() {
+        var binAtt = new RedmineAttachment(60, "image.png", 5000, "image/png",
+                "http://redmine/download/60/image.png", null,
+                new IdName(1, "Alice"), "2025-03-01");
+        var issue = issueWithAttachments(100, List.of(binAtt));
+        when(client.getIssue(100)).thenReturn(issue);
+
+        String result = tools.searchAttachmentContent("test", 100, null, null);
+
+        assertThat(result).contains("scanned 0 attachments");
+    }
+
+    @Test
+    void shouldSearchAcrossProjectIssues() {
+        var att1 = new RedmineAttachment(50, "doc.txt", 100, "text/plain",
+                "http://redmine/download/50/doc.txt", null,
+                new IdName(1, "Alice"), "2025-03-01");
+        var issue1 = issueWithAttachments(101, List.of(att1));
+
+        // listIssues returns issue summaries (no attachments)
+        var summaryIssue = issueWithAttachments(101, null);
+        when(client.listIssues("proj", "*", null, null, null, null,
+                "updated_on:desc", null, 0, 10))
+                .thenReturn(new RedmineIssue.Page(List.of(summaryIssue), 1, 0, 10));
+        when(client.getIssue(101)).thenReturn(issue1);
+        when(client.downloadAttachment(att1.contentUrl()))
+                .thenReturn("OAuth integration guide".getBytes());
+
+        String result = tools.searchAttachmentContent("OAuth", null, "proj", null);
+
+        assertThat(result).contains("Attachment content search for \"OAuth\" in project proj");
+        assertThat(result).contains("Issue #101");
+        assertThat(result).contains("OAuth");
+    }
+
+    @Test
+    void shouldRequireIssueIdOrProjectId() {
+        String result = tools.searchAttachmentContent("test", null, null, null);
+
+        assertThat(result).contains("At least one of issueId or projectId must be provided");
+    }
+
+    @Test
+    void shouldBeCaseInsensitive() {
+        var att = new RedmineAttachment(50, "doc.txt", 100, "text/plain",
+                "http://redmine/download/50/doc.txt", null,
+                new IdName(1, "Alice"), "2025-03-01");
+        var issue = issueWithAttachments(100, List.of(att));
+        when(client.getIssue(100)).thenReturn(issue);
+        when(client.downloadAttachment(att.contentUrl()))
+                .thenReturn("The OAUTH protocol is used here".getBytes());
+
+        String result = tools.searchAttachmentContent("oauth", 100, null, null);
+
+        assertThat(result).contains("Found 1 matches in 1 attachments");
+    }
+
     // --- helpers ---
 
     private static byte[] generatePng(int width, int height) throws Exception {

@@ -65,7 +65,17 @@ public record RedmineIssue(
             int id,
             IdName user,
             String notes,
-            @JsonProperty("created_on") String createdOn
+            @JsonProperty("created_on") String createdOn,
+            List<Detail> details
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Detail(
+            String property,
+            String name,
+            @JsonProperty("old_value") String oldValue,
+            @JsonProperty("new_value") String newValue
     ) {
     }
 

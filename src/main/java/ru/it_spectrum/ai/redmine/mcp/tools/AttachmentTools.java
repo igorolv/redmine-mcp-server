@@ -8,6 +8,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
+import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -33,6 +34,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import javax.imageio.ImageIO;
 
@@ -247,6 +249,124 @@ public class AttachmentTools {
                     .isError(true)
                     .build();
         }
+    }
+
+    @McpTool(description = "Search for text across attachments of a specific issue or all recent issues in a project. " +
+            "Extracts text from PDF, DOCX, XLSX, PPTX and text files, then searches for the query. " +
+            "Returns matching snippets with context. At least one of issueId or projectId must be provided.")
+    public String searchAttachmentContent(
+            @McpToolParam(description = "Text to search for (case-insensitive)") String query,
+            @McpToolParam(description = "Issue ID to search attachments of (optional)", required = false) Integer issueId,
+            @McpToolParam(description = "Project identifier to search across recent issues (optional)", required = false) String projectId,
+            @McpToolParam(description = "Max issues to scan when searching by project, default 10", required = false) Integer limit
+    ) {
+        if (issueId == null && (projectId == null || projectId.isBlank())) {
+            return "At least one of issueId or projectId must be provided";
+        }
+
+        int actualLimit = limit != null ? Math.min(Math.max(limit, 1), 50) : 10;
+        int contextRadius = 100;
+
+        // Collect target issues
+        List<RedmineIssue> issues = new ArrayList<>();
+        if (issueId != null) {
+            var issue = client.getIssue(issueId);
+            if (issue == null) {
+                return "Issue #%d not found".formatted(issueId);
+            }
+            issues.add(issue);
+        } else {
+            var page = client.listIssues(projectId, "*", null, null, null, null,
+                    "updated_on:desc", null, 0, actualLimit);
+            issues.addAll(page.issues());
+            // Re-fetch each with attachments
+            var fullIssues = new ArrayList<RedmineIssue>();
+            for (var issue : issues) {
+                var full = client.getIssue(issue.id());
+                if (full != null) {
+                    fullIssues.add(full);
+                }
+            }
+            issues = fullIssues;
+        }
+
+        String queryLower = query.toLowerCase(Locale.ROOT);
+        var sb = new StringBuilder();
+        String scope = issueId != null ? "issue #%d".formatted(issueId)
+                : "project %s".formatted(projectId);
+        sb.append("Attachment content search for \"%s\" in %s\n".formatted(query, scope));
+
+        int totalMatches = 0;
+        int matchingAttachments = 0;
+        int matchingIssues = 0;
+        int scannedAttachments = 0;
+        int scannedIssues = 0;
+
+        for (var issue : issues) {
+            if (issue.attachments() == null || issue.attachments().isEmpty()) {
+                continue;
+            }
+            scannedIssues++;
+            boolean issueHasMatch = false;
+
+            for (var att : issue.attachments()) {
+                String ext = getFileExtension(att.filename());
+                String contentType = att.contentType() != null ? att.contentType() : "";
+
+                if (!isDocumentContent(ext, contentType) && !isTextContent(contentType, att.filename())) {
+                    continue;
+                }
+
+                scannedAttachments++;
+                String text;
+                try {
+                    text = extractAttachmentTextOrThrow(att);
+                } catch (Exception e) {
+                    continue;
+                }
+
+                String textLower = text.toLowerCase(Locale.ROOT);
+                var matches = new ArrayList<String>();
+                int searchFrom = 0;
+                while (searchFrom < textLower.length() && matches.size() < 5) {
+                    int idx = textLower.indexOf(queryLower, searchFrom);
+                    if (idx < 0) break;
+
+                    int snippetStart = Math.max(0, idx - contextRadius);
+                    int snippetEnd = Math.min(text.length(), idx + query.length() + contextRadius);
+                    String snippet = text.substring(snippetStart, snippetEnd)
+                            .replace("\n", " ").strip();
+                    if (snippetStart > 0) snippet = "..." + snippet;
+                    if (snippetEnd < text.length()) snippet = snippet + "...";
+                    matches.add(snippet);
+
+                    searchFrom = idx + query.length();
+                    totalMatches++;
+                }
+
+                if (!matches.isEmpty()) {
+                    if (!issueHasMatch) {
+                        sb.append("\nIssue #%d: %s\n".formatted(issue.id(), issue.subject()));
+                        issueHasMatch = true;
+                        matchingIssues++;
+                    }
+                    matchingAttachments++;
+                    sb.append("  [%d] %s (%s, %s)\n".formatted(
+                            att.id(), att.filename(), att.contentType(), formatSize(att.filesize())));
+                    for (var snippet : matches) {
+                        sb.append("    %s\n".formatted(snippet));
+                    }
+                }
+            }
+        }
+
+        if (totalMatches == 0) {
+            sb.append("\nNo matches found");
+        }
+        sb.append("\nFound %d matches in %d attachments across %d issues (scanned %d attachments in %d issues)\n"
+                .formatted(totalMatches, matchingAttachments, matchingIssues, scannedAttachments, scannedIssues));
+
+        return sb.toString();
     }
 
     // --- Image processing ---

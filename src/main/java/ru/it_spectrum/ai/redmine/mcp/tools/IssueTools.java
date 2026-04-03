@@ -8,9 +8,24 @@ import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class IssueTools {
+    private static final int MAX_TREE_DEPTH = 5;
+    private static final int MAX_TREE_ISSUES = 50;
+    private static final int DEFAULT_TREE_DEPTH = 2;
+
     private final RedmineClient client;
 
     public IssueTools(RedmineClient client) {
@@ -145,6 +160,182 @@ public class IssueTools {
         return sb.toString();
     }
 
+    @McpTool(description = "Build a full issue dependency tree: parent chain up to root, " +
+            "subtasks down to specified depth, and direct relations. " +
+            "Shows hierarchy with status and assignee for each node. " +
+            "Useful for understanding task breakdown and dependencies at a glance.")
+    public String getIssueTree(
+            @McpToolParam(description = "Issue ID number") int issueId,
+            @McpToolParam(description = "How deep to traverse children, default 2, max 5", required = false) Integer depth
+    ) {
+        int actualDepth = depth != null ? Math.min(Math.max(depth, 0), MAX_TREE_DEPTH) : DEFAULT_TREE_DEPTH;
+
+        var visited = new HashSet<Integer>();
+        var fetchCount = new int[]{0};
+
+        RedmineIssue root = fetchForTree(issueId, visited, fetchCount);
+        if (root == null) {
+            return "Issue #%d not found".formatted(issueId);
+        }
+
+        var sb = new StringBuilder();
+        sb.append("Issue tree for #%d: %s\n".formatted(root.id(), root.subject()));
+
+        // Parent chain
+        var parents = new ArrayList<RedmineIssue>();
+        parents.add(root);
+        RedmineIssue current = root;
+        while (current.parent() != null && fetchCount[0] < MAX_TREE_ISSUES) {
+            RedmineIssue parent = fetchForTree(current.parent().id(), visited, fetchCount);
+            if (parent == null) break;
+            parents.add(parent);
+            current = parent;
+        }
+
+        if (parents.size() > 1) {
+            sb.append("\nParent chain:\n");
+            for (int i = parents.size() - 1; i >= 0; i--) {
+                var issue = parents.get(i);
+                String indent = "  ".repeat(parents.size() - 1 - i);
+                String prefix = i < parents.size() - 1 ? indent + "\u2514\u2500 " : indent;
+                sb.append(prefix);
+                appendTreeNode(sb, issue, issue.id() == issueId);
+            }
+        }
+
+        // Subtree
+        sb.append("\nSubtree (depth %d):\n".formatted(actualDepth));
+        appendSubtree(sb, root, actualDepth, 0, "", true, visited, fetchCount, issueId);
+
+        // Relations from the starting issue
+        if (root.relations() != null && !root.relations().isEmpty()) {
+            sb.append("\nRelations:\n");
+            for (var rel : root.relations()) {
+                int relatedId = rel.issueId() == root.id() ? rel.issueToId() : rel.issueId();
+                if (rel.issueId() == root.id()) {
+                    sb.append("  #%d %s #%d".formatted(root.id(), rel.relationType(), relatedId));
+                } else {
+                    sb.append("  #%d %s #%d".formatted(relatedId, rel.relationType(), root.id()));
+                }
+                if (rel.delay() != null && rel.delay() != 0) {
+                    sb.append(" (delay: %d days)".formatted(rel.delay()));
+                }
+                sb.append("\n");
+            }
+        }
+
+        sb.append("\nSummary: %d issues loaded".formatted(fetchCount[0]));
+        if (fetchCount[0] >= MAX_TREE_ISSUES) {
+            sb.append(" (limit reached, tree may be incomplete)");
+        }
+        sb.append("\n");
+
+        return sb.toString();
+    }
+
+    @McpTool(description = "Get the full change history of a Redmine issue. " +
+            "Parses journal entries to show a timeline of status transitions, assignment changes, " +
+            "priority changes, and other field modifications with human-readable names. " +
+            "Also computes time spent in each status.")
+    public String getIssueHistory(
+            @McpToolParam(description = "Issue ID number") int issueId
+    ) {
+        var issue = client.getIssue(issueId);
+        if (issue == null) {
+            return "Issue #%d not found".formatted(issueId);
+        }
+
+        // Build reference data maps for name resolution
+        var refMaps = buildReferenceMaps(issue);
+
+        var sb = new StringBuilder();
+        sb.append("History of #%d: %s\n".formatted(issue.id(), issue.subject()));
+        sb.append("Project: %s | Tracker: %s | Current status: %s\n".formatted(
+                name(issue.project()), name(issue.tracker()), name(issue.status())));
+
+        sb.append("\nTimeline:\n");
+
+        // Creation entry
+        sb.append("  %s  [Created] by %s\n".formatted(
+                formatTimestamp(issue.createdOn()), name(issue.author())));
+        sb.append("    Status: %s | Priority: %s".formatted(
+                name(issue.status()), name(issue.priority())));
+        if (issue.assignedTo() != null) {
+            sb.append(" | Assigned to: %s".formatted(issue.assignedTo().name()));
+        }
+        sb.append("\n");
+
+        // Journal entries
+        // Track status changes for duration calculation
+        var statusChanges = new ArrayList<StatusChange>();
+        String initialStatus = findInitialStatus(issue, refMaps);
+        statusChanges.add(new StatusChange(initialStatus, issue.createdOn()));
+
+        if (issue.journals() != null) {
+            for (var journal : issue.journals()) {
+                boolean hasChanges = false;
+                var changes = new StringBuilder();
+
+                if (journal.details() != null) {
+                    for (var detail : journal.details()) {
+                        String line = formatDetail(detail, refMaps);
+                        if (line != null) {
+                            changes.append("    %s\n".formatted(line));
+                            hasChanges = true;
+                        }
+
+                        // Track status changes
+                        if ("attr".equals(detail.property()) && "status_id".equals(detail.name())
+                                && detail.newValue() != null) {
+                            String statusName = resolveName(refMaps, "status_id", detail.newValue());
+                            statusChanges.add(new StatusChange(statusName, journal.createdOn()));
+                        }
+                    }
+                }
+
+                boolean hasNotes = journal.notes() != null && !journal.notes().isBlank();
+
+                if (hasChanges || hasNotes) {
+                    sb.append("\n  %s  [Updated] by %s\n".formatted(
+                            formatTimestamp(journal.createdOn()),
+                            journal.user() != null ? journal.user().name() : "unknown"));
+                    sb.append(changes);
+                    if (hasNotes) {
+                        String note = journal.notes().length() > 200
+                                ? journal.notes().substring(0, 200) + "..."
+                                : journal.notes();
+                        sb.append("    Note: \"%s\"\n".formatted(note.replace("\n", " ")));
+                    }
+                }
+            }
+        }
+
+        // Status durations
+        if (statusChanges.size() > 1 || !statusChanges.isEmpty()) {
+            sb.append("\nStatus durations:\n");
+            for (int i = 0; i < statusChanges.size(); i++) {
+                var change = statusChanges.get(i);
+                String from = formatTimestamp(change.timestamp);
+                String to;
+                String duration;
+
+                if (i + 1 < statusChanges.size()) {
+                    var next = statusChanges.get(i + 1);
+                    to = formatTimestamp(next.timestamp);
+                    duration = computeDuration(change.timestamp, next.timestamp);
+                } else {
+                    to = "present";
+                    duration = computeDuration(change.timestamp, null);
+                }
+
+                sb.append("  %-16s %s \u2192 %s (%s)\n".formatted(
+                        change.statusName + ":", from, to, duration));
+            }
+        }
+
+        return sb.toString();
+    }
+
     @McpTool(description = "Get detailed information about a specific Redmine issue by its ID. " +
             "Returns full issue details including description, status, assignee, dates, " +
             "subtasks (children), relations, notes (journals), and attachments list.")
@@ -269,8 +460,251 @@ public class IssueTools {
         }
     }
 
+    // --- Tree helpers ---
+
+    private RedmineIssue fetchForTree(int issueId, Set<Integer> visited, int[] fetchCount) {
+        if (!visited.add(issueId) || fetchCount[0] >= MAX_TREE_ISSUES) {
+            return null;
+        }
+        fetchCount[0]++;
+        return client.getIssueForTree(issueId);
+    }
+
+    private void appendTreeNode(StringBuilder sb, RedmineIssue issue, boolean isCurrent) {
+        sb.append("#%d %s [%s] %s".formatted(
+                issue.id(), issue.subject(), name(issue.tracker()), name(issue.status())));
+        if (issue.assignedTo() != null) {
+            sb.append(" (%s)".formatted(issue.assignedTo().name()));
+        }
+        if (isCurrent) {
+            sb.append(" \u2190 current");
+        }
+        sb.append("\n");
+    }
+
+    private void appendSubtree(StringBuilder sb, RedmineIssue issue, int maxDepth,
+                                int currentDepth, String prefix, boolean isLast,
+                                Set<Integer> visited, int[] fetchCount, int currentIssueId) {
+        String connector = currentDepth == 0 ? "  " : (isLast ? "\u2514\u2500 " : "\u251C\u2500 ");
+        sb.append(prefix).append(connector);
+        appendTreeNode(sb, issue, issue.id() == currentIssueId);
+
+        if (issue.children() == null || issue.children().isEmpty()) {
+            return;
+        }
+
+        if (currentDepth >= maxDepth) {
+            // Show children as compact stubs at depth boundary
+            String childPrefix = currentDepth == 0 ? "  " : prefix + (isLast ? "   " : "\u2502  ");
+            for (int i = 0; i < issue.children().size(); i++) {
+                var child = issue.children().get(i);
+                String childConnector = i == issue.children().size() - 1 ? "\u2514\u2500 " : "\u251C\u2500 ";
+                sb.append(childPrefix).append(childConnector);
+                sb.append("#%d %s".formatted(child.id(), child.subject()));
+                if (child.tracker() != null) {
+                    sb.append(" [%s]".formatted(child.tracker().name()));
+                }
+                sb.append("\n");
+            }
+            return;
+        }
+
+        String childPrefix = currentDepth == 0 ? "  " : prefix + (isLast ? "   " : "\u2502  ");
+        var children = issue.children();
+        for (int i = 0; i < children.size(); i++) {
+            if (fetchCount[0] >= MAX_TREE_ISSUES) {
+                sb.append(childPrefix).append("  ... (limit reached)\n");
+                break;
+            }
+            var child = children.get(i);
+            RedmineIssue fullChild = fetchForTree(child.id(), visited, fetchCount);
+            if (fullChild != null) {
+                appendSubtree(sb, fullChild, maxDepth, currentDepth + 1,
+                        childPrefix, i == children.size() - 1, visited, fetchCount, currentIssueId);
+            } else {
+                // Already visited or fetch limit reached — show minimal info
+                String childConnector = i == children.size() - 1 ? "\u2514\u2500 " : "\u251C\u2500 ";
+                sb.append(childPrefix).append(childConnector);
+                sb.append("#%d %s".formatted(child.id(), child.subject()));
+                if (child.tracker() != null) {
+                    sb.append(" [%s]".formatted(child.tracker().name()));
+                }
+                sb.append("\n");
+            }
+        }
+    }
+
+    // --- History helpers ---
+
+    private record StatusChange(String statusName, String timestamp) {
+    }
+
+    private Map<String, Map<String, String>> buildReferenceMaps(RedmineIssue issue) {
+        var refMaps = new HashMap<String, Map<String, String>>();
+
+        // Statuses
+        var statusMap = new HashMap<String, String>();
+        for (var s : client.getIssueStatuses()) {
+            statusMap.put(String.valueOf(s.id()), s.name());
+        }
+        refMaps.put("status_id", statusMap);
+
+        // Priorities
+        var priorityMap = new HashMap<String, String>();
+        for (var p : client.getIssuePriorities()) {
+            priorityMap.put(String.valueOf(p.id()), p.name());
+        }
+        refMaps.put("priority_id", priorityMap);
+
+        // Trackers
+        var trackerMap = new HashMap<String, String>();
+        for (var t : client.getTrackers()) {
+            trackerMap.put(String.valueOf(t.id()), t.name());
+        }
+        refMaps.put("tracker_id", trackerMap);
+
+        // Versions (project-specific)
+        if (issue.project() != null) {
+            var versionMap = new HashMap<String, String>();
+            for (var v : client.getProjectVersions(String.valueOf(issue.project().id()))) {
+                versionMap.put(String.valueOf(v.id()), v.name());
+            }
+            refMaps.put("fixed_version_id", versionMap);
+        }
+
+        // Users — collect from issue data
+        var userMap = new HashMap<String, String>();
+        if (issue.author() != null) {
+            userMap.put(String.valueOf(issue.author().id()), issue.author().name());
+        }
+        if (issue.assignedTo() != null) {
+            userMap.put(String.valueOf(issue.assignedTo().id()), issue.assignedTo().name());
+        }
+        if (issue.journals() != null) {
+            for (var j : issue.journals()) {
+                if (j.user() != null) {
+                    userMap.put(String.valueOf(j.user().id()), j.user().name());
+                }
+            }
+        }
+        refMaps.put("assigned_to_id", userMap);
+
+        return refMaps;
+    }
+
+    private String findInitialStatus(RedmineIssue issue, Map<String, Map<String, String>> refMaps) {
+        // Walk journals backwards to find the first status change and get its old_value
+        if (issue.journals() != null) {
+            for (var journal : issue.journals()) {
+                if (journal.details() != null) {
+                    for (var detail : journal.details()) {
+                        if ("attr".equals(detail.property()) && "status_id".equals(detail.name())
+                                && detail.oldValue() != null) {
+                            return resolveName(refMaps, "status_id", detail.oldValue());
+                        }
+                    }
+                }
+            }
+        }
+        // No status changes found — current status is the initial status
+        return name(issue.status());
+    }
+
+    private String formatDetail(RedmineIssue.Detail detail, Map<String, Map<String, String>> refMaps) {
+        if (!"attr".equals(detail.property()) && !"cf".equals(detail.property())) {
+            return null;
+        }
+
+        String fieldName = formatFieldName(detail.name());
+        String oldVal = resolveDetailValue(detail.property(), detail.name(), detail.oldValue(), refMaps);
+        String newVal = resolveDetailValue(detail.property(), detail.name(), detail.newValue(), refMaps);
+
+        if (oldVal != null && newVal != null) {
+            return "%s: %s \u2192 %s".formatted(fieldName, oldVal, newVal);
+        } else if (newVal != null) {
+            return "%s: set to %s".formatted(fieldName, newVal);
+        } else if (oldVal != null) {
+            return "%s: %s cleared".formatted(fieldName, oldVal);
+        }
+        return null;
+    }
+
+    private static final Map<String, String> FIELD_NAMES = Map.ofEntries(
+            Map.entry("status_id", "Status"),
+            Map.entry("assigned_to_id", "Assigned to"),
+            Map.entry("priority_id", "Priority"),
+            Map.entry("tracker_id", "Tracker"),
+            Map.entry("fixed_version_id", "Target version"),
+            Map.entry("done_ratio", "Done ratio"),
+            Map.entry("subject", "Subject"),
+            Map.entry("description", "Description"),
+            Map.entry("due_date", "Due date"),
+            Map.entry("start_date", "Start date"),
+            Map.entry("estimated_hours", "Estimated hours"),
+            Map.entry("category_id", "Category"),
+            Map.entry("parent_id", "Parent task"),
+            Map.entry("is_private", "Private")
+    );
+
+    private String formatFieldName(String name) {
+        return FIELD_NAMES.getOrDefault(name, name);
+    }
+
+    private String resolveDetailValue(String property, String name, String value,
+                                       Map<String, Map<String, String>> refMaps) {
+        if (value == null) return null;
+
+        if ("attr".equals(property)) {
+            var map = refMaps.get(name);
+            if (map != null) {
+                return map.getOrDefault(value, value);
+            }
+            // For done_ratio, append %
+            if ("done_ratio".equals(name)) {
+                return value + "%";
+            }
+        }
+        return value;
+    }
+
+    private String resolveName(Map<String, Map<String, String>> refMaps, String field, String id) {
+        var map = refMaps.get(field);
+        if (map != null) {
+            return map.getOrDefault(id, id);
+        }
+        return id;
+    }
+
+    private String formatTimestamp(String timestamp) {
+        if (timestamp == null) return "?";
+        // Trim to "YYYY-MM-DD HH:MM" for readability
+        if (timestamp.length() >= 16) {
+            return timestamp.substring(0, 10) + " " + timestamp.substring(11, 16);
+        }
+        return timestamp;
+    }
+
+    private String computeDuration(String from, String to) {
+        try {
+            OffsetDateTime start = OffsetDateTime.parse(from, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            OffsetDateTime end = to != null
+                    ? OffsetDateTime.parse(to, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                    : OffsetDateTime.now();
+            long days = Duration.between(start, end).toDays();
+            if (days == 0) {
+                long hours = Duration.between(start, end).toHours();
+                return hours <= 1 ? "< 1 hour" : hours + " hours";
+            }
+            return days == 1 ? "1 day" : days + " days";
+        } catch (DateTimeParseException e) {
+            return "?";
+        }
+    }
+
+    // --- Common helpers ---
+
     private String name(IdName idName) {
-        return idName != null ? idName.name() : "—";
+        return idName != null ? idName.name() : "\u2014";
     }
 
     private boolean isMarkdown(String filename) {
