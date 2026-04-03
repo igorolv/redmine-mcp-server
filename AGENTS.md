@@ -1,7 +1,7 @@
 # Redmine MCP Server — Setup Guide for AI Agents
 
 This is a local MCP server that provides read-only access to a corporate Redmine instance.
-It exposes 25 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, and Redmine reference data.
+It exposes 35 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, reference data, and project analytics.
 
 Step-by-step setup guides: [Claude Code](CLAUDE_CODE_SETUP.md) | [Qwen Code](QWEN_CODE_SETUP.md)
 
@@ -84,7 +84,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 
 ## Available tools
 
-The current implementation exposes **25 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, and reference-data domains.
+The current implementation exposes **35 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, and analytics domains.
 
 | Tool | Description |
 |---|---|
@@ -97,11 +97,15 @@ The current implementation exposes **25 read-only MCP tools** across user, proje
 | `searchIssues` | Full-text search across issues with detailed results. Params: `query`, `projectId`, `limit`, `offset` |
 | `searchAll` | Global search across all content (issues, wiki, news, changesets). Params: `query`, `limit`, `offset` |
 | `getIssue` | Get full issue details (description, notes, relations, custom fields, attachments). Params: `issueId` |
+| `getMyIssues` | List issues assigned to the current user. Params: `projectId`, `statusId`, `sort`, `limit`, `offset` (all optional) |
+| `getIssueTree` | Build full dependency tree: parent chain up, subtasks down, relations. Params: `issueId`, `depth` (optional, default 2, max 5) |
+| `getIssueHistory` | Full change history with timeline of status/assignment/priority changes and status durations. Params: `issueId` |
 | `listAttachments` | List all attachments of an issue. Params: `issueId` |
 | `getAttachmentContent` | Get content of an attachment. Supports text files (txt, log, xml, json, csv, etc.), PDF, Word (.docx), Excel (.xlsx), and PowerPoint (.pptx). For images use `getImageAttachment`. Params: `attachmentId` |
 | `getAttachmentTextInfo` | Get extracted-text metadata for a text/document attachment, including extraction type, total text size, and chunking plan for large files. Params: `attachmentId` |
 | `getAttachmentTextChunk` | Get one chunk of extracted attachment text for large text/document files. Useful for agent-side summarization pipelines. Params: `attachmentId`, `chunkIndex`, `chunkSize` (optional) |
 | `getImageAttachment` | Download an image attachment (PNG, JPEG, GIF, BMP, WebP) with automatic resizing for AI visual analysis. Params: `attachmentId`, `maxWidth` (optional, default 1024) |
+| `searchAttachmentContent` | Search for text across attachments of an issue or project. Extracts text from PDF/DOCX/XLSX/PPTX/text, returns matching snippets. Params: `query`, `issueId`, `projectId`, `limit` |
 | `getWikiPage` | Get wiki page content and attachments. Params: `projectId`, `pageTitle` |
 | `listWikiPages` | List all wiki pages in a project. Params: `projectId` |
 | `listTimeEntries` | List time entries with filters (project, issue, user, date range). Params: `projectId`, `issueId`, `userId`, `from`, `to`, `limit`, `offset` |
@@ -109,10 +113,16 @@ The current implementation exposes **25 read-only MCP tools** across user, proje
 | `listStatuses` | List all available issue statuses (ID + name). Useful for filtering in listIssues |
 | `listTrackers` | List all available trackers (ID + name). Useful for filtering in listIssues |
 | `listPriorities` | List all available issue priorities (ID + name). Useful for filtering in listIssues |
-| `getMyIssues` | List issues assigned to the current user. Params: `projectId`, `statusId`, `sort`, `limit`, `offset` (all optional) |
 | `listIssueCategories` | List issue categories for a project (ID + name). Params: `projectId` |
 | `listQueries` | List saved queries (custom filters) available in Redmine. Params: `limit`, `offset` |
 | `listTimeEntryActivities` | List all time entry activity types (ID + name). Useful when logging time |
+| `getProjectSummary` | Aggregated project stats: issue counts by status/tracker/priority/assignee, overdue count, hours. Params: `projectId`, `versionId` (optional) |
+| `getUserWorkload` | User workload analysis: open issues by project and priority, overdue, top issues. Params: `userId` (optional), `projectId` (optional) |
+| `getVersionChangelog` | All issues for a version grouped by tracker with open/closed stats. Params: `projectId`, `versionId` |
+| `getBlockerChain` | Recursive traversal of blocks/blocked_by relations to show full dependency chain. Params: `issueId` |
+| `getStaleIssues` | Open issues not updated for N days, sorted by staleness. Params: `projectId`, `daysSinceUpdate` (default 30), `limit` |
+| `getReleaseRisks` | Risk assessment: open blockers, overdue, high-priority, unassigned issues for a version. Params: `projectId`, `versionId` |
+| `compareVersions` | Diff between two versions: unique issues, shared issues, completion percentages. Params: `projectId`, `versionId1`, `versionId2` |
 
 All tools are **read-only**. No data in Redmine is modified.
 
