@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
@@ -23,9 +24,14 @@ import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -302,6 +308,50 @@ class DocumentExtractionTest {
         assertThat(result).contains("not found");
     }
 
+    @Test
+    void shouldReportProgressForAttachmentContent() throws Exception {
+        byte[] pdfBytes = generatePdf("Hello from PDF document");
+        var attachment = attachment(101, "report.pdf", "application/pdf", pdfBytes.length);
+        var context = progressContext("token");
+
+        when(client.getAttachment(101)).thenReturn(attachment);
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pdfBytes);
+
+        tools.getAttachmentContent(101, context);
+
+        verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
+    }
+
+    @Test
+    void shouldReportProgressForAttachmentTextInfo() throws Exception {
+        byte[] docxBytes = generateDocx("Hello from Word document", "Second paragraph");
+        var attachment = attachment(102, "document.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docxBytes.length);
+        var context = progressContext("token");
+
+        when(client.getAttachment(102)).thenReturn(attachment);
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
+
+        tools.getAttachmentTextInfo(102, context);
+
+        verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
+    }
+
+    @Test
+    void shouldReportProgressForAttachmentTextChunk() throws Exception {
+        byte[] docxBytes = generateDocx(generateParagraphs("Paragraph", 10, 600));
+        var attachment = attachment(103, "large.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docxBytes.length);
+        var context = progressContext("token");
+
+        when(client.getAttachment(103)).thenReturn(attachment);
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
+
+        tools.getAttachmentTextChunk(103, 0, 4_000, context);
+
+        verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
+    }
+
     // --- Corrupt document ---
 
     @Test
@@ -438,5 +488,16 @@ class DocumentExtractionTest {
                 new IdName(1, "Test User"),
                 "2025-01-01T00:00:00Z"
         );
+    }
+
+    private static McpSyncRequestContext progressContext(Object token) {
+        var context = mock(McpSyncRequestContext.class);
+        var request = io.modelcontextprotocol.spec.McpSchema.CallToolRequest.builder()
+                .name("attachmentTool")
+                .arguments(Map.of())
+                .progressToken(token)
+                .build();
+        when(context.request()).thenReturn(request);
+        return context;
     }
 }

@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
+import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
@@ -78,8 +79,10 @@ public class AttachmentTools {
             "For other binary files returns only metadata. " +
             "Use listAttachments first to get the attachment ID.")
     public String getAttachmentContent(
-            @McpToolParam(description = "Attachment ID number") int attachmentId
+            @McpToolParam(description = "Attachment ID number") int attachmentId,
+            McpSyncRequestContext context
     ) {
+        ProgressSupport.report(context, 0, 3, "Loading attachment metadata");
         var attachment = client.getAttachment(attachmentId);
         if (attachment == null) {
             return "Attachment #%d not found".formatted(attachmentId);
@@ -91,6 +94,7 @@ public class AttachmentTools {
         sb.append("Created: %s by %s\n\n".formatted(attachment.createdOn(),
                 attachment.author() != null ? attachment.author().name() : "unknown"));
 
+        ProgressSupport.report(context, 1, 3, "Extracting attachment content");
         String text = textExtractor.extractText(attachment);
         if (text != null) {
             sb.append("--- Content ---\n");
@@ -106,21 +110,30 @@ public class AttachmentTools {
             }
         }
 
+        ProgressSupport.done(context, "Attachment content ready");
         return sb.toString();
+    }
+
+    public String getAttachmentContent(int attachmentId) {
+        return getAttachmentContent(attachmentId, null);
     }
 
     @McpTool(description = "Get metadata about extracted attachment text and the chunking plan. " +
             "Useful before requesting chunks from large text, PDF, DOCX, XLSX, or PPTX attachments.")
     public AttachmentTextInfo getAttachmentTextInfo(
-            @McpToolParam(description = "Attachment ID number") int attachmentId
+            @McpToolParam(description = "Attachment ID number") int attachmentId,
+            McpSyncRequestContext context
     ) {
+        ProgressSupport.report(context, 0, 3, "Loading attachment metadata");
         var attachment = client.getAttachment(attachmentId);
         if (attachment == null) {
             throw new IllegalArgumentException("Attachment #%d not found".formatted(attachmentId));
         }
 
+        ProgressSupport.report(context, 1, 3, "Extracting attachment text");
         String text = extractTextOrThrow(attachment);
         int chunkCount = countChunks(text, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP);
+        ProgressSupport.done(context, "Attachment text info ready");
 
         return new AttachmentTextInfo(
                 attachment.id(),
@@ -135,20 +148,28 @@ public class AttachmentTools {
         );
     }
 
+    public AttachmentTextInfo getAttachmentTextInfo(int attachmentId) {
+        return getAttachmentTextInfo(attachmentId, null);
+    }
+
     @McpTool(description = "Get one chunk of extracted attachment text for large documents. " +
             "Use getAttachmentTextInfo first to determine chunk count and recommended chunk size.")
     public AttachmentTextChunk getAttachmentTextChunk(
             @McpToolParam(description = "Attachment ID number") int attachmentId,
             @McpToolParam(description = "Chunk index starting from 0") int chunkIndex,
-            @McpToolParam(description = "Chunk size in characters, default 12000", required = false) Integer chunkSize
+            @McpToolParam(description = "Chunk size in characters, default 12000", required = false) Integer chunkSize,
+            McpSyncRequestContext context
     ) {
+        ProgressSupport.report(context, 0, 4, "Loading attachment metadata");
         var attachment = client.getAttachment(attachmentId);
         if (attachment == null) {
             throw new IllegalArgumentException("Attachment #%d not found".formatted(attachmentId));
         }
 
+        ProgressSupport.report(context, 1, 4, "Extracting attachment text");
         String text = extractTextOrThrow(attachment);
         int actualChunkSize = normalizeChunkSize(chunkSize);
+        ProgressSupport.report(context, 2, 4, "Building text chunks");
         var chunks = splitIntoChunks(text, actualChunkSize, DEFAULT_CHUNK_OVERLAP);
 
         if (chunkIndex < 0 || chunkIndex >= chunks.size()) {
@@ -159,6 +180,7 @@ public class AttachmentTools {
         }
 
         var chunk = chunks.get(chunkIndex);
+        ProgressSupport.done(context, "Attachment text chunk ready");
         return new AttachmentTextChunk(
                 attachment.id(),
                 attachment.filename(),
@@ -168,6 +190,10 @@ public class AttachmentTools {
                 chunk.endChar(),
                 chunk.text()
         );
+    }
+
+    public AttachmentTextChunk getAttachmentTextChunk(int attachmentId, int chunkIndex, Integer chunkSize) {
+        return getAttachmentTextChunk(attachmentId, chunkIndex, chunkSize, null);
     }
 
     @McpTool(description = "Download an image attachment from Redmine and return it for visual analysis. " +
@@ -238,11 +264,14 @@ public class AttachmentTools {
             @McpToolParam(description = "Text to search for (case-insensitive)") String query,
             @McpToolParam(description = "Issue ID to search attachments of (optional)", required = false) Integer issueId,
             @McpToolParam(description = "Project identifier to search across recent issues (optional)", required = false) String projectId,
-            @McpToolParam(description = "Max issues to scan when searching by project, default 10", required = false) Integer limit
+            @McpToolParam(description = "Max issues to scan when searching by project, default 10", required = false) Integer limit,
+            McpSyncRequestContext context
     ) {
         if (issueId == null && (projectId == null || projectId.isBlank())) {
             return "At least one of issueId or projectId must be provided";
         }
+
+        ProgressSupport.stage(context, "Preparing attachment search");
 
         int actualLimit = limit != null ? Math.min(Math.max(limit, 1), 50) : 10;
         int contextRadius = 100;
@@ -259,13 +288,31 @@ public class AttachmentTools {
                     "updated_on:desc", null, 0, actualLimit);
             issues.addAll(page.issues());
             var fullIssues = new ArrayList<RedmineIssue>();
+            int totalIssues = issues.size();
+            int loadedIssues = 0;
             for (var issue : issues) {
                 var full = client.getIssue(issue.id());
+                loadedIssues++;
+                if (loadedIssues == 1 || loadedIssues == totalIssues || loadedIssues % 5 == 0) {
+                    ProgressSupport.report(context, loadedIssues, Math.max(totalIssues, 1),
+                            "Loaded issue details %d/%d".formatted(loadedIssues, totalIssues));
+                }
                 if (full != null) {
                     fullIssues.add(full);
                 }
             }
             issues = fullIssues;
+        }
+
+        int extractableAttachments = issues.stream()
+                .filter(issue -> issue.attachments() != null)
+                .mapToInt(issue -> (int) issue.attachments().stream()
+                        .filter(att -> textExtractor.isTextExtractable(att.filename(), att.contentType()))
+                        .count())
+                .sum();
+        if (extractableAttachments > 0) {
+            ProgressSupport.report(context, 0, extractableAttachments,
+                    "Scanning %d extractable attachments".formatted(extractableAttachments));
         }
 
         String queryLower = query.toLowerCase(Locale.ROOT);
@@ -278,6 +325,7 @@ public class AttachmentTools {
         int matchingAttachments = 0;
         int matchingIssues = 0;
         int scannedAttachments = 0;
+        int processedAttachments = 0;
         int scannedIssues = 0;
 
         for (var issue : issues) {
@@ -293,6 +341,14 @@ public class AttachmentTools {
                 }
 
                 scannedAttachments++;
+                processedAttachments++;
+                if (extractableAttachments > 0
+                        && (processedAttachments == 1 || processedAttachments == extractableAttachments
+                        || processedAttachments % 5 == 0)) {
+                    ProgressSupport.report(context, processedAttachments, extractableAttachments,
+                            "Scanning attachment %d/%d: %s"
+                                    .formatted(processedAttachments, extractableAttachments, att.filename()));
+                }
                 String text = textExtractor.extractText(att);
                 if (text == null) {
                     continue;
@@ -338,8 +394,13 @@ public class AttachmentTools {
         }
         sb.append("\nFound %d matches in %d attachments across %d issues (scanned %d attachments in %d issues)\n"
                 .formatted(totalMatches, matchingAttachments, matchingIssues, scannedAttachments, scannedIssues));
+        ProgressSupport.done(context, "Attachment search finished");
 
         return sb.toString();
+    }
+
+    public String searchAttachmentContent(String query, Integer issueId, String projectId, Integer limit) {
+        return searchAttachmentContent(query, issueId, projectId, limit, null);
     }
 
     // --- Image processing ---

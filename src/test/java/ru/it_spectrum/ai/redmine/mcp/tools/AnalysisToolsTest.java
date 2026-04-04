@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
@@ -16,12 +17,17 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -87,6 +93,38 @@ class AnalysisToolsTest {
 
         assertThat(result).contains("Overdue: 1 issues past due date");
         assertThat(result).contains("1 overdue");
+    }
+
+    @Test
+    void shouldReportProgressForProjectSummary() {
+        var context = progressContext("token");
+        when(client.listIssues(eq("proj"), eq("open"), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), eq(0), eq(100)))
+                .thenReturn(new RedmineIssue.Page(List.of(issue(1, "Fix bug", "New", "Normal",
+                        "Bug", "Alice", null, null)), 1, 0, 100));
+        when(client.listIssues(eq("proj"), eq("closed"), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), eq(0), eq(1)))
+                .thenReturn(new RedmineIssue.Page(List.of(), 0, 0, 1));
+
+        tools.getProjectSummary("proj", null, context);
+
+        verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
+    }
+
+    @Test
+    void shouldNotReportProgressWithoutTokenForProjectSummary() {
+        var context = progressContext(null);
+        when(client.listIssues(eq("proj"), eq("open"), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), eq(0), eq(100)))
+                .thenReturn(new RedmineIssue.Page(List.of(issue(1, "Fix bug", "New", "Normal",
+                        "Bug", "Alice", null, null)), 1, 0, 100));
+        when(client.listIssues(eq("proj"), eq("closed"), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), eq(0), eq(1)))
+                .thenReturn(new RedmineIssue.Page(List.of(), 0, 0, 1));
+
+        tools.getProjectSummary("proj", null, context);
+
+        verify(context, never()).progress(any(java.util.function.Consumer.class));
     }
 
     // ── getUserWorkload ────────────────────────────────────────────────
@@ -202,6 +240,29 @@ class AnalysisToolsTest {
         String result = tools.getBlockerChain(999);
 
         assertThat(result).isEqualTo("Issue #999 not found");
+    }
+
+    @Test
+    void shouldReportProgressForBlockerChain() {
+        var issue100 = issueWithRelations(100, "Main task", "In Progress", List.of(
+                new RedmineIssue.Relation(1, 200, 100, "blocks", null),
+                new RedmineIssue.Relation(2, 100, 300, "blocks", null)
+        ));
+        var issue200 = issueWithRelations(200, "Prerequisite", "New", List.of(
+                new RedmineIssue.Relation(1, 200, 100, "blocks", null)
+        ));
+        var issue300 = issueWithRelations(300, "Downstream", "New", List.of(
+                new RedmineIssue.Relation(2, 100, 300, "blocks", null)
+        ));
+        var context = progressContext("token");
+
+        when(client.getIssueForTree(100)).thenReturn(issue100);
+        when(client.getIssueForTree(200)).thenReturn(issue200);
+        when(client.getIssueForTree(300)).thenReturn(issue300);
+
+        tools.getBlockerChain(100, context);
+
+        verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
     }
 
     // ── getStaleIssues ─────────────────────────────────────────────────
@@ -405,5 +466,16 @@ class AnalysisToolsTest {
                 "2025-01-01T00:00:00Z", updatedOn,
                 null, null, null, null, null
         );
+    }
+
+    private static McpSyncRequestContext progressContext(Object token) {
+        var context = mock(McpSyncRequestContext.class);
+        var request = io.modelcontextprotocol.spec.McpSchema.CallToolRequest.builder()
+                .name("analysisTool")
+                .arguments(Map.of())
+                .progressToken(token)
+                .build();
+        when(context.request()).thenReturn(request);
+        return context;
     }
 }

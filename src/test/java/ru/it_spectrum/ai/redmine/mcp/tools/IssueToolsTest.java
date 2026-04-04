@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssues;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
@@ -13,8 +14,13 @@ import ru.it_spectrum.ai.redmine.mcp.model.RedmineSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -287,6 +293,29 @@ class IssueToolsTest {
         assertThat(result).contains("#300 relates #100");
     }
 
+    @Test
+    void shouldReportProgressForIssueTree() {
+        var child = new RedmineIssue.Child(400, new IdName(1, "Task"), "Child task");
+        var currentIssue = treeIssue(300, "Current task", "In Progress", "proj",
+                new IdName(200, "Parent task"), List.of(child), null);
+        var parentIssue = treeIssue(200, "Parent task", "Open", "proj",
+                new IdName(100, "Root task"), List.of(new RedmineIssue.Child(300, new IdName(1, "Task"), "Current task")), null);
+        var rootIssue = treeIssue(100, "Root task", "Open", "proj",
+                null, List.of(new RedmineIssue.Child(200, new IdName(1, "Task"), "Parent task")), null);
+        var childIssue = treeIssue(400, "Child task", "New", "proj",
+                new IdName(300, "Current task"), List.of(), null);
+        var context = progressContext("token");
+
+        when(client.getIssueForTree(300)).thenReturn(currentIssue);
+        when(client.getIssueForTree(200)).thenReturn(parentIssue);
+        when(client.getIssueForTree(100)).thenReturn(rootIssue);
+        when(client.getIssueForTree(400)).thenReturn(childIssue);
+
+        tools.getIssueTree(300, null, context);
+
+        verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
+    }
+
     // --- getIssueHistory ---
 
     @Test
@@ -408,5 +437,16 @@ class IssueToolsTest {
                 "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
                 null, null, null, relations, children
         );
+    }
+
+    private static McpSyncRequestContext progressContext(Object token) {
+        var context = mock(McpSyncRequestContext.class);
+        var request = io.modelcontextprotocol.spec.McpSchema.CallToolRequest.builder()
+                .name("issueTool")
+                .arguments(Map.of())
+                .progressToken(token)
+                .build();
+        when(context.request()).thenReturn(request);
+        return context;
     }
 }

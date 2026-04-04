@@ -235,10 +235,12 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
 │   │   ├── RedmineVersion.java            — версия/майлстоун
 │   │   └── RedmineWikiPage.java           — wiki-страница
 │   └── tools/
-│       ├── AttachmentTools.java           — 5 MCP-инструментов для вложений и изображений
+│       ├── AnalysisTools.java             — 7 MCP-инструментов аналитики и анализа рисков
+│       ├── AttachmentTools.java           — 6 MCP-инструментов для вложений и изображений
 │       ├── ContextTools.java              — 5 MCP-инструментов для контекста задачи
-│       ├── IssueTools.java                — 5 MCP-инструментов для задач и поиска
+│       ├── IssueTools.java                — 7 MCP-инструментов для задач и поиска
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
+│       ├── ProgressSupport.java           — вспомогательный helper для MCP progress notifications
 │       ├── ReferenceDataTools.java        — 6 MCP-инструментов для справочников
 │       ├── TimeEntryTools.java            — 2 MCP-инструмента для трудозатрат
 │       ├── UserTools.java                 — 1 MCP-инструмент для текущего пользователя

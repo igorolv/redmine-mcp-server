@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
@@ -17,9 +18,15 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.Map;
 import javax.imageio.ImageIO;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -242,7 +249,50 @@ class AttachmentToolsTest {
         assertThat(result).contains("Found 1 matches in 1 attachments");
     }
 
+    @Test
+    void shouldReportProgressWhenSearchingAttachmentContent() {
+        var att = new RedmineAttachment(50, "spec.txt", 100, "text/plain",
+                "http://redmine/download/50/spec.txt", null,
+                new IdName(1, "Alice"), "2025-03-01");
+        var issue = issueWithAttachments(100, List.of(att));
+        var context = progressContext("token");
+        when(client.getIssue(100)).thenReturn(issue);
+        when(client.downloadAttachment(att.contentUrl()))
+                .thenReturn("OAuth integration guide".getBytes());
+
+        tools.searchAttachmentContent("OAuth", 100, null, null, context);
+
+        verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
+    }
+
+    @Test
+    void shouldNotReportProgressWithoutToken() {
+        var att = new RedmineAttachment(50, "spec.txt", 100, "text/plain",
+                "http://redmine/download/50/spec.txt", null,
+                new IdName(1, "Alice"), "2025-03-01");
+        var issue = issueWithAttachments(100, List.of(att));
+        var context = progressContext(null);
+        when(client.getIssue(100)).thenReturn(issue);
+        when(client.downloadAttachment(att.contentUrl()))
+                .thenReturn("OAuth integration guide".getBytes());
+
+        tools.searchAttachmentContent("OAuth", 100, null, null, context);
+
+        verify(context, never()).progress(any(java.util.function.Consumer.class));
+    }
+
     // --- helpers ---
+
+    private static McpSyncRequestContext progressContext(Object token) {
+        var context = mock(McpSyncRequestContext.class);
+        var request = McpSchema.CallToolRequest.builder()
+                .name("searchAttachmentContent")
+                .arguments(Map.of())
+                .progressToken(token)
+                .build();
+        when(context.request()).thenReturn(request);
+        return context;
+    }
 
     private static byte[] generatePng(int width, int height) throws Exception {
         var image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);

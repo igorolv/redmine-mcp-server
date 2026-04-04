@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
+import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
@@ -166,14 +167,16 @@ public class IssueTools {
             "Useful for understanding task breakdown and dependencies at a glance.")
     public String getIssueTree(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "How deep to traverse children, default 2, max 5", required = false) Integer depth
+            @McpToolParam(description = "How deep to traverse children, default 2, max 5", required = false) Integer depth,
+            McpSyncRequestContext context
     ) {
         int actualDepth = depth != null ? Math.min(Math.max(depth, 0), MAX_TREE_DEPTH) : DEFAULT_TREE_DEPTH;
 
         var visited = new HashSet<Integer>();
         var fetchCount = new int[]{0};
+        ProgressSupport.stage(context, "Loading issue tree root");
 
-        RedmineIssue root = fetchForTree(issueId, visited, fetchCount);
+        RedmineIssue root = fetchForTree(issueId, visited, fetchCount, context, "Loaded tree node");
         if (root == null) {
             return "Issue #%d not found".formatted(issueId);
         }
@@ -185,8 +188,9 @@ public class IssueTools {
         var parents = new ArrayList<RedmineIssue>();
         parents.add(root);
         RedmineIssue current = root;
+        ProgressSupport.stage(context, "Loading parent chain");
         while (current.parent() != null && fetchCount[0] < MAX_TREE_ISSUES) {
-            RedmineIssue parent = fetchForTree(current.parent().id(), visited, fetchCount);
+            RedmineIssue parent = fetchForTree(current.parent().id(), visited, fetchCount, context, "Loaded parent");
             if (parent == null) break;
             parents.add(parent);
             current = parent;
@@ -204,11 +208,13 @@ public class IssueTools {
         }
 
         // Subtree
+        ProgressSupport.stage(context, "Loading subtree");
         sb.append("\nSubtree (depth %d):\n".formatted(actualDepth));
-        appendSubtree(sb, root, actualDepth, 0, "", true, visited, fetchCount, issueId);
+        appendSubtree(sb, root, actualDepth, 0, "", true, visited, fetchCount, issueId, context);
 
         // Relations from the starting issue
         if (root.relations() != null && !root.relations().isEmpty()) {
+            ProgressSupport.stage(context, "Formatting relations");
             sb.append("\nRelations:\n");
             for (var rel : root.relations()) {
                 int relatedId = rel.issueId() == root.id() ? rel.issueToId() : rel.issueId();
@@ -229,8 +235,13 @@ public class IssueTools {
             sb.append(" (limit reached, tree may be incomplete)");
         }
         sb.append("\n");
+        ProgressSupport.done(context, "Issue tree ready");
 
         return sb.toString();
+    }
+
+    public String getIssueTree(int issueId, Integer depth) {
+        return getIssueTree(issueId, depth, null);
     }
 
     @McpTool(description = "Get the full change history of a Redmine issue. " +
@@ -463,10 +474,17 @@ public class IssueTools {
     // --- Tree helpers ---
 
     private RedmineIssue fetchForTree(int issueId, Set<Integer> visited, int[] fetchCount) {
+        return fetchForTree(issueId, visited, fetchCount, null, "Loaded issue");
+    }
+
+    private RedmineIssue fetchForTree(int issueId, Set<Integer> visited, int[] fetchCount,
+                                      McpSyncRequestContext context, String messagePrefix) {
         if (!visited.add(issueId) || fetchCount[0] >= MAX_TREE_ISSUES) {
             return null;
         }
         fetchCount[0]++;
+        ProgressSupport.report(context, fetchCount[0], MAX_TREE_ISSUES,
+                "%s %d/%d".formatted(messagePrefix, fetchCount[0], MAX_TREE_ISSUES));
         return client.getIssueForTree(issueId);
     }
 
@@ -484,7 +502,8 @@ public class IssueTools {
 
     private void appendSubtree(StringBuilder sb, RedmineIssue issue, int maxDepth,
                                 int currentDepth, String prefix, boolean isLast,
-                                Set<Integer> visited, int[] fetchCount, int currentIssueId) {
+                                Set<Integer> visited, int[] fetchCount, int currentIssueId,
+                                McpSyncRequestContext context) {
         String connector = currentDepth == 0 ? "  " : (isLast ? "\u2514\u2500 " : "\u251C\u2500 ");
         sb.append(prefix).append(connector);
         appendTreeNode(sb, issue, issue.id() == currentIssueId);
@@ -517,10 +536,10 @@ public class IssueTools {
                 break;
             }
             var child = children.get(i);
-            RedmineIssue fullChild = fetchForTree(child.id(), visited, fetchCount);
+            RedmineIssue fullChild = fetchForTree(child.id(), visited, fetchCount, context, "Loaded subtree node");
             if (fullChild != null) {
                 appendSubtree(sb, fullChild, maxDepth, currentDepth + 1,
-                        childPrefix, i == children.size() - 1, visited, fetchCount, currentIssueId);
+                        childPrefix, i == children.size() - 1, visited, fetchCount, currentIssueId, context);
             } else {
                 // Already visited or fetch limit reached — show minimal info
                 String childConnector = i == children.size() - 1 ? "\u2514\u2500 " : "\u251C\u2500 ";
