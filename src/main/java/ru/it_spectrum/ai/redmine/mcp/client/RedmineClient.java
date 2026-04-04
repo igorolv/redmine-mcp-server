@@ -14,6 +14,7 @@ import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineVersion;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineWikiPage;
 
+import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -93,8 +94,9 @@ public class RedmineClient {
      * Download attachment content as bytes.
      */
     public byte[] downloadAttachment(String contentUrl) {
+        URI uri = URI.create(contentUrl);
         return restClient.get()
-                .uri(contentUrl)
+                .uri(uri)
                 .retrieve()
                 .body(byte[].class);
     }

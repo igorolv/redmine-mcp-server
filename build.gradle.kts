@@ -48,9 +48,12 @@ tasks.test {
 }
 
 tasks.register<Test>("integrationTest") {
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
     useJUnitPlatform {
         includeTags("integration")
     }
     group = "verification"
     description = "Runs integration tests that require a live Redmine connection"
+    shouldRunAfter(tasks.test)
 }
