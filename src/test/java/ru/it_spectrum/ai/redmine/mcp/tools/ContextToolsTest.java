@@ -92,6 +92,24 @@ class ContextToolsTest {
         }
 
         @Test
+        void shouldIncludeFormattedCustomFields() {
+            var issue = issueBuilder(123, "Implement date filter")
+                    .customFields(List.of(
+                            new RedmineIssue.CustomField(3, "# в системе заказчика", false, "502167"),
+                            new RedmineIssue.CustomField(10, "applications", true, List.of("rtk", "sskv"))
+                    ))
+                    .build();
+
+            when(client.getIssue(123)).thenReturn(issue);
+
+            String result = tools.getIssueFullContext(123);
+
+            assertThat(result).contains("Custom fields:");
+            assertThat(result).contains("[3] # в системе заказчика: 502167");
+            assertThat(result).contains("[10] applications: rtk, sskv");
+        }
+
+        @Test
         void shouldHandleIssueNotFound() {
             when(client.getIssue(999)).thenReturn(null);
             assertThat(tools.getIssueFullContext(999)).contains("not found");
@@ -436,6 +454,7 @@ class ContextToolsTest {
         private List<RedmineIssue.Relation> relations;
         private List<RedmineIssue.Journal> journals;
         private List<RedmineAttachment> attachments;
+        private List<RedmineIssue.CustomField> customFields;
 
         IssueBuilder(int id, String subject) {
             this.id = id;
@@ -450,6 +469,7 @@ class ContextToolsTest {
         IssueBuilder relations(List<RedmineIssue.Relation> r) { this.relations = r; return this; }
         IssueBuilder journals(List<RedmineIssue.Journal> j) { this.journals = j; return this; }
         IssueBuilder attachments(List<RedmineAttachment> a) { this.attachments = a; return this; }
+        IssueBuilder customFields(List<RedmineIssue.CustomField> c) { this.customFields = c; return this; }
 
         RedmineIssue build() {
             return new RedmineIssue(id,
@@ -459,7 +479,7 @@ class ContextToolsTest {
                     null, null, subject, description,
                     null, null, 0, null, null, false,
                     "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
-                    null, attachments, journals, relations, children);
+                    customFields, attachments, journals, relations, children);
         }
     }
 

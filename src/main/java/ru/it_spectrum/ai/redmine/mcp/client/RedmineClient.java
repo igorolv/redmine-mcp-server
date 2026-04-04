@@ -15,7 +15,11 @@ import ru.it_spectrum.ai.redmine.mcp.model.RedmineVersion;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineWikiPage;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
@@ -132,7 +136,7 @@ public class RedmineClient {
                                          Integer assignedToId, Integer priorityId, Integer versionId,
                                          String sort, int offset, int limit) {
         return listIssues(projectId, statusId, trackerId, assignedToId, priorityId, versionId,
-                sort, null, offset, limit);
+                sort, null, Map.of(), offset, limit);
     }
 
     /**
@@ -141,19 +145,34 @@ public class RedmineClient {
     public RedmineIssue.Page listIssues(String projectId, String statusId, Integer trackerId,
                                          Integer assignedToId, Integer priorityId, Integer versionId,
                                          String sort, Integer queryId, int offset, int limit) {
-        var sb = new StringBuilder("/issues.json?");
-        if (projectId != null && !projectId.isBlank()) sb.append("project_id=").append(projectId).append("&");
-        if (queryId != null) sb.append("query_id=").append(queryId).append("&");
-        if (statusId != null && !statusId.isBlank()) sb.append("status_id=").append(statusId).append("&");
-        if (trackerId != null) sb.append("tracker_id=").append(trackerId).append("&");
-        if (assignedToId != null) sb.append("assigned_to_id=").append(assignedToId).append("&");
-        if (priorityId != null) sb.append("priority_id=").append(priorityId).append("&");
-        if (versionId != null) sb.append("fixed_version_id=").append(versionId).append("&");
-        if (sort != null && !sort.isBlank()) sb.append("sort=").append(sort).append("&");
-        sb.append("offset=").append(offset).append("&limit=").append(limit);
+        return listIssues(projectId, statusId, trackerId, assignedToId, priorityId, versionId,
+                sort, queryId, Map.of(), offset, limit);
+    }
+
+    /**
+     * List issues with flexible filtering, including dynamic custom field filters like cf_10=rtk.
+     */
+    public RedmineIssue.Page listIssues(String projectId, String statusId, Integer trackerId,
+                                         Integer assignedToId, Integer priorityId, Integer versionId,
+                                         String sort, Integer queryId, Map<String, String> customFieldFilters,
+                                         int offset, int limit) {
+        var params = new LinkedHashMap<String, String>();
+        putIfPresent(params, "project_id", projectId);
+        putIfPresent(params, "query_id", queryId);
+        putIfPresent(params, "status_id", statusId);
+        putIfPresent(params, "tracker_id", trackerId);
+        putIfPresent(params, "assigned_to_id", assignedToId);
+        putIfPresent(params, "priority_id", priorityId);
+        putIfPresent(params, "fixed_version_id", versionId);
+        putIfPresent(params, "sort", sort);
+        if (customFieldFilters != null) {
+            customFieldFilters.forEach((key, value) -> putIfPresent(params, key, value));
+        }
+        params.put("offset", String.valueOf(offset));
+        params.put("limit", String.valueOf(limit));
 
         var response = restClient.get()
-                .uri(sb.toString())
+                .uri("/issues.json" + buildQueryString(params))
                 .retrieve()
                 .body(RedmineIssue.Page.class);
 
@@ -366,6 +385,30 @@ public class RedmineClient {
                 .append("&limit=").append(limit);
 
         return sb.toString();
+    }
+
+    private void putIfPresent(Map<String, String> params, String key, Object value) {
+        if (value == null) {
+            return;
+        }
+        String text = value.toString();
+        if (text.isBlank()) {
+            return;
+        }
+        params.put(key, text);
+    }
+
+    private String buildQueryString(Map<String, String> params) {
+        if (params.isEmpty()) {
+            return "";
+        }
+        return "?" + params.entrySet().stream()
+                .map(entry -> encode(entry.getKey()) + "=" + encode(entry.getValue()))
+                .collect(Collectors.joining("&"));
+    }
+
+    private String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     public record SearchWithIssues(

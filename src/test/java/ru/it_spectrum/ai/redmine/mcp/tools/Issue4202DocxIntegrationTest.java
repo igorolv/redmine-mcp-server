@@ -144,6 +144,37 @@ class Issue4202DocxIntegrationTest {
         System.out.println("Decoded image size: " + image.getWidth() + "x" + image.getHeight());
     }
 
+    @Test
+    void shouldLoadCustomFieldsFromIssue4202() {
+        var issue = loadIssue4202();
+
+        assertThat(issue.customFields())
+                .as("Issue #%d should expose custom fields".formatted(ISSUE_ID))
+                .isNotNull()
+                .isNotEmpty();
+
+        var customerSystemField = findCustomField(issue, "# в системе заказчика");
+        var mantisField = findCustomField(issue, "№ в Mantis");
+        var applicationsField = findCustomField(issue, "applications");
+
+        assertThat(customerSystemField.displayValue()).isEqualTo("502167");
+        assertThat(mantisField.values()).containsExactly("");
+        assertThat(mantisField.displayValue()).isEmpty();
+        assertThat(mantisField.isEmpty()).isTrue();
+        assertThat(applicationsField.isMultiple()).isTrue();
+        assertThat(applicationsField.values()).contains("rtk");
+        assertThat(applicationsField.displayValue()).isEqualTo("rtk");
+
+        System.out.println();
+        System.out.println("Custom fields for issue #" + ISSUE_ID + ":");
+        for (var customField : issue.customFields()) {
+            if (!customField.isEmpty()) {
+                System.out.println("  [" + customField.id() + "] " + customField.name()
+                        + " = " + customField.displayValue());
+            }
+        }
+    }
+
     private RedmineIssue loadIssue4202() {
         var issue = redmineClient.getIssue(ISSUE_ID);
 
@@ -209,6 +240,14 @@ class Issue4202DocxIntegrationTest {
         System.out.println("DOCX attachment: #" + attachment.id() + " " + attachment.filename()
                 + " (" + attachment.contentType() + ")");
         System.out.println("Content URL: " + attachment.contentUrl());
+    }
+
+    private RedmineIssue.CustomField findCustomField(RedmineIssue issue, String name) {
+        return issue.customFields().stream()
+                .filter(customField -> name.equals(customField.name()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "Issue #%d does not contain custom field '%s'".formatted(ISSUE_ID, name)));
     }
 
     private static String pickSearchQuery(String text) {

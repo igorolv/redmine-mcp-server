@@ -8,6 +8,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.OffsetDateTime;
@@ -36,6 +37,7 @@ public class IssueTools {
     @McpTool(description = "List issues in Redmine with flexible filtering by project, status, tracker, " +
             "assignee, priority, version, or saved query. Use statusId='*' to include closed issues. " +
             "Use queryId to apply a saved Redmine query (custom filter) — get available IDs via listQueries. " +
+            "Use customFieldFilters to pass native Redmine filters like 'cf_10=rtk&cf_3=502167'. " +
             "Supports sorting and pagination.")
     public String listIssues(
             @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
@@ -45,15 +47,22 @@ public class IssueTools {
             @McpToolParam(description = "Priority ID to filter by (optional)", required = false) Integer priorityId,
             @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId,
             @McpToolParam(description = "Saved query ID to apply (optional). Use listQueries to find available queries.", required = false) Integer queryId,
+            @McpToolParam(description = "Custom field filters in query-string form, e.g. 'cf_10=rtk&cf_3=502167' (optional)", required = false) String customFieldFilters,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc' (optional)", required = false) String sort,
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
+        Map<String, String> parsedCustomFieldFilters;
+        try {
+            parsedCustomFieldFilters = parseCustomFieldFilters(customFieldFilters);
+        } catch (IllegalArgumentException e) {
+            return e.getMessage();
+        }
 
         var page = client.listIssues(projectId, statusId, trackerId, assignedToId,
-                priorityId, versionId, sort, queryId, actualOffset, actualLimit);
+                priorityId, versionId, sort, queryId, parsedCustomFieldFilters, actualOffset, actualLimit);
 
         var sb = new StringBuilder();
         sb.append("Issues: %d total (showing %d-%d)\n\n".formatted(
@@ -66,6 +75,13 @@ public class IssueTools {
         }
 
         return sb.toString();
+    }
+
+    public String listIssues(String projectId, String statusId, Integer trackerId,
+                             Integer assignedToId, Integer priorityId, Integer versionId,
+                             Integer queryId, String sort, Integer limit, Integer offset) {
+        return listIssues(projectId, statusId, trackerId, assignedToId, priorityId, versionId,
+                queryId, null, sort, limit, offset);
     }
 
     @McpTool(description = "Search across all Redmine content — issues, wiki pages, news, documents, etc. " +
@@ -403,15 +419,7 @@ public class IssueTools {
             sb.append("\n--- Description ---\n%s\n".formatted(issue.description()));
         }
 
-        if (issue.customFields() != null && !issue.customFields().isEmpty()) {
-            sb.append("\nCustom fields:\n");
-            for (var cf : issue.customFields()) {
-                String val = cf.value() != null ? cf.value().toString() : "";
-                if (!val.isBlank() && !"[]".equals(val)) {
-                    sb.append("  %s: %s\n".formatted(cf.name(), val));
-                }
-            }
-        }
+        appendCustomFields(sb, issue.customFields());
 
         if (issue.relations() != null && !issue.relations().isEmpty()) {
             sb.append("\nRelations:\n");
@@ -608,6 +616,14 @@ public class IssueTools {
         }
         refMaps.put("assigned_to_id", userMap);
 
+        var customFieldMap = new HashMap<String, String>();
+        if (issue.customFields() != null) {
+            for (var customField : issue.customFields()) {
+                customFieldMap.put(String.valueOf(customField.id()), customField.name());
+            }
+        }
+        refMaps.put("cf", customFieldMap);
+
         return refMaps;
     }
 
@@ -634,7 +650,7 @@ public class IssueTools {
             return null;
         }
 
-        String fieldName = formatFieldName(detail.name());
+        String fieldName = formatFieldName(detail.property(), detail.name(), refMaps);
         String oldVal = resolveDetailValue(detail.property(), detail.name(), detail.oldValue(), refMaps);
         String newVal = resolveDetailValue(detail.property(), detail.name(), detail.newValue(), refMaps);
 
@@ -665,13 +681,21 @@ public class IssueTools {
             Map.entry("is_private", "Private")
     );
 
-    private String formatFieldName(String name) {
+    private String formatFieldName(String property, String name, Map<String, Map<String, String>> refMaps) {
+        if ("cf".equals(property)) {
+            var customFieldMap = refMaps.get("cf");
+            String customFieldName = customFieldMap != null ? customFieldMap.get(name) : null;
+            if (customFieldName != null && !customFieldName.isBlank()) {
+                return "%s [cf_%s]".formatted(customFieldName, name);
+            }
+            return "Custom field [cf_%s]".formatted(name);
+        }
         return FIELD_NAMES.getOrDefault(name, name);
     }
 
     private String resolveDetailValue(String property, String name, String value,
                                        Map<String, Map<String, String>> refMaps) {
-        if (value == null) return null;
+        if (value == null || value.isBlank()) return null;
 
         if ("attr".equals(property)) {
             var map = refMaps.get(name);
@@ -692,6 +716,62 @@ public class IssueTools {
             return map.getOrDefault(id, id);
         }
         return id;
+    }
+
+    private void appendCustomFields(StringBuilder sb, List<RedmineIssue.CustomField> customFields) {
+        if (customFields == null) {
+            return;
+        }
+
+        var nonEmptyFields = customFields.stream()
+                .filter(cf -> cf != null && !cf.isEmpty())
+                .toList();
+        if (nonEmptyFields.isEmpty()) {
+            return;
+        }
+
+        sb.append("\nCustom fields:\n");
+        for (var cf : nonEmptyFields) {
+            sb.append("  [%d] %s: %s\n".formatted(cf.id(), cf.name(), cf.displayValue()));
+        }
+    }
+
+    private Map<String, String> parseCustomFieldFilters(String customFieldFilters) {
+        if (customFieldFilters == null || customFieldFilters.isBlank()) {
+            return Map.of();
+        }
+
+        var filters = new LinkedHashMap<String, String>();
+        for (String token : customFieldFilters.split("[&\\r\\n]+")) {
+            String trimmed = token.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+
+            int separatorIndex = trimmed.indexOf('=');
+            if (separatorIndex <= 0 || separatorIndex == trimmed.length() - 1) {
+                throw new IllegalArgumentException(
+                        "Invalid customFieldFilters token '%s'. Use format like 'cf_10=rtk&cf_3=502167'."
+                                .formatted(trimmed));
+            }
+
+            String key = decodeQueryToken(trimmed.substring(0, separatorIndex));
+            String value = decodeQueryToken(trimmed.substring(separatorIndex + 1));
+            if (!key.matches("cf_\\d+")) {
+                throw new IllegalArgumentException(
+                        "Invalid custom field key '%s'. Expected keys like cf_10.".formatted(key));
+            }
+            if (value.isBlank()) {
+                throw new IllegalArgumentException(
+                        "Invalid custom field value for '%s'. Expected a non-empty value.".formatted(key));
+            }
+            filters.put(key, value);
+        }
+        return filters;
+    }
+
+    private String decodeQueryToken(String value) {
+        return URLDecoder.decode(value, StandardCharsets.UTF_8).trim();
     }
 
     private String formatTimestamp(String timestamp) {

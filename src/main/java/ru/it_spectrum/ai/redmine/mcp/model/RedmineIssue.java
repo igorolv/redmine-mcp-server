@@ -3,6 +3,8 @@ package ru.it_spectrum.ai.redmine.mcp.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -46,8 +48,58 @@ public record RedmineIssue(
     public record CustomField(
             int id,
             String name,
+            Boolean multiple,
             Object value
     ) {
+        public boolean isMultiple() {
+            return Boolean.TRUE.equals(multiple);
+        }
+
+        public List<String> values() {
+            if (value == null) {
+                return List.of();
+            }
+
+            var normalized = new ArrayList<String>();
+            appendValues(normalized, value);
+            return List.copyOf(normalized);
+        }
+
+        public boolean isEmpty() {
+            return values().stream().allMatch(v -> v == null || v.isBlank());
+        }
+
+        public String displayValue() {
+            return values().stream()
+                    .filter(v -> v != null && !v.isBlank())
+                    .map(String::trim)
+                    .reduce((left, right) -> left + ", " + right)
+                    .orElse("");
+        }
+
+        private static void appendValues(List<String> target, Object rawValue) {
+            if (rawValue == null) {
+                return;
+            }
+            if (rawValue instanceof String text) {
+                target.add(text);
+                return;
+            }
+            if (rawValue instanceof Iterable<?> iterable) {
+                for (var item : iterable) {
+                    appendValues(target, item);
+                }
+                return;
+            }
+            if (rawValue.getClass().isArray()) {
+                int length = Array.getLength(rawValue);
+                for (int i = 0; i < length; i++) {
+                    appendValues(target, Array.get(rawValue, i));
+                }
+                return;
+            }
+            target.add(rawValue.toString());
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

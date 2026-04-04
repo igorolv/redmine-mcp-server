@@ -104,13 +104,35 @@ class IssueToolsTest {
     @Test
     void shouldListIssuesWithQueryId() {
         var issues = List.of(issue(301, "Filtered issue", "Open", "test-project"));
-        when(client.listIssues(null, null, null, null, null, null, null, 7, 0, 25))
+        when(client.listIssues(null, null, null, null, null, null, null, 7, Map.of(), 0, 25))
                 .thenReturn(new RedmineIssue.Page(issues, 1, 0, 25));
 
         String result = tools.listIssues(null, null, null, null, null, null, 7, null, null, null);
 
         assertThat(result).contains("#301");
         assertThat(result).contains("Filtered issue");
+    }
+
+    @Test
+    void shouldListIssuesWithCustomFieldFilters() {
+        var issues = List.of(issue(302, "RTK issue", "Open", "test-project"));
+        when(client.listIssues(null, null, null, null, null, null, null, null,
+                Map.of("cf_10", "rtk", "cf_3", "502167"), 0, 25))
+                .thenReturn(new RedmineIssue.Page(issues, 1, 0, 25));
+
+        String result = tools.listIssues(null, null, null, null, null, null,
+                null, "cf_10=rtk&cf_3=502167", null, null, null);
+
+        assertThat(result).contains("#302");
+        assertThat(result).contains("RTK issue");
+    }
+
+    @Test
+    void shouldRejectInvalidCustomFieldFilters() {
+        String result = tools.listIssues(null, null, null, null, null, null,
+                null, "applications=rtk", null, null, null);
+
+        assertThat(result).contains("Invalid custom field key");
     }
 
     // --- getIssue ---
@@ -144,6 +166,37 @@ class IssueToolsTest {
         assertThat(result).contains("Subtasks (2):");
         assertThat(result).contains("#501 Fix null pointer [Bug]");
         assertThat(result).contains("#502 Write tests [Task]");
+    }
+
+    @Test
+    void shouldFormatCustomFieldsInGetIssue() {
+        var issue = new RedmineIssue(
+                101,
+                new IdName(1, "my-project"),
+                new IdName(1, "Bug"),
+                new IdName(1, "Open"),
+                new IdName(2, "Normal"),
+                new IdName(42, "John Doe"),
+                new IdName(42, "John Doe"),
+                null, null, null,
+                "Issue with custom fields", "Some description",
+                null, null, 0,
+                null, null, false,
+                "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
+                List.of(
+                        new RedmineIssue.CustomField(3, "# в системе заказчика", false, "502167"),
+                        new RedmineIssue.CustomField(10, "applications", true, List.of("rtk", "sskv")),
+                        new RedmineIssue.CustomField(16, "Решена в версии", false, "")
+                ),
+                null, null, null, null
+        );
+        when(client.getIssue(101)).thenReturn(issue);
+
+        String result = tools.getIssue(101);
+
+        assertThat(result).contains("[3] # в системе заказчика: 502167");
+        assertThat(result).contains("[10] applications: rtk, sskv");
+        assertThat(result).doesNotContain("Решена в версии");
     }
 
     @Test
@@ -397,6 +450,36 @@ class IssueToolsTest {
         assertThat(result).contains("[Created] by John");
         assertThat(result).contains("Status durations:");
         assertThat(result).contains("New:");
+    }
+
+    @Test
+    void shouldResolveCustomFieldNamesInHistory() {
+        var journals = List.of(
+                new RedmineIssue.Journal(1, new IdName(42, "John"), null,
+                        "2025-01-12T14:30:00Z",
+                        List.of(new RedmineIssue.Detail("cf", "10", null, "rtk")))
+        );
+        var issue = new RedmineIssue(
+                101, new IdName(1, "my-project"), new IdName(1, "Bug"),
+                new IdName(1, "New"), new IdName(2, "Normal"),
+                new IdName(42, "John"), null,
+                null, null, null,
+                "Custom field history", null,
+                null, null, 0, null, null, false,
+                "2025-01-10T10:00:00Z", "2025-01-12T14:30:00Z",
+                List.of(new RedmineIssue.CustomField(10, "applications", true, List.of("rtk"))),
+                null, journals, null, null
+        );
+
+        when(client.getIssue(101)).thenReturn(issue);
+        when(client.getIssueStatuses()).thenReturn(List.of(new IdName(1, "New")));
+        when(client.getIssuePriorities()).thenReturn(List.of(new IdName(2, "Normal")));
+        when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
+        when(client.getProjectVersions("1")).thenReturn(List.of());
+
+        String result = tools.getIssueHistory(101);
+
+        assertThat(result).contains("applications [cf_10]: set to rtk");
     }
 
     // --- helpers ---

@@ -73,18 +73,7 @@ public class ContextTools {
         sb.append(" | Done: %d%%\n".formatted(issue.doneRatio()));
 
         // Custom fields
-        if (issue.customFields() != null) {
-            var nonEmpty = issue.customFields().stream()
-                    .filter(cf -> cf.value() != null && !cf.value().toString().isBlank() && !"[]".equals(cf.value().toString()))
-                    .toList();
-            if (!nonEmpty.isEmpty()) {
-                sb.append("Custom: ");
-                sb.append(nonEmpty.stream()
-                        .map(cf -> "%s=%s".formatted(cf.name(), cf.value()))
-                        .collect(Collectors.joining(", ")));
-                sb.append("\n");
-            }
-        }
+        appendCustomFields(sb, issue.customFields());
 
         // Description
         if (issue.description() != null && !issue.description().isBlank()) {
@@ -819,6 +808,24 @@ public class ContextTools {
             case "copied_to" -> "copied_from";
             default -> type;
         };
+    }
+
+    private void appendCustomFields(StringBuilder sb, List<RedmineIssue.CustomField> customFields) {
+        if (customFields == null) {
+            return;
+        }
+
+        var nonEmptyFields = customFields.stream()
+                .filter(cf -> cf != null && !cf.isEmpty())
+                .toList();
+        if (nonEmptyFields.isEmpty()) {
+            return;
+        }
+
+        sb.append("Custom fields:\n");
+        for (var cf : nonEmptyFields) {
+            sb.append("  [%d] %s: %s\n".formatted(cf.id(), cf.name(), cf.displayValue()));
+        }
     }
 
     // --- Status helpers ---

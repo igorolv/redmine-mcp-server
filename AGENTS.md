@@ -93,7 +93,7 @@ The current implementation exposes **40 read-only MCP tools** across user, proje
 | `getProject` | Get project details (trackers, modules). Params: `projectId` |
 | `listProjectMembers` | List project members with roles. Params: `projectId`, `limit`, `offset` |
 | `listVersions` | List project versions/milestones. Params: `projectId` |
-| `listIssues` | List issues with filters (project, status, tracker, assignee, priority, version, saved query, sort). Params: `projectId`, `statusId`, `trackerId`, `assignedToId`, `priorityId`, `versionId`, `queryId`, `sort`, `limit`, `offset` |
+| `listIssues` | List issues with filters (project, status, tracker, assignee, priority, version, saved query, custom field filters, sort). Params: `projectId`, `statusId`, `trackerId`, `assignedToId`, `priorityId`, `versionId`, `queryId`, `customFieldFilters`, `sort`, `limit`, `offset` |
 | `searchIssues` | Full-text search across issues with detailed results. Params: `query`, `projectId`, `limit`, `offset` |
 | `searchAll` | Global search across all content (issues, wiki, news, changesets). Params: `query`, `limit`, `offset` |
 | `getIssue` | Get full issue details (description, notes, relations, custom fields, attachments). Params: `issueId` |
