@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
+import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
@@ -37,7 +38,7 @@ class DocumentExtractionTest {
 
     @BeforeEach
     void setUp() {
-        tools = new AttachmentTools(client, new AttachmentTextCache());
+        tools = new AttachmentTools(client, new DocumentTextExtractor(client, new AttachmentTextCache()));
     }
 
     // --- PDF ---
@@ -265,7 +266,8 @@ class DocumentExtractionTest {
         String result = tools.getAttachmentContent(10);
 
         assertThat(result).contains("photo.png");
-        assertThat(result).contains("Binary file");
+        assertThat(result).contains("Image file");
+        assertThat(result).contains("getImageAttachment");
         assertThat(result).doesNotContain("--- Content ---");
     }
 

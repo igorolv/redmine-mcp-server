@@ -3,25 +3,12 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
+import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
-
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.text.PDFTextStripper;
-import org.apache.poi.xslf.usermodel.XMLSlideShow;
-import org.apache.poi.xslf.usermodel.XSLFShape;
-import org.apache.poi.xslf.usermodel.XSLFSlide;
-import org.apache.poi.xslf.usermodel.XSLFTable;
-import org.apache.poi.xslf.usermodel.XSLFTextShape;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xwpf.usermodel.IBodyElement;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFParagraph;
-import org.apache.poi.xwpf.usermodel.XWPFTable;
 
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -30,7 +17,6 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -46,15 +32,14 @@ public class AttachmentTools {
     private static final int MAX_CHUNK_SIZE = 20_000;
     private static final int DEFAULT_CHUNK_OVERLAP = 1_200;
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
-    private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("pdf", "docx", "xlsx", "pptx");
     private static final int DEFAULT_MAX_WIDTH = 1024;
 
     private final RedmineClient client;
-    private final AttachmentTextCache textCache;
+    private final DocumentTextExtractor textExtractor;
 
-    public AttachmentTools(RedmineClient client, AttachmentTextCache textCache) {
+    public AttachmentTools(RedmineClient client, DocumentTextExtractor textExtractor) {
         this.client = client;
-        this.textCache = textCache;
+        this.textExtractor = textExtractor;
     }
 
     @McpTool(description = "List all attachments for a specific Redmine issue. " +
@@ -106,23 +91,19 @@ public class AttachmentTools {
         sb.append("Created: %s by %s\n\n".formatted(attachment.createdOn(),
                 attachment.author() != null ? attachment.author().name() : "unknown"));
 
-        String ext = getFileExtension(attachment.filename());
-        String contentType = attachment.contentType() != null ? attachment.contentType() : "";
-
-        if (isDocumentContent(ext, contentType)) {
-            byte[] content = client.downloadAttachment(attachment.contentUrl());
-            if (content != null) {
-                sb.append("--- Content ---\n");
-                sb.append(truncate(extractDocumentText(ext, contentType, content)));
-            }
-        } else if (isTextContent(contentType, attachment.filename())) {
-            byte[] content = client.downloadAttachment(attachment.contentUrl());
-            if (content != null) {
-                sb.append("--- Content ---\n");
-                sb.append(truncate(new String(content, StandardCharsets.UTF_8)));
-            }
+        String text = textExtractor.extractText(attachment);
+        if (text != null) {
+            sb.append("--- Content ---\n");
+            sb.append(truncate(text));
         } else {
-            sb.append("Binary file — content not displayed. Content URL: %s\n".formatted(attachment.contentUrl()));
+            String ext = textExtractor.getFileExtension(attachment.filename());
+            if (IMAGE_EXTENSIONS.contains(ext)) {
+                sb.append("Image file — use getImageAttachment to view. Content URL: %s\n"
+                        .formatted(attachment.contentUrl()));
+            } else {
+                sb.append("Binary file — content not displayed. Content URL: %s\n"
+                        .formatted(attachment.contentUrl()));
+            }
         }
 
         return sb.toString();
@@ -138,7 +119,7 @@ public class AttachmentTools {
             throw new IllegalArgumentException("Attachment #%d not found".formatted(attachmentId));
         }
 
-        String text = extractAttachmentTextOrThrow(attachment);
+        String text = extractTextOrThrow(attachment);
         int chunkCount = countChunks(text, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP);
 
         return new AttachmentTextInfo(
@@ -146,7 +127,7 @@ public class AttachmentTools {
                 attachment.filename(),
                 attachment.contentType(),
                 true,
-                detectExtractionType(attachment),
+                textExtractor.detectExtractionType(attachment),
                 text.length(),
                 DEFAULT_CHUNK_SIZE,
                 chunkCount,
@@ -166,7 +147,7 @@ public class AttachmentTools {
             throw new IllegalArgumentException("Attachment #%d not found".formatted(attachmentId));
         }
 
-        String text = extractAttachmentTextOrThrow(attachment);
+        String text = extractTextOrThrow(attachment);
         int actualChunkSize = normalizeChunkSize(chunkSize);
         var chunks = splitIntoChunks(text, actualChunkSize, DEFAULT_CHUNK_OVERLAP);
 
@@ -205,7 +186,7 @@ public class AttachmentTools {
                     .build();
         }
 
-        String ext = getFileExtension(attachment.filename());
+        String ext = textExtractor.getFileExtension(attachment.filename());
         String contentType = attachment.contentType() != null ? attachment.contentType() : "";
 
         if (!IMAGE_EXTENSIONS.contains(ext) && !contentType.startsWith("image/")) {
@@ -231,7 +212,6 @@ public class AttachmentTools {
             byte[] processedData = resizeImageIfNeeded(imageData, actualMaxWidth, ext);
             String base64 = Base64.getEncoder().encodeToString(processedData);
 
-            // If resized, output format is always PNG
             if (processedData != imageData) {
                 mimeType = "image/png";
             }
@@ -267,7 +247,6 @@ public class AttachmentTools {
         int actualLimit = limit != null ? Math.min(Math.max(limit, 1), 50) : 10;
         int contextRadius = 100;
 
-        // Collect target issues
         List<RedmineIssue> issues = new ArrayList<>();
         if (issueId != null) {
             var issue = client.getIssue(issueId);
@@ -279,7 +258,6 @@ public class AttachmentTools {
             var page = client.listIssues(projectId, "*", null, null, null, null,
                     "updated_on:desc", null, 0, actualLimit);
             issues.addAll(page.issues());
-            // Re-fetch each with attachments
             var fullIssues = new ArrayList<RedmineIssue>();
             for (var issue : issues) {
                 var full = client.getIssue(issue.id());
@@ -310,18 +288,13 @@ public class AttachmentTools {
             boolean issueHasMatch = false;
 
             for (var att : issue.attachments()) {
-                String ext = getFileExtension(att.filename());
-                String contentType = att.contentType() != null ? att.contentType() : "";
-
-                if (!isDocumentContent(ext, contentType) && !isTextContent(contentType, att.filename())) {
+                if (!textExtractor.isTextExtractable(att.filename(), att.contentType())) {
                     continue;
                 }
 
                 scannedAttachments++;
-                String text;
-                try {
-                    text = extractAttachmentTextOrThrow(att);
-                } catch (Exception e) {
+                String text = textExtractor.extractText(att);
+                if (text == null) {
                     continue;
                 }
 
@@ -395,149 +368,22 @@ public class AttachmentTools {
         return out.toByteArray();
     }
 
-    // --- Document text extraction ---
+    // --- Text helpers ---
 
-    private String extractAttachmentTextOrThrow(RedmineAttachment attachment) {
-        String cached = textCache.get(attachment.id());
-        if (cached != null) {
-            return cached;
-        }
-
-        String ext = getFileExtension(attachment.filename());
-        String contentType = attachment.contentType() != null ? attachment.contentType() : "";
-
-        if (!isDocumentContent(ext, contentType) && !isTextContent(contentType, attachment.filename())) {
+    private String extractTextOrThrow(RedmineAttachment attachment) {
+        String text = textExtractor.extractText(attachment);
+        if (text == null) {
             throw new IllegalArgumentException(
                     "Attachment #%d (%s) is not text-extractable"
                             .formatted(attachment.id(), attachment.filename())
             );
         }
-
-        byte[] content = client.downloadAttachment(attachment.contentUrl());
-        if (content == null) {
-            throw new IllegalStateException("Failed to download attachment #%d".formatted(attachment.id()));
-        }
-
-        String text;
-        if (isDocumentContent(ext, contentType)) {
-            text = extractDocumentText(ext, contentType, content);
-        } else {
-            text = new String(content, StandardCharsets.UTF_8);
-        }
-
-        text = normalizeExtractedText(text);
-        textCache.put(attachment.id(), text);
         return text;
     }
 
-    private String extractDocumentText(String ext, String contentType, byte[] data) {
-        try {
-            if ("pdf".equals(ext) || contentType.equals("application/pdf")) {
-                return extractPdfText(data);
-            } else if ("docx".equals(ext) || contentType.contains("wordprocessingml")) {
-                return extractDocxText(data);
-            } else if ("xlsx".equals(ext) || contentType.contains("spreadsheetml")) {
-                return extractXlsxText(data);
-            } else if ("pptx".equals(ext) || contentType.contains("presentationml")) {
-                return extractPptxText(data);
-            }
-            return "(unsupported document format)";
-        } catch (Exception e) {
-            return "(failed to extract text: %s)".formatted(e.getMessage());
-        }
-    }
-
-    private String extractPdfText(byte[] data) throws Exception {
-        try (var doc = Loader.loadPDF(data)) {
-            var stripper = new PDFTextStripper();
-            String text = stripper.getText(doc);
-            if (text == null || text.isBlank()) {
-                return "(PDF contains no extractable text — possibly a scanned image)";
-            }
-            return text;
-        }
-    }
-
-    private String extractDocxText(byte[] data) throws Exception {
-        try (var doc = new XWPFDocument(new ByteArrayInputStream(data))) {
-            var sb = new StringBuilder();
-            for (IBodyElement element : doc.getBodyElements()) {
-                if (element instanceof XWPFParagraph para) {
-                    String text = para.getText();
-                    if (text != null && !text.isBlank()) {
-                        sb.append(text).append("\n");
-                    }
-                } else if (element instanceof XWPFTable table) {
-                    sb.append("\n[Table]\n");
-                    for (var row : table.getRows()) {
-                        var cells = row.getTableCells().stream()
-                                .map(c -> c.getText().strip())
-                                .toList();
-                        sb.append(String.join(" | ", cells)).append("\n");
-                    }
-                    sb.append("\n");
-                }
-            }
-            if (sb.isEmpty()) return "(Word document contains no text)";
-            return sb.toString();
-        }
-    }
-
-    private String extractXlsxText(byte[] data) throws Exception {
-        try (var wb = new XSSFWorkbook(new ByteArrayInputStream(data))) {
-            var sb = new StringBuilder();
-            var formatter = new org.apache.poi.ss.usermodel.DataFormatter();
-            for (int i = 0; i < wb.getNumberOfSheets(); i++) {
-                var sheet = wb.getSheetAt(i);
-                sb.append("--- Sheet: %s ---\n".formatted(sheet.getSheetName()));
-                for (var row : sheet) {
-                    var cells = new java.util.ArrayList<String>();
-                    for (var cell : row) {
-                        cells.add(formatter.formatCellValue(cell));
-                    }
-                    if (cells.stream().anyMatch(c -> !c.isEmpty())) {
-                        sb.append(String.join(" | ", cells)).append("\n");
-                    }
-                }
-                sb.append("\n");
-            }
-            if (sb.isEmpty()) return "(Excel file contains no data)";
-            return sb.toString();
-        }
-    }
-
-    private String extractPptxText(byte[] data) throws Exception {
-        try (var pptx = new XMLSlideShow(new ByteArrayInputStream(data))) {
-            var sb = new StringBuilder();
-            int slideNum = 0;
-            for (XSLFSlide slide : pptx.getSlides()) {
-                slideNum++;
-                var texts = new java.util.ArrayList<String>();
-                for (XSLFShape shape : slide.getShapes()) {
-                    if (shape instanceof XSLFTextShape textShape) {
-                        String text = textShape.getText();
-                        if (text != null && !text.isBlank()) {
-                            texts.add(text.strip());
-                        }
-                    }
-                    if (shape instanceof XSLFTable table) {
-                        for (int r = 0; r < table.getNumberOfRows(); r++) {
-                            var cells = new java.util.ArrayList<String>();
-                            for (int c = 0; c < table.getNumberOfColumns(); c++) {
-                                cells.add(table.getCell(r, c).getText().strip());
-                            }
-                            texts.add(String.join(" | ", cells));
-                        }
-                    }
-                }
-                if (!texts.isEmpty()) {
-                    sb.append("--- Slide %d ---\n".formatted(slideNum));
-                    sb.append(String.join("\n", texts)).append("\n\n");
-                }
-            }
-            if (sb.isEmpty()) return "(Presentation contains no text)";
-            return sb.toString();
-        }
+    private int normalizeChunkSize(Integer chunkSize) {
+        if (chunkSize == null) return DEFAULT_CHUNK_SIZE;
+        return Math.max(MIN_CHUNK_SIZE, Math.min(MAX_CHUNK_SIZE, chunkSize));
     }
 
     // --- Text chunking ---
@@ -617,60 +463,6 @@ public class AttachmentTools {
     }
 
     // --- Helpers ---
-
-    private String detectExtractionType(RedmineAttachment attachment) {
-        String ext = getFileExtension(attachment.filename());
-        String contentType = attachment.contentType() != null ? attachment.contentType() : "";
-
-        if ("pdf".equals(ext) || contentType.equals("application/pdf")) return "pdf";
-        if ("docx".equals(ext) || contentType.contains("wordprocessingml")) return "docx";
-        if ("xlsx".equals(ext) || contentType.contains("spreadsheetml")) return "xlsx";
-        if ("pptx".equals(ext) || contentType.contains("presentationml")) return "pptx";
-        return "text";
-    }
-
-    private String normalizeExtractedText(String text) {
-        if (text == null) return "";
-
-        String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
-        normalized = normalized.replaceAll("[\\t\\x0B\\f]+", " ");
-        normalized = normalized.replaceAll("\n{3,}", "\n\n");
-        return normalized.strip();
-    }
-
-    private int normalizeChunkSize(Integer chunkSize) {
-        if (chunkSize == null) return DEFAULT_CHUNK_SIZE;
-        return Math.max(MIN_CHUNK_SIZE, Math.min(MAX_CHUNK_SIZE, chunkSize));
-    }
-
-    private boolean isTextContent(String contentType, String filename) {
-        if (contentType != null) {
-            if (contentType.startsWith("text/")) return true;
-            if (contentType.contains("json") || contentType.contains("xml") || contentType.contains("csv")) return true;
-        }
-        if (filename != null) {
-            String lower = filename.toLowerCase();
-            return lower.endsWith(".txt") || lower.endsWith(".log") || lower.endsWith(".csv")
-                    || lower.endsWith(".xml") || lower.endsWith(".json") || lower.endsWith(".yml")
-                    || lower.endsWith(".yaml") || lower.endsWith(".sql") || lower.endsWith(".md")
-                    || lower.endsWith(".html") || lower.endsWith(".properties") || lower.endsWith(".conf");
-        }
-        return false;
-    }
-
-    private boolean isDocumentContent(String ext, String contentType) {
-        if (DOCUMENT_EXTENSIONS.contains(ext)) return true;
-        return contentType.equals("application/pdf")
-                || contentType.contains("wordprocessingml")
-                || contentType.contains("spreadsheetml")
-                || contentType.contains("presentationml");
-    }
-
-    private String getFileExtension(String filename) {
-        if (filename == null) return "";
-        int dot = filename.lastIndexOf('.');
-        return dot >= 0 ? filename.substring(dot + 1).toLowerCase() : "";
-    }
 
     private String truncate(String text) {
         if (text.length() <= MAX_TEXT_LENGTH) return text;

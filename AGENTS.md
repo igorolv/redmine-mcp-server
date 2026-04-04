@@ -84,7 +84,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 
 ## Available tools
 
-The current implementation exposes **35 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, and analytics domains.
+The current implementation exposes **40 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, analytics, and task-context domains.
 
 | Tool | Description |
 |---|---|
@@ -123,6 +123,11 @@ The current implementation exposes **35 read-only MCP tools** across user, proje
 | `getStaleIssues` | Open issues not updated for N days, sorted by staleness. Params: `projectId`, `daysSinceUpdate` (default 30), `limit` |
 | `getReleaseRisks` | Risk assessment: open blockers, overdue, high-priority, unassigned issues for a version. Params: `projectId`, `versionId` |
 | `compareVersions` | Diff between two versions: unique issues, shared issues, completion percentages. Params: `projectId`, `versionId1`, `versionId2` |
+| `getIssueFullContext` | Full task context in one call: description, parent epic, siblings (feature scope), related issues with descriptions, document attachments extracted inline, recent notes. Replaces 10+ separate calls. Params: `issueId` |
+| `getIssueSiblings` | All issues sharing the same parent: feature scope, progress, who's doing what. Params: `issueId` |
+| `findRelatedClosedIssues` | Find closed reference issues: direct relations, siblings, similar in project. Useful for "how was this done before". Params: `issueId`, `limit` (optional) |
+| `findLatestAttachment` | Find latest version of a document by filename pattern. Searches issue, parent, siblings, related issues. Params: `pattern`, `issueId`, `searchProject` (optional) |
+| `getIssueNetwork` | Full relation network via BFS: all types (relates, blocks, precedes, duplicates, parent/child) up to specified depth. Params: `issueId`, `depth` (optional, default 2, max 3) |
 
 All tools are **read-only**. No data in Redmine is modified.
 

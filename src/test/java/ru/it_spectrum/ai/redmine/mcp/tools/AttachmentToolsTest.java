@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
+import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
@@ -31,7 +32,7 @@ class AttachmentToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new AttachmentTools(client, new AttachmentTextCache());
+        tools = new AttachmentTools(client, new DocumentTextExtractor(client, new AttachmentTextCache()));
     }
 
     // --- listAttachments ---

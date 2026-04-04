@@ -32,7 +32,7 @@ AI-клиент запускает сервер как дочерний проц
 
 ## Инструменты
 
-Сервер экспортирует **35 read-only MCP tools**.
+Сервер экспортирует **40 read-only MCP tools**.
 
 ### Пользователь
 
@@ -108,6 +108,16 @@ AI-клиент запускает сервер как дочерний проц
 | `getStaleIssues` | Открытые задачи без обновлений за N дней, отсортированные по давности. Параметры: `projectId`, `daysSinceUpdate` (по умолчанию 30), `limit` |
 | `getReleaseRisks` | Оценка рисков релиза: блокеры, просроченные, высокоприоритетные, без назначенного. Параметры: `projectId`, `versionId` |
 | `compareVersions` | Сравнение двух версий: уникальные задачи, общие задачи, процент закрытия. Параметры: `projectId`, `versionId1`, `versionId2` |
+
+### Контекст задачи
+
+| Tool | Описание |
+|---|---|
+| `getIssueFullContext` | Полный контекст задачи одним вызовом: описание, родитель (эпик/стори), siblings (scope фичи), связанные задачи с описаниями, вложения с извлечением текста (PDF/DOCX), последние комментарии. Заменяет 10+ отдельных вызовов. Параметры: `issueId` |
+| `getIssueSiblings` | Все задачи с тем же родителем: scope фичи, прогресс, кто что делает. Параметры: `issueId` |
+| `findRelatedClosedIssues` | Поиск закрытых задач-референсов: прямые связи, siblings, похожие в проекте. Полезно для изучения «как делали раньше». Параметры: `issueId`, `limit` (опц.) |
+| `findLatestAttachment` | Поиск последней версии документа по паттерну имени. Ищет в задаче, родителе, siblings, связанных. Параметры: `pattern`, `issueId`, `searchProject` (опц.) |
+| `getIssueNetwork` | Полная сеть связей задачи: все типы (relates, blocks, precedes, duplicates, parent/child). BFS-обход на заданную глубину. Параметры: `issueId`, `depth` (опц., по умолчанию 2, макс 3) |
 
 Все инструменты **read-only** — данные в Redmine не изменяются.
 
@@ -208,7 +218,8 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
 │   │   └── RedmineConfig.java             — RestClient с автодобавлением http://
 │   ├── client/
 │   │   ├── RedmineClient.java             — обёртка над Redmine REST API
-│   │   └── AttachmentTextCache.java       — кэш извлечённого текста вложений
+│   │   ├── AttachmentTextCache.java       — кэш извлечённого текста вложений
+│   │   └── DocumentTextExtractor.java     — извлечение текста из PDF/DOCX/XLSX/PPTX
 │   ├── model/
 │   │   ├── IdName.java                    — пара id/name (проект, статус, и т.д.)
 │   │   ├── AttachmentTextChunk.java       — чанк извлечённого текста вложения
@@ -225,6 +236,7 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
 │   │   └── RedmineWikiPage.java           — wiki-страница
 │   └── tools/
 │       ├── AttachmentTools.java           — 5 MCP-инструментов для вложений и изображений
+│       ├── ContextTools.java              — 5 MCP-инструментов для контекста задачи
 │       ├── IssueTools.java                — 5 MCP-инструментов для задач и поиска
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
 │       ├── ReferenceDataTools.java        — 6 MCP-инструментов для справочников
