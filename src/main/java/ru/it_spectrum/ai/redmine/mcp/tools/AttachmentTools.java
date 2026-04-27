@@ -74,7 +74,7 @@ public class AttachmentTools {
 
     @McpTool(description = "Get the content of an attachment from Redmine. " +
             "Supports text files (txt, log, xml, json, csv, etc.), " +
-            "PDF, Word (.docx), Excel (.xlsx), and PowerPoint (.pptx). " +
+            "PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives with supported files. " +
             "For images use getImageAttachment instead. " +
             "For other binary files returns only metadata. " +
             "Use listAttachments first to get the attachment ID.")
@@ -258,7 +258,7 @@ public class AttachmentTools {
     }
 
     @McpTool(description = "Search for text across attachments of a specific issue or all recent issues in a project. " +
-            "Extracts text from PDF, DOCX, XLSX, PPTX and text files, then searches for the query. " +
+            "Extracts text from PDF, DOCX, XLSX, PPTX, ZIP archives and text files, then searches for the query. " +
             "Returns matching snippets with context. At least one of issueId or projectId must be provided.")
     public String searchAttachmentContent(
             @McpToolParam(description = "Text to search for (case-insensitive)") String query,

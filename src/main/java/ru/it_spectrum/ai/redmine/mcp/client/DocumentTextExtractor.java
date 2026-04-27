@@ -18,15 +18,24 @@ import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @Component
 public class DocumentTextExtractor {
     private static final Logger log = LoggerFactory.getLogger(DocumentTextExtractor.class);
 
     private static final Set<String> DOCUMENT_EXTENSIONS = Set.of("pdf", "docx", "xlsx", "pptx");
+    private static final Set<String> ARCHIVE_EXTENSIONS = Set.of("zip");
+    private static final int MAX_ARCHIVE_DEPTH = 1;
+    private static final int MAX_ARCHIVE_ENTRIES = 100;
+    private static final int MAX_ARCHIVE_ENTRY_BYTES = 10 * 1024 * 1024;
+    private static final int MAX_ARCHIVE_TOTAL_BYTES = 50 * 1024 * 1024;
 
     private final RedmineClient client;
     private final AttachmentTextCache textCache;
@@ -49,7 +58,9 @@ public class DocumentTextExtractor {
         String ext = getFileExtension(attachment.filename());
         String contentType = attachment.contentType() != null ? attachment.contentType() : "";
 
-        if (!isDocument(ext, contentType) && !isPlainText(contentType, attachment.filename())) {
+        if (!isDocument(ext, contentType)
+                && !isArchive(ext, contentType)
+                && !isPlainText(contentType, attachment.filename())) {
             return null;
         }
 
@@ -58,14 +69,10 @@ public class DocumentTextExtractor {
             return null;
         }
 
-        String text;
-        if (isDocument(ext, contentType)) {
-            text = extractDocumentText(ext, contentType, content);
-        } else {
-            text = new String(content, StandardCharsets.UTF_8);
+        String text = extractFromBytes(attachment.filename(), contentType, content);
+        if (text == null) {
+            return null;
         }
-
-        text = normalizeExtractedText(text);
         textCache.put(attachment.id(), text);
         return text;
     }
@@ -74,11 +81,20 @@ public class DocumentTextExtractor {
      * Extract text from raw bytes given filename and content type.
      */
     public String extractFromBytes(String filename, String contentType, byte[] data) {
+        return extractFromBytes(filename, contentType, data, 0);
+    }
+
+    private String extractFromBytes(String filename, String contentType, byte[] data, int archiveDepth) {
         String ext = getFileExtension(filename);
         String ct = contentType != null ? contentType : "";
 
         if (isDocument(ext, ct)) {
             return normalizeExtractedText(extractDocumentText(ext, ct, data));
+        } else if (isArchive(ext, ct)) {
+            if (archiveDepth >= MAX_ARCHIVE_DEPTH) {
+                return null;
+            }
+            return normalizeExtractedText(extractZipText(filename, data, archiveDepth));
         } else if (isPlainText(ct, filename)) {
             return normalizeExtractedText(new String(data, StandardCharsets.UTF_8));
         }
@@ -88,7 +104,7 @@ public class DocumentTextExtractor {
     public boolean isTextExtractable(String filename, String contentType) {
         String ext = getFileExtension(filename);
         String ct = contentType != null ? contentType : "";
-        return isDocument(ext, ct) || isPlainText(ct, filename);
+        return isDocument(ext, ct) || isArchive(ext, ct) || isPlainText(ct, filename);
     }
 
     public boolean isDocument(String ext, String contentType) {
@@ -97,6 +113,15 @@ public class DocumentTextExtractor {
                 || contentType.contains("wordprocessingml")
                 || contentType.contains("spreadsheetml")
                 || contentType.contains("presentationml");
+    }
+
+    public boolean isArchive(String ext, String contentType) {
+        if (ARCHIVE_EXTENSIONS.contains(ext)) return true;
+        if (contentType == null) return false;
+        String lower = contentType.toLowerCase();
+        return lower.equals("application/zip")
+                || lower.equals("application/x-zip-compressed")
+                || lower.equals("application/zip-compressed");
     }
 
     public boolean isPlainText(String contentType, String filename) {
@@ -109,7 +134,7 @@ public class DocumentTextExtractor {
             String lower = filename.toLowerCase();
             return lower.endsWith(".txt") || lower.endsWith(".log") || lower.endsWith(".csv")
                     || lower.endsWith(".xml") || lower.endsWith(".json") || lower.endsWith(".yml")
-                    || lower.endsWith(".yaml") || lower.endsWith(".sql") || lower.endsWith(".md")
+                    || lower.endsWith(".yaml") || lower.endsWith(".xsd") || lower.endsWith(".sql") || lower.endsWith(".md")
                     || lower.endsWith(".html") || lower.endsWith(".properties") || lower.endsWith(".conf");
         }
         return false;
@@ -129,6 +154,7 @@ public class DocumentTextExtractor {
         if ("docx".equals(ext) || contentType.contains("wordprocessingml")) return "docx";
         if ("xlsx".equals(ext) || contentType.contains("spreadsheetml")) return "xlsx";
         if ("pptx".equals(ext) || contentType.contains("presentationml")) return "pptx";
+        if ("zip".equals(ext) || isArchive(ext, contentType)) return "zip";
         return "text";
     }
 
@@ -245,11 +271,127 @@ public class DocumentTextExtractor {
         }
     }
 
+    private String extractZipText(String filename, byte[] data, int archiveDepth) {
+        var manifest = new StringBuilder();
+        var extractedText = new StringBuilder();
+        int entries = 0;
+        int extracted = 0;
+        int skipped = 0;
+        long[] totalBytes = {0};
+
+        manifest.append("ZIP archive: %s\n".formatted(filename));
+        manifest.append("--- ZIP entries ---\n");
+
+        try (var zip = new ZipInputStream(new ByteArrayInputStream(data))) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (entry.isDirectory()) {
+                    continue;
+                }
+
+                entries++;
+                if (entries > MAX_ARCHIVE_ENTRIES) {
+                    manifest.append("- ... skipped remaining entries (limit: %d)\n".formatted(MAX_ARCHIVE_ENTRIES));
+                    break;
+                }
+
+                String entryName = normalizeZipEntryName(entry.getName());
+                if (!isSafeZipEntryName(entryName)) {
+                    skipped++;
+                    manifest.append("- %s (skipped, unsafe entry name)\n".formatted(entry.getName()));
+                    continue;
+                }
+
+                byte[] entryBytes;
+                try {
+                    entryBytes = readZipEntry(zip, entryName, totalBytes);
+                } catch (ArchiveReadLimitException e) {
+                    skipped++;
+                    manifest.append("- %s (skipped, %s)\n".formatted(entryName, e.getMessage()));
+                    manifest.append("- ... stopped archive extraction after reaching safety limits\n");
+                    break;
+                }
+
+                String text = extractFromBytes(entryName, null, entryBytes, archiveDepth + 1);
+                if (text == null) {
+                    skipped++;
+                    manifest.append("- %s (skipped, not text-extractable, %s)\n"
+                            .formatted(entryName, formatBytes(entryBytes.length)));
+                    continue;
+                }
+
+                extracted++;
+                manifest.append("- %s (extracted, %s)\n".formatted(entryName, formatBytes(entryBytes.length)));
+                extractedText.append("\n--- %s ---\n".formatted(entryName));
+                extractedText.append(text).append("\n");
+            }
+        } catch (Exception e) {
+            log.warn("Failed to extract text from ZIP archive: {}", e.getMessage());
+            return "(failed to extract ZIP archive: %s)".formatted(e.getMessage());
+        }
+
+        if (entries == 0) {
+            manifest.append("- (archive contains no files)\n");
+        }
+
+        manifest.append("\nEntries scanned: %d, extracted: %d, skipped: %d\n"
+                .formatted(entries, extracted, skipped));
+        manifest.append(extractedText);
+        return manifest.toString();
+    }
+
+    private byte[] readZipEntry(ZipInputStream zip, String entryName, long[] totalBytes) throws IOException {
+        var out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = zip.read(buffer)) != -1) {
+            if (out.size() + read > MAX_ARCHIVE_ENTRY_BYTES) {
+                throw new ArchiveReadLimitException("%s exceeds per-file limit %s"
+                        .formatted(entryName, formatBytes(MAX_ARCHIVE_ENTRY_BYTES)));
+            }
+            if (totalBytes[0] + read > MAX_ARCHIVE_TOTAL_BYTES) {
+                throw new ArchiveReadLimitException("archive exceeds total limit %s"
+                        .formatted(formatBytes(MAX_ARCHIVE_TOTAL_BYTES)));
+            }
+            out.write(buffer, 0, read);
+            totalBytes[0] += read;
+        }
+        return out.toByteArray();
+    }
+
+    private String normalizeZipEntryName(String entryName) {
+        return entryName == null ? "" : entryName.replace('\\', '/');
+    }
+
+    private boolean isSafeZipEntryName(String entryName) {
+        if (entryName.isBlank() || entryName.startsWith("/") || entryName.matches("^[A-Za-z]:.*")) {
+            return false;
+        }
+        for (String part : entryName.split("/")) {
+            if ("..".equals(part)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return "%.1f KB".formatted(bytes / 1024.0);
+        return "%.1f MB".formatted(bytes / (1024.0 * 1024));
+    }
+
     private String normalizeExtractedText(String text) {
         if (text == null) return "";
         String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
         normalized = normalized.replaceAll("[\\t\\x0B\\f]+", " ");
         normalized = normalized.replaceAll("\n{3,}", "\n\n");
         return normalized.strip();
+    }
+
+    private static class ArchiveReadLimitException extends IOException {
+        private ArchiveReadLimitException(String message) {
+            super(message);
+        }
     }
 }

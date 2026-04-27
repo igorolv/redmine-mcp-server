@@ -25,6 +25,8 @@ import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -261,6 +263,79 @@ class DocumentExtractionTest {
         assertThat(result).contains("{\"key\": \"value\"}");
     }
 
+    @Test
+    void shouldReturnXsdFileContentWithGenericContentType() {
+        byte[] xsdBytes = """
+                <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+                    <xs:element name="order" type="xs:string"/>
+                </xs:schema>
+                """.getBytes();
+        var attachment = attachment(16, "schema.xsd", "application/octet-stream", xsdBytes.length);
+
+        when(client.getAttachment(16)).thenReturn(attachment);
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xsdBytes);
+
+        String result = tools.getAttachmentContent(16);
+
+        assertThat(result).contains("schema.xsd");
+        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("<xs:element name=\"order\" type=\"xs:string\"/>");
+    }
+
+    @Test
+    void shouldExtractSupportedFilesFromZipWithGenericContentType() throws Exception {
+        byte[] docxBytes = generateDocx("Architecture decision from Word document");
+        byte[] zipBytes = generateZip(Map.of(
+                "config/service.yaml", "service: billing\nfeature: archive extraction".getBytes(),
+                "schema/order.xsd", """
+                        <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+                            <xs:element name="orderId" type="xs:string"/>
+                        </xs:schema>
+                        """.getBytes(),
+                "docs/decision.docx", docxBytes,
+                "images/screenshot.png", new byte[]{1, 2, 3}
+        ));
+        var attachment = attachment(17, "bundle.zip", "application/octet-stream", zipBytes.length);
+
+        when(client.getAttachment(17)).thenReturn(attachment);
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(zipBytes);
+
+        String result = tools.getAttachmentContent(17);
+
+        assertThat(result).contains("bundle.zip");
+        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("ZIP archive: bundle.zip");
+        assertThat(result).contains("config/service.yaml (extracted");
+        assertThat(result).contains("schema/order.xsd (extracted");
+        assertThat(result).contains("docs/decision.docx (extracted");
+        assertThat(result).contains("images/screenshot.png (skipped, not text-extractable");
+        assertThat(result).contains("--- config/service.yaml ---");
+        assertThat(result).contains("feature: archive extraction");
+        assertThat(result).contains("--- schema/order.xsd ---");
+        assertThat(result).contains("<xs:element name=\"orderId\" type=\"xs:string\"/>");
+        assertThat(result).contains("--- docs/decision.docx ---");
+        assertThat(result).contains("Architecture decision from Word document");
+    }
+
+    @Test
+    void shouldReturnAttachmentTextInfoForZip() throws Exception {
+        byte[] zipBytes = generateZip(Map.of(
+                "config/service.yaml", "service: billing\n".getBytes()
+        ));
+        var attachment = attachment(18, "bundle.zip", "application/zip", zipBytes.length);
+
+        when(client.getAttachment(18)).thenReturn(attachment);
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(zipBytes);
+
+        AttachmentTextInfo info = tools.getAttachmentTextInfo(18);
+
+        assertThat(info.attachmentId()).isEqualTo(18);
+        assertThat(info.filename()).isEqualTo("bundle.zip");
+        assertThat(info.extractable()).isTrue();
+        assertThat(info.extractionType()).isEqualTo("zip");
+        assertThat(info.totalChars()).isGreaterThan(10);
+    }
+
     // --- Binary files ---
 
     @Test
@@ -478,6 +553,18 @@ class DocumentExtractionTest {
             pptx.write(baos);
             return baos.toByteArray();
         }
+    }
+
+    private static byte[] generateZip(Map<String, byte[]> entries) throws Exception {
+        var baos = new ByteArrayOutputStream();
+        try (var zip = new ZipOutputStream(baos)) {
+            for (var entry : entries.entrySet()) {
+                zip.putNextEntry(new ZipEntry(entry.getKey()));
+                zip.write(entry.getValue());
+                zip.closeEntry();
+            }
+        }
+        return baos.toByteArray();
     }
 
     private static RedmineAttachment attachment(int id, String filename, String contentType, long size) {

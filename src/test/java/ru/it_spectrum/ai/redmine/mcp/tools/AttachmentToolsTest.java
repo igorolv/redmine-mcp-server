@@ -19,6 +19,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javax.imageio.ImageIO;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -177,6 +179,28 @@ class AttachmentToolsTest {
     }
 
     @Test
+    void shouldFindTextInsideZipAttachment() throws Exception {
+        byte[] zipBytes = generateZip(Map.of(
+                "docs/spec.txt", "The system uses OAuth inside a ZIP archive".getBytes(),
+                "images/screenshot.png", new byte[]{1, 2, 3}
+        ));
+        var att = new RedmineAttachment(51, "docs.zip", zipBytes.length, "application/octet-stream",
+                "http://redmine/download/51/docs.zip", null,
+                new IdName(1, "Alice"), "2025-03-01");
+        var issue = issueWithAttachments(100, List.of(att));
+        when(client.getIssue(100)).thenReturn(issue);
+        when(client.downloadAttachment(att.contentUrl())).thenReturn(zipBytes);
+
+        String result = tools.searchAttachmentContent("OAuth", 100, null, null);
+
+        assertThat(result).contains("Attachment content search for \"OAuth\" in issue #100");
+        assertThat(result).contains("Issue #100: Test issue");
+        assertThat(result).contains("[51] docs.zip");
+        assertThat(result).contains("OAuth inside a ZIP archive");
+        assertThat(result).contains("Found 1 matches in 1 attachments across 1 issues");
+    }
+
+    @Test
     void shouldReturnNoMatchesWhenQueryNotFound() {
         var att = new RedmineAttachment(50, "spec.txt", 100, "text/plain",
                 "http://redmine/download/50/spec.txt", null,
@@ -301,6 +325,18 @@ class AttachmentToolsTest {
         g.dispose();
         var baos = new ByteArrayOutputStream();
         ImageIO.write(image, "png", baos);
+        return baos.toByteArray();
+    }
+
+    private static byte[] generateZip(Map<String, byte[]> entries) throws Exception {
+        var baos = new ByteArrayOutputStream();
+        try (var zip = new ZipOutputStream(baos)) {
+            for (var entry : entries.entrySet()) {
+                zip.putNextEntry(new ZipEntry(entry.getKey()));
+                zip.write(entry.getValue());
+                zip.closeEntry();
+            }
+        }
         return baos.toByteArray();
     }
 
