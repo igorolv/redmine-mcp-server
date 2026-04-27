@@ -5,14 +5,19 @@
 
 ## Быстрый старт
 
-Пошаговые инструкции по настройке «с нуля» для конкретного AI-клиента:
+Эта документация описывает установку и подключение именно Redmine MCP Server. Установка и настройка самих AI-клиентов здесь не рассматриваются.
 
-| Клиент | Инструкция | Примечание |
-|---|---|---|
-| **Qwen Code** | [QWEN_CODE_SETUP.md](QWEN_CODE_SETUP.md) | Работает без VPN. Рекомендуется для начала — проще всего настроить |
-| **Claude Code** | [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md) | Требует VPN с tunnel splitting (например [Amnezia](https://amnezia.org)) для одновременного доступа к Claude и корпоративному Redmine |
+1. Установите JDK 25+.
+2. Соберите сервер: `./gradlew build`.
+3. Получите `REDMINE_URL` и `REDMINE_API_KEY`.
+4. Добавьте собранный JAR в MCP-конфигурацию вашего клиента.
 
-> Если вы раньше не работали с AI-ассистентами в терминале — начните с **Qwen Code**. Он может использовать бесплатные модели через OpenRouter, не требует VPN, а в случае использования платных моделей оплата из РФ относительно простая.
+Клиентские примеры подключения:
+
+| Клиент | Инструкция |
+|---|---|
+| Claude Code | [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md) |
+| Qwen Code | [QWEN_CODE_SETUP.md](QWEN_CODE_SETUP.md) |
 
 ## Архитектура
 
@@ -203,8 +208,6 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
 | VS Code | `.vscode/mcp.json` -> `"servers"` -> `"redmine"` |
 | Cursor | `.cursor/mcp.json` -> `"mcpServers"` -> `"redmine"` |
 | Claude Desktop | `claude_desktop_config.json` -> `"mcpServers"` -> `"redmine"` |
-
-Для Claude Code без `--scope user` сервер добавится только для текущего проекта. Проверить подключение: `claude mcp list`.
 
 После добавления перезапустить клиент.
 
