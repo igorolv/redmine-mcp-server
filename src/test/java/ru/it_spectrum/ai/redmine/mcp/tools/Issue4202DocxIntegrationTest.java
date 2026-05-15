@@ -8,8 +8,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import io.modelcontextprotocol.spec.McpSchema;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 

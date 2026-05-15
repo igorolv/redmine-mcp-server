@@ -15,7 +15,7 @@ import org.apache.poi.xwpf.usermodel.XWPFTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

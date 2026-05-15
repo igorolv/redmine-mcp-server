@@ -5,9 +5,9 @@ import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
-import ru.it_spectrum.ai.redmine.mcp.model.IdName;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

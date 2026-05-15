@@ -7,9 +7,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssues;
-import ru.it_spectrum.ai.redmine.mcp.model.IdName;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
 
 import java.util.List;
 import java.util.Map;

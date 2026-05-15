@@ -2,9 +2,11 @@ package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.model.IdName;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
+import ru.it_spectrum.ai.redmine.mcp.model.MyIssuesResult;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -385,8 +387,4 @@ public class IssueService {
         return idName != null ? idName.name() : "—";
     }
 
-    // --- Result records ---
-
-    public record MyIssuesResult(RedmineUser user, RedmineIssue.Page page) {
-    }
 }

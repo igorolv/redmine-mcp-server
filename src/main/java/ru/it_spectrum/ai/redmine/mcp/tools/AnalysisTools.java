@@ -4,9 +4,9 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.model.IdName;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineVersion;
+import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;

@@ -7,8 +7,8 @@ import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
-import ru.it_spectrum.ai.redmine.mcp.service.AttachmentSearchRequest;
-import ru.it_spectrum.ai.redmine.mcp.service.AttachmentSearchResult;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ImageProcessingFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.NotAnImageAttachmentException;
@@ -180,12 +180,12 @@ public class AttachmentTools {
 
     public record AttachmentListResult(
             int issueId,
-            java.util.List<ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment> attachments
+            java.util.List<ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment> attachments
     ) {
     }
 
     public record AttachmentContentResult(
-            ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment attachment,
+            ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment attachment,
             String extractionType,
             boolean textExtracted,
             boolean truncated,

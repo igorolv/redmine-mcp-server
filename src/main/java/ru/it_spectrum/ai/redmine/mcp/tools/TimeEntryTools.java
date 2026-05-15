@@ -61,8 +61,8 @@ public class TimeEntryTools {
     }
 
     public record MyTimeEntriesResult(
-            ru.it_spectrum.ai.redmine.mcp.model.RedmineUser user,
-            ru.it_spectrum.ai.redmine.mcp.model.RedmineTimeEntry.Page page
+            ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser user,
+            ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry.Page page
     ) {
     }
 }

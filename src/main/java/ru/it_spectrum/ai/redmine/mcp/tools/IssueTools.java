@@ -4,10 +4,10 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.service.IssueHistoryView;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
-import ru.it_spectrum.ai.redmine.mcp.service.IssueTreeView;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;

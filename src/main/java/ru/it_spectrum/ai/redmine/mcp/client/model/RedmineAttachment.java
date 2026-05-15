@@ -1,4 +1,4 @@
-package ru.it_spectrum.ai.redmine.mcp.model;
+package ru.it_spectrum.ai.redmine.mcp.client.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

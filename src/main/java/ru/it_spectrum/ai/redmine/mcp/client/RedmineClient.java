@@ -2,17 +2,17 @@ package ru.it_spectrum.ai.redmine.mcp.client;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import ru.it_spectrum.ai.redmine.mcp.model.IdName;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineMembership;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineProject;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineQuery;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineSearchResult;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineTimeEntry;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineVersion;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineWikiPage;
+import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineMembership;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineProject;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineQuery;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPage;
 
 import java.net.URI;
 import java.net.URLEncoder;

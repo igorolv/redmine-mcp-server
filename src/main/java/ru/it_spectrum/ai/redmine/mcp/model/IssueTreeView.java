@@ -1,7 +1,7 @@
-package ru.it_spectrum.ai.redmine.mcp.service;
+package ru.it_spectrum.ai.redmine.mcp.model;
 
-import ru.it_spectrum.ai.redmine.mcp.model.IdName;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 
 import java.util.List;
 

@@ -3,10 +3,13 @@ package ru.it_spectrum.ai.redmine.mcp.service;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
-import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.ImageRenderResult;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.service.chunking.ChunkingOptions;
 import ru.it_spectrum.ai.redmine.mcp.service.chunking.ChunkingStrategy;
 
