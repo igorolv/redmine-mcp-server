@@ -22,6 +22,7 @@ import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
+import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.chunking.FixedSizeTextChunker;
 
 import java.io.ByteArrayOutputStream;
@@ -47,7 +48,10 @@ class DocumentExtractionTest {
 
     @BeforeEach
     void setUp() {
-        tools = new AttachmentTools(client, new DocumentTextExtractor(client, new AttachmentTextCache()), new FixedSizeTextChunker());
+        var service = new AttachmentService(client,
+                new DocumentTextExtractor(client, new AttachmentTextCache()),
+                new FixedSizeTextChunker());
+        tools = new AttachmentTools(service);
     }
 
     // --- PDF ---
