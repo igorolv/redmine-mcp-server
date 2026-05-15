@@ -17,12 +17,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
-import ru.it_spectrum.ai.redmine.mcp.service.chunking.FixedSizeTextChunker;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Map;
@@ -30,7 +27,6 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,8 +40,7 @@ class DocumentExtractionTest {
     @BeforeEach
     void setUp() {
         var service = new AttachmentService(client,
-                new DocumentTextExtractor(client, new AttachmentTextCache()),
-                new FixedSizeTextChunker());
+                new DocumentTextExtractor(client, new AttachmentTextCache()));
         tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
@@ -115,62 +110,6 @@ class DocumentExtractionTest {
         assertThat(result).contains("Name | Age");
         assertThat(result).contains("Alice | 30");
         assertThat(result).contains("Bob | 25");
-    }
-
-    @Test
-    void shouldReturnAttachmentTextInfoForDocx() throws Exception {
-        byte[] docxBytes = generateDocx("Hello from Word document", "Second paragraph");
-        var attachment = attachment(13, "document.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docxBytes.length);
-
-        when(client.getAttachment(13)).thenReturn(attachment);
-        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
-
-        AttachmentTextInfo info = tools.getAttachmentTextInfo(13);
-
-        assertThat(info.attachmentId()).isEqualTo(13);
-        assertThat(info.filename()).isEqualTo("document.docx");
-        assertThat(info.extractable()).isTrue();
-        assertThat(info.extractionType()).isEqualTo("docx");
-        assertThat(info.totalChars()).isGreaterThan(10);
-        assertThat(info.chunkCount()).isEqualTo(1);
-        assertThat(info.previewTruncated()).isFalse();
-    }
-
-    @Test
-    void shouldReturnChunkedAttachmentTextForLargeDocx() throws Exception {
-        byte[] docxBytes = generateDocx(generateParagraphs("Paragraph", 40, 800));
-        var attachment = attachment(14, "large.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docxBytes.length);
-
-        when(client.getAttachment(14)).thenReturn(attachment);
-        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
-
-        AttachmentTextInfo info = tools.getAttachmentTextInfo(14);
-        AttachmentTextChunk chunk0 = tools.getAttachmentTextChunk(14, 0, 4_000);
-        AttachmentTextChunk chunk1 = tools.getAttachmentTextChunk(14, 1, 4_000);
-
-        assertThat(info.chunkCount()).isGreaterThan(1);
-        assertThat(chunk0.chunkIndex()).isEqualTo(0);
-        assertThat(chunk0.chunkCount()).isGreaterThan(1);
-        assertThat(chunk0.text()).contains("Paragraph 1:");
-        assertThat(chunk1.chunkIndex()).isEqualTo(1);
-        assertThat(chunk1.chunkCount()).isEqualTo(chunk0.chunkCount());
-        assertThat(chunk1.startChar()).isLessThan(chunk1.endChar());
-    }
-
-    @Test
-    void shouldRejectOutOfRangeChunkIndex() throws Exception {
-        byte[] docxBytes = generateDocx("Short doc");
-        var attachment = attachment(15, "small.docx",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docxBytes.length);
-
-        when(client.getAttachment(15)).thenReturn(attachment);
-        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
-
-        assertThatThrownBy(() -> tools.getAttachmentTextChunk(15, 5, 4_000))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("out of range");
     }
 
     // --- XLSX ---
@@ -319,25 +258,6 @@ class DocumentExtractionTest {
         assertThat(result).contains("Architecture decision from Word document");
     }
 
-    @Test
-    void shouldReturnAttachmentTextInfoForZip() throws Exception {
-        byte[] zipBytes = generateZip(Map.of(
-                "config/service.yaml", "service: billing\n".getBytes()
-        ));
-        var attachment = attachment(18, "bundle.zip", "application/zip", zipBytes.length);
-
-        when(client.getAttachment(18)).thenReturn(attachment);
-        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(zipBytes);
-
-        AttachmentTextInfo info = tools.getAttachmentTextInfo(18);
-
-        assertThat(info.attachmentId()).isEqualTo(18);
-        assertThat(info.filename()).isEqualTo("bundle.zip");
-        assertThat(info.extractable()).isTrue();
-        assertThat(info.extractionType()).isEqualTo("zip");
-        assertThat(info.totalChars()).isGreaterThan(10);
-    }
-
     // --- Binary files ---
 
     @Test
@@ -430,15 +350,6 @@ class DocumentExtractionTest {
             doc.write(baos);
             return baos.toByteArray();
         }
-    }
-
-    private static String[] generateParagraphs(String prefix, int count, int repeatCount) {
-        var paragraphs = new String[count];
-        String repeated = "x".repeat(repeatCount);
-        for (int i = 0; i < count; i++) {
-            paragraphs[i] = "%s %d: %s".formatted(prefix, i + 1, repeated);
-        }
-        return paragraphs;
     }
 
     private static byte[] generateDocxWithTable(String[][] data) throws Exception {

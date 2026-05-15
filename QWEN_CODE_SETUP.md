@@ -136,7 +136,7 @@ qwen mcp remove --scope user redmine
 
 ## Доступные инструменты
 
-Сервер предоставляет **40 read-only MCP tools**. Он не изменяет данные в Redmine.
+Сервер предоставляет **38 read-only MCP tools**. Он не изменяет данные в Redmine.
 
 Основные группы инструментов:
 

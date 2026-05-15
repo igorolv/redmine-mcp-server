@@ -1,7 +1,7 @@
 # Redmine MCP Server — Setup Guide for AI Agents
 
 This is a local MCP server that provides read-only access to a corporate Redmine instance.
-It exposes 40 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, reference data, project analytics, and task context.
+It exposes 38 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, reference data, project analytics, and task context.
 
 Step-by-step setup guides: [Claude Code](CLAUDE_CODE_SETUP.md) | [Qwen Code](QWEN_CODE_SETUP.md)
 
@@ -84,7 +84,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 
 ## Available tools
 
-The current implementation exposes **40 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, analytics, and task-context domains.
+The current implementation exposes **38 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, analytics, and task-context domains.
 
 | Tool | Description |
 |---|---|
@@ -102,8 +102,6 @@ The current implementation exposes **40 read-only MCP tools** across user, proje
 | `getIssueHistory` | Full change history with timeline of status/assignment/priority changes and status durations. Params: `issueId` |
 | `listAttachments` | List all attachments of an issue. Params: `issueId` |
 | `getAttachmentContent` | Get content of an attachment. Supports text files (txt, log, xml, json, csv, etc.), PDF, Word (.docx), Excel (.xlsx), and PowerPoint (.pptx). For images use `getImageAttachment`. Params: `attachmentId` |
-| `getAttachmentTextInfo` | Get extracted-text metadata for a text/document attachment, including extraction type, total text size, and chunking plan for large files. Params: `attachmentId` |
-| `getAttachmentTextChunk` | Get one chunk of extracted attachment text for large text/document files. Useful for agent-side summarization pipelines. Params: `attachmentId`, `chunkIndex`, `chunkSize` (optional) |
 | `getImageAttachment` | Download an image attachment (PNG, JPEG, GIF, BMP, WebP) with automatic resizing for AI visual analysis. Params: `attachmentId`, `maxWidth` (optional, default 1024) |
 | `searchAttachmentContent` | Search for text across attachments of an issue or project. Extracts text from PDF/DOCX/XLSX/PPTX/text, returns matching snippets. Params: `query`, `issueId`, `projectId`, `limit` |
 | `getWikiPage` | Get wiki page content and attachments. Params: `projectId`, `pageTitle` |

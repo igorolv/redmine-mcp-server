@@ -5,14 +5,10 @@ import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResult;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentContentResult;
 import ru.it_spectrum.ai.redmine.mcp.model.ImageRenderResult;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.service.chunking.ChunkingOptions;
-import ru.it_spectrum.ai.redmine.mcp.service.chunking.ChunkingStrategy;
 
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
@@ -38,12 +34,10 @@ public class AttachmentService {
 
     private final RedmineClient client;
     private final DocumentTextExtractor textExtractor;
-    private final ChunkingStrategy chunker;
 
-    public AttachmentService(RedmineClient client, DocumentTextExtractor textExtractor, ChunkingStrategy chunker) {
+    public AttachmentService(RedmineClient client, DocumentTextExtractor textExtractor) {
         this.client = client;
         this.textExtractor = textExtractor;
-        this.chunker = chunker;
     }
 
     public Optional<RedmineAttachment> find(int attachmentId) {
@@ -109,53 +103,6 @@ public class AttachmentService {
                 truncated,
                 content,
                 note
-        );
-    }
-
-    public AttachmentTextInfo describeText(int attachmentId) {
-        var attachment = findOrThrow(attachmentId);
-
-        String text = extractTextOrThrow(attachment);
-        var options = ChunkingOptions.defaults();
-        int chunkCount = chunker.countChunks(text, options);
-
-        return new AttachmentTextInfo(
-                attachment.id(),
-                attachment.filename(),
-                attachment.contentType(),
-                true,
-                textExtractor.detectExtractionType(attachment),
-                text.length(),
-                options.chunkSize(),
-                chunkCount,
-                text.length() > PREVIEW_LIMIT
-        );
-    }
-
-    public AttachmentTextChunk fetchChunk(int attachmentId, int chunkIndex, Integer chunkSize) {
-        var attachment = findOrThrow(attachmentId);
-
-        String text = extractTextOrThrow(attachment);
-        var options = ChunkingOptions.ofChunkSize(chunkSize);
-
-        var chunks = chunker.split(text, options);
-
-        if (chunkIndex < 0 || chunkIndex >= chunks.size()) {
-            throw new IllegalArgumentException(
-                    "Chunk index %d out of range, available 0..%d"
-                            .formatted(chunkIndex, Math.max(0, chunks.size() - 1))
-            );
-        }
-
-        var chunk = chunks.get(chunkIndex);
-        return new AttachmentTextChunk(
-                attachment.id(),
-                attachment.filename(),
-                chunkIndex,
-                chunks.size(),
-                chunk.startChar(),
-                chunk.endChar(),
-                chunk.text()
         );
     }
 
@@ -277,14 +224,6 @@ public class AttachmentService {
     }
 
     // --- Internal ---
-
-    private String extractTextOrThrow(RedmineAttachment attachment) {
-        String text = textExtractor.extractText(attachment);
-        if (text == null) {
-            throw new AttachmentNotExtractableException(attachment.id(), attachment.filename());
-        }
-        return text;
-    }
 
     private String truncatePreview(String text) {
         if (text.length() <= PREVIEW_LIMIT) return text;

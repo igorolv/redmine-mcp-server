@@ -11,7 +11,6 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
-import ru.it_spectrum.ai.redmine.mcp.service.chunking.FixedSizeTextChunker;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -36,7 +35,7 @@ class AttachmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AttachmentService(client, extractor, new FixedSizeTextChunker());
+        service = new AttachmentService(client, extractor);
     }
 
     // --- find / listForIssue ---
@@ -98,95 +97,6 @@ class AttachmentServiceTest {
         when(extractor.getFileExtension("report.pdf")).thenReturn("pdf");
         var att = attachment(1, "report.pdf", "application/pdf");
         assertThat(service.isImage(att)).isFalse();
-    }
-
-    // --- describeText ---
-
-    @Test
-    void describeTextShouldReturnInfoForExtractableAttachment() {
-        var att = attachment(5, "doc.txt", "text/plain");
-        when(client.getAttachment(5)).thenReturn(att);
-        when(extractor.extractText(att)).thenReturn("Hello world");
-        when(extractor.detectExtractionType(att)).thenReturn("text");
-
-        var info = service.describeText(5);
-
-        assertThat(info.attachmentId()).isEqualTo(5);
-        assertThat(info.filename()).isEqualTo("doc.txt");
-        assertThat(info.extractable()).isTrue();
-        assertThat(info.extractionType()).isEqualTo("text");
-        assertThat(info.totalChars()).isEqualTo("Hello world".length());
-        assertThat(info.chunkCount()).isEqualTo(1);
-        assertThat(info.previewTruncated()).isFalse();
-    }
-
-    @Test
-    void describeTextShouldMarkPreviewTruncatedAbovePreviewLimit() {
-        var att = attachment(5, "huge.txt", "text/plain");
-        String text = "x".repeat(AttachmentService.PREVIEW_LIMIT + 100);
-        when(client.getAttachment(5)).thenReturn(att);
-        when(extractor.extractText(att)).thenReturn(text);
-        when(extractor.detectExtractionType(att)).thenReturn("text");
-
-        var info = service.describeText(5);
-
-        assertThat(info.previewTruncated()).isTrue();
-    }
-
-    @Test
-    void describeTextShouldThrowWhenAttachmentMissing() {
-        when(client.getAttachment(99)).thenReturn(null);
-        assertThatThrownBy(() -> service.describeText(99))
-                .isInstanceOf(AttachmentNotFoundException.class);
-    }
-
-    @Test
-    void describeTextShouldThrowWhenNotExtractable() {
-        var att = attachment(5, "blob.bin", "application/octet-stream");
-        when(client.getAttachment(5)).thenReturn(att);
-        when(extractor.extractText(att)).thenReturn(null);
-
-        assertThatThrownBy(() -> service.describeText(5))
-                .isInstanceOf(AttachmentNotExtractableException.class)
-                .satisfies(e -> {
-                    var ex = (AttachmentNotExtractableException) e;
-                    assertThat(ex.attachmentId()).isEqualTo(5);
-                    assertThat(ex.filename()).isEqualTo("blob.bin");
-                });
-    }
-
-    // --- fetchChunk ---
-
-    @Test
-    void fetchChunkShouldReturnRequestedChunk() {
-        var att = attachment(5, "long.txt", "text/plain");
-        when(client.getAttachment(5)).thenReturn(att);
-        when(extractor.extractText(att)).thenReturn("Z".repeat(8_000));
-
-        var chunk = service.fetchChunk(5, 0, 2_500);
-
-        assertThat(chunk.attachmentId()).isEqualTo(5);
-        assertThat(chunk.chunkIndex()).isZero();
-        assertThat(chunk.chunkCount()).isGreaterThanOrEqualTo(2);
-        assertThat(chunk.text()).isNotEmpty();
-    }
-
-    @Test
-    void fetchChunkShouldThrowIaeForOutOfRangeIndex() {
-        var att = attachment(5, "tiny.txt", "text/plain");
-        when(client.getAttachment(5)).thenReturn(att);
-        when(extractor.extractText(att)).thenReturn("short");
-
-        assertThatThrownBy(() -> service.fetchChunk(5, 7, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("out of range");
-    }
-
-    @Test
-    void fetchChunkShouldThrowWhenAttachmentMissing() {
-        when(client.getAttachment(99)).thenReturn(null);
-        assertThatThrownBy(() -> service.fetchChunk(99, 0, null))
-                .isInstanceOf(AttachmentNotFoundException.class);
     }
 
     // --- renderImage ---

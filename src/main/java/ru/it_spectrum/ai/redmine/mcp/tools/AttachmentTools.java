@@ -6,8 +6,6 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentListResult;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
@@ -68,43 +66,6 @@ public class AttachmentTools {
         } catch (AttachmentNotFoundException e) {
             ToolLogger.failed(log, "getAttachmentContent", start, e.getMessage());
             return errors.notFound("attachment", "#" + attachmentId);
-        }
-    }
-
-    @McpTool(description = "Get metadata about extracted attachment text and the chunking plan. " +
-            "Useful before requesting chunks from large text, PDF, DOCX, XLSX, or PPTX attachments.")
-    public AttachmentTextInfo getAttachmentTextInfo(
-            @McpToolParam(description = "Attachment ID number") int attachmentId
-    ) {
-        log.info("Tool call: getAttachmentTextInfo (attachmentId={})", attachmentId);
-        long start = System.nanoTime();
-        try {
-            var result = attachmentService.describeText(attachmentId);
-            ToolLogger.completed(log, "getAttachmentTextInfo", start);
-            return result;
-        } catch (AttachmentNotFoundException e) {
-            ToolLogger.failed(log, "getAttachmentTextInfo", start, e.getMessage());
-            throw new IllegalArgumentException(e.getMessage());
-        }
-    }
-
-    @McpTool(description = "Get one chunk of extracted attachment text for large documents. " +
-            "Use getAttachmentTextInfo first to determine chunk count and recommended chunk size.")
-    public AttachmentTextChunk getAttachmentTextChunk(
-            @McpToolParam(description = "Attachment ID number") int attachmentId,
-            @McpToolParam(description = "Chunk index starting from 0") int chunkIndex,
-            @McpToolParam(description = "Chunk size in characters, default 12000", required = false) Integer chunkSize
-    ) {
-        log.info("Tool call: getAttachmentTextChunk (attachmentId={}, chunkIndex={}, chunkSize={})",
-                attachmentId, chunkIndex, chunkSize);
-        long start = System.nanoTime();
-        try {
-            var result = attachmentService.fetchChunk(attachmentId, chunkIndex, chunkSize);
-            ToolLogger.completed(log, "getAttachmentTextChunk", start);
-            return result;
-        } catch (AttachmentNotFoundException e) {
-            ToolLogger.failed(log, "getAttachmentTextChunk", start, e.getMessage());
-            throw new IllegalArgumentException(e.getMessage());
         }
     }
 

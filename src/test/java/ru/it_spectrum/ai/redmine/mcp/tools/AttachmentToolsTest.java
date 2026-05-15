@@ -12,7 +12,6 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
-import ru.it_spectrum.ai.redmine.mcp.service.chunking.FixedSizeTextChunker;
 
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -38,8 +37,7 @@ class AttachmentToolsTest {
     @BeforeEach
     void setUp() {
         var service = new AttachmentService(client,
-                new DocumentTextExtractor(client, new AttachmentTextCache()),
-                new FixedSizeTextChunker());
+                new DocumentTextExtractor(client, new AttachmentTextCache()));
         tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 

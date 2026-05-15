@@ -6,8 +6,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import io.modelcontextprotocol.spec.McpSchema;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
@@ -37,7 +35,7 @@ class Issue4202DocxIntegrationTest {
     private DocumentTextExtractor textExtractor;
 
     @Test
-    void shouldParseFirstDocxAttachmentFromIssue4202ViaProjectMethods() {
+    void shouldParseFirstDocxAttachmentFromIssue4202ViaProjectMethods() throws Exception {
         var issue = loadIssue4202();
         var attachment = findFirstDocxAttachment(issue);
 
@@ -50,49 +48,25 @@ class Issue4202DocxIntegrationTest {
                 .doesNotContain("failed to extract text");
 
         String content = readAttachmentContent(attachment);
-        AttachmentTextInfo info = attachmentTools.getAttachmentTextInfo(attachment.id());
-        AttachmentTextChunk chunk0 = attachmentTools.getAttachmentTextChunk(
-                attachment.id(), 0, info.suggestedChunkSize());
+        var contentJson = ToolJsonTestSupport.parse(content);
+        String contentBody = contentJson.get("content").asText();
 
         assertThat(content)
                 .as("Attachment #%d (%s) should be readable".formatted(attachment.id(), attachment.filename()))
-                .contains("Attachment: %s".formatted(attachment.filename()))
-                .contains("--- Content ---")
+                .contains(attachment.filename())
+                .contains("\"textExtracted\":true")
                 .doesNotContain("Binary file")
                 .doesNotContain("failed to extract text");
 
-        assertThat(info.attachmentId()).isEqualTo(attachment.id());
-        assertThat(info.filename()).isEqualTo(attachment.filename());
-        assertThat(info.extractable()).isTrue();
-        assertThat(info.extractionType()).isEqualTo("docx");
-        assertThat(info.totalChars()).isGreaterThan(0);
-        assertThat(info.chunkCount()).isGreaterThan(0);
-
-        assertThat(chunk0.attachmentId()).isEqualTo(attachment.id());
-        assertThat(chunk0.filename()).isEqualTo(attachment.filename());
-        assertThat(chunk0.chunkIndex()).isEqualTo(0);
-        assertThat(chunk0.chunkCount()).isEqualTo(info.chunkCount());
-        assertThat(chunk0.startChar()).isGreaterThanOrEqualTo(0);
-        assertThat(chunk0.endChar()).isGreaterThan(chunk0.startChar());
-        assertThat(chunk0.text()).isNotBlank();
-
-        String contentBody = content.substring(content.indexOf("--- Content ---") + "--- Content ---".length()).strip();
-        assertThat(contentBody).contains(chunk0.text().substring(0, Math.min(200, chunk0.text().length())));
-        assertThat(directText).contains(chunk0.text().substring(0, Math.min(200, chunk0.text().length())));
-        assertThat(info.totalChars()).isEqualTo(directText.length());
+        assertThat(contentJson.get("extractionType").asText()).isEqualTo("docx");
+        assertThat(contentBody).isNotBlank();
+        assertThat(directText).contains(contentBody.substring(0, Math.min(200, contentBody.length())));
 
         System.out.println("Direct extractor preview:");
         System.out.println(snippet(directText, 2_000));
         System.out.println();
         System.out.println("AttachmentTools.getAttachmentContent preview:");
         System.out.println(snippet(content, 2_000));
-        System.out.println();
-        System.out.println("AttachmentTextInfo: totalChars=" + info.totalChars()
-                + ", suggestedChunkSize=" + info.suggestedChunkSize()
-                + ", chunkCount=" + info.chunkCount()
-                + ", previewTruncated=" + info.previewTruncated());
-        System.out.println("AttachmentTextChunk[0]:");
-        System.out.println(snippet(chunk0.text(), 1_500));
     }
 
     @Test

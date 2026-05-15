@@ -14,7 +14,6 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
-import ru.it_spectrum.ai.redmine.mcp.service.chunking.FixedSizeTextChunker;
 
 import java.util.List;
 
@@ -34,8 +33,7 @@ class ContextToolsTest {
     @BeforeEach
     void setUp() {
         var service = new AttachmentService(client,
-                new DocumentTextExtractor(client, new AttachmentTextCache()),
-                new FixedSizeTextChunker());
+                new DocumentTextExtractor(client, new AttachmentTextCache()));
         tools = new ContextTools(new ContextService(client, service),
                 ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
 

@@ -37,7 +37,7 @@ AI-клиент запускает сервер как дочерний проц
 
 ## Инструменты
 
-Сервер экспортирует **40 read-only MCP tools**.
+Сервер экспортирует **38 read-only MCP tools**.
 
 ### Пользователь
 
@@ -77,8 +77,6 @@ AI-клиент запускает сервер как дочерний проц
 |---|---|
 | `listAttachments` | Список вложений задачи с размерами и типами |
 | `getAttachmentContent` | Содержимое вложений: текстовые (txt, log, xml, json, csv и др.), PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx). Для изображений — `getImageAttachment` |
-| `getAttachmentTextInfo` | Метаданные извлечённого текста вложения: тип извлечения, общий объём текста и план чанков для больших документов |
-| `getAttachmentTextChunk` | Один чанк извлечённого текста вложения для последующего анализа/summary. Параметры: `attachmentId`, `chunkIndex`, `chunkSize` |
 | `getImageAttachment` | Скачивание изображений (PNG, JPEG, GIF, BMP, WebP) с автоматическим ресайзом для визуального анализа AI |
 | `searchAttachmentContent` | Поиск текста по содержимому вложений задачи или проекта. Извлекает текст из PDF/DOCX/XLSX/PPTX/текстовых файлов, возвращает сниппеты с контекстом. Параметры: `query`, `issueId`, `projectId`, `limit` |
 | `getWikiPage` | Содержимое wiki-страницы проекта |
@@ -256,8 +254,6 @@ AI-клиент получает ровно те данные, которые з
 | Область | Лимит |
 |---|---|
 | Вывод `getAttachmentContent` | до 50 000 символов, дальше текст обрезается |
-| Рекомендуемый размер чанка вложения | 12 000 символов |
-| Допустимый размер чанка | 2 000-20 000 символов |
 | ZIP-глубина | 1 уровень |
 | ZIP-файлы | до 100 записей |
 | ZIP-файл внутри архива | до 10 MB |
@@ -322,8 +318,6 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   │   └── DocumentTextExtractor.java     — извлечение текста из PDF/DOCX/XLSX/PPTX
 │   ├── model/
 │   │   ├── IdName.java                    — пара id/name (проект, статус, и т.д.)
-│   │   ├── AttachmentTextChunk.java       — чанк извлечённого текста вложения
-│   │   ├── AttachmentTextInfo.java        — метаданные и план чанков для текста вложения
 │   │   ├── RedmineAttachment.java         — вложение
 │   │   ├── RedmineIssue.java              — задача + Journal + Relation
 │   │   ├── RedmineMembership.java         — участник проекта
@@ -336,7 +330,7 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   │   └── RedmineWikiPage.java           — wiki-страница
 │   └── tools/
 │       ├── AnalysisTools.java             — 7 MCP-инструментов аналитики и анализа рисков
-│       ├── AttachmentTools.java           — 6 MCP-инструментов для вложений и изображений
+│       ├── AttachmentTools.java           — 4 MCP-инструмента для вложений и изображений
 │       ├── ContextTools.java              — 5 MCP-инструментов для контекста задачи
 │       ├── IssueTools.java                — 7 MCP-инструментов для задач и поиска
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
