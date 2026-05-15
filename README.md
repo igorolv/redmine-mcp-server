@@ -152,6 +152,7 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 |---|---|
 | `REDMINE_URL` | Базовый URL Redmine (например `https://redmine.example.com`) |
 | `REDMINE_API_KEY` | API-ключ пользователя Redmine |
+| `REDMINE_MCP_DATA_DIR` | Каталог локальных данных сервера; по умолчанию `~/.redmine-mcp-server` |
 
 ### Как получить `REDMINE_URL`
 
@@ -183,6 +184,9 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
   java -jar build/libs/redmine-mcp-server.jar
 ```
+
+Логи пишутся в `${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/logs/redmine-mcp-server.log`.
+Файл ротируется по дате и размеру: `10MB`, хранение `30` дней, общий лимит `512MB`.
 
 ## Подключение к AI-клиенту
 

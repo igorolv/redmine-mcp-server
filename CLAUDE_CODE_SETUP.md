@@ -66,6 +66,7 @@ java -jar .\build\libs\redmine-mcp-server.jar
 ```
 
 Сервер работает через `stdio`, поэтому после успешного старта он не открывает HTTP-порт и ждет MCP-запросы через stdin/stdout.
+Логи пишутся в `${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/logs/redmine-mcp-server.log`.
 
 ## 4. Подключить сервер к Claude Code
 

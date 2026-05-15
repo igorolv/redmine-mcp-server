@@ -9,6 +9,9 @@ spring:
         version: 0.1.0
         stdio: true
 
+# Top-level server data directory. Runtime logs are written under this directory.
+redmine-mcp:
+  data-dir: ${REDMINE_MCP_DATA_DIR:${user.home}/.redmine-mcp-server}
 
 redmine:
   url: ${REDMINE_URL:}
