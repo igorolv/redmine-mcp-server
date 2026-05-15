@@ -81,16 +81,13 @@ public class AttachmentService {
         return Optional.ofNullable(textExtractor.extractText(attachment));
     }
 
-    public AttachmentTextInfo describeText(int attachmentId, ProgressReporter progress) {
-        progress.report(0, 3, "Loading attachment metadata");
+    public AttachmentTextInfo describeText(int attachmentId) {
         var attachment = findOrThrow(attachmentId);
 
-        progress.report(1, 3, "Extracting attachment text");
         String text = extractTextOrThrow(attachment);
         var options = ChunkingOptions.defaults();
         int chunkCount = chunker.countChunks(text, options);
 
-        progress.done("Attachment text info ready");
         return new AttachmentTextInfo(
                 attachment.id(),
                 attachment.filename(),
@@ -104,15 +101,12 @@ public class AttachmentService {
         );
     }
 
-    public AttachmentTextChunk fetchChunk(int attachmentId, int chunkIndex, Integer chunkSize, ProgressReporter progress) {
-        progress.report(0, 4, "Loading attachment metadata");
+    public AttachmentTextChunk fetchChunk(int attachmentId, int chunkIndex, Integer chunkSize) {
         var attachment = findOrThrow(attachmentId);
 
-        progress.report(1, 4, "Extracting attachment text");
         String text = extractTextOrThrow(attachment);
         var options = ChunkingOptions.ofChunkSize(chunkSize);
 
-        progress.report(2, 4, "Building text chunks");
         var chunks = chunker.split(text, options);
 
         if (chunkIndex < 0 || chunkIndex >= chunks.size()) {
@@ -123,7 +117,6 @@ public class AttachmentService {
         }
 
         var chunk = chunks.get(chunkIndex);
-        progress.done("Attachment text chunk ready");
         return new AttachmentTextChunk(
                 attachment.id(),
                 attachment.filename(),
@@ -170,10 +163,8 @@ public class AttachmentService {
         }
     }
 
-    public AttachmentSearchResult search(AttachmentSearchRequest request, ProgressReporter progress) {
-        progress.stage("Preparing attachment search");
-
-        List<RedmineIssue> issues = loadIssuesForSearch(request, progress);
+    public AttachmentSearchResult search(AttachmentSearchRequest request) {
+        List<RedmineIssue> issues = loadIssuesForSearch(request);
         boolean issueFound = request.issueId() == null || !issues.isEmpty();
         if (!issueFound) {
             return new AttachmentSearchResult(false, List.of(),
@@ -185,11 +176,6 @@ public class AttachmentService {
                 .flatMap(issue -> issue.attachments().stream())
                 .filter(att -> textExtractor.isTextExtractable(att.filename(), att.contentType()))
                 .count();
-        if (extractableAttachments > 0) {
-            progress.report(0, extractableAttachments,
-                    "Scanning %d extractable attachments".formatted(extractableAttachments));
-        }
-
         String queryLower = request.query().toLowerCase(Locale.ROOT);
         var matchedIssues = new ArrayList<AttachmentSearchResult.IssueMatches>();
         int totalMatches = 0;
@@ -211,13 +197,6 @@ public class AttachmentService {
                 }
                 scannedAttachments++;
                 processedAttachments++;
-                if (extractableAttachments > 0
-                        && (processedAttachments == 1 || processedAttachments == extractableAttachments
-                        || processedAttachments % 5 == 0)) {
-                    progress.report(processedAttachments, extractableAttachments,
-                            "Scanning attachment %d/%d: %s"
-                                    .formatted(processedAttachments, extractableAttachments, att.filename()));
-                }
                 String text = textExtractor.extractText(att);
                 if (text == null) {
                     continue;
@@ -255,7 +234,6 @@ public class AttachmentService {
             }
         }
 
-        progress.done("Attachment search finished");
         var counters = new AttachmentSearchResult.SearchCounters(
                 totalMatches, matchingAttachments, matchedIssues.size(), scannedAttachments, scannedIssues);
         return new AttachmentSearchResult(true, matchedIssues, counters);
@@ -271,7 +249,7 @@ public class AttachmentService {
         return text;
     }
 
-    private List<RedmineIssue> loadIssuesForSearch(AttachmentSearchRequest request, ProgressReporter progress) {
+    private List<RedmineIssue> loadIssuesForSearch(AttachmentSearchRequest request) {
         if (request.issueId() != null) {
             var issue = client.getIssue(request.issueId());
             return issue != null ? List.of(issue) : List.of();
@@ -281,15 +259,8 @@ public class AttachmentService {
                 "updated_on:desc", null, 0, request.issueLimit());
         var issues = new ArrayList<>(page.issues());
         var fullIssues = new ArrayList<RedmineIssue>();
-        int totalIssues = issues.size();
-        int loadedIssues = 0;
         for (var issue : issues) {
             var full = client.getIssue(issue.id());
-            loadedIssues++;
-            if (loadedIssues == 1 || loadedIssues == totalIssues || loadedIssues % 5 == 0) {
-                progress.report(loadedIssues, Math.max(totalIssues, 1),
-                        "Loaded issue details %d/%d".formatted(loadedIssues, totalIssues));
-            }
             if (full != null) {
                 fullIssues.add(full);
             }

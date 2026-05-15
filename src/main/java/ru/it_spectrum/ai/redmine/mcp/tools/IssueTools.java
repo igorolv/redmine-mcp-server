@@ -2,7 +2,6 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
-import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
@@ -170,20 +169,15 @@ public class IssueTools {
             "Useful for understanding task breakdown and dependencies at a glance.")
     public String getIssueTree(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "How deep to traverse children, default 2, max 5", required = false) Integer depth,
-            McpSyncRequestContext context
+            @McpToolParam(description = "How deep to traverse children, default 2, max 5", required = false) Integer depth
     ) {
         IssueTreeView view;
         try {
-            view = issueService.getTree(issueId, depth, ProgressSupport.reporterFor(context));
+            view = issueService.getTree(issueId, depth);
         } catch (IssueNotFoundException e) {
             return "Issue #%d not found".formatted(e.issueId());
         }
         return renderTree(view, depth);
-    }
-
-    public String getIssueTree(int issueId, Integer depth) {
-        return getIssueTree(issueId, depth, null);
     }
 
     @McpTool(description = "Get the full change history of a Redmine issue. " +

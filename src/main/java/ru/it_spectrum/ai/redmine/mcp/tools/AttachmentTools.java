@@ -2,7 +2,6 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
-import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
@@ -13,7 +12,6 @@ import ru.it_spectrum.ai.redmine.mcp.service.AttachmentSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ImageProcessingFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.NotAnImageAttachmentException;
-import ru.it_spectrum.ai.redmine.mcp.service.ProgressReporter;
 
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -63,10 +61,8 @@ public class AttachmentTools {
             "For other binary files returns only metadata. " +
             "Use listAttachments first to get the attachment ID.")
     public String getAttachmentContent(
-            @McpToolParam(description = "Attachment ID number") int attachmentId,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
-        ProgressSupport.report(context, 0, 3, "Loading attachment metadata");
         var maybeAttachment = attachmentService.find(attachmentId);
         if (maybeAttachment.isEmpty()) {
             return "Attachment #%d not found".formatted(attachmentId);
@@ -79,7 +75,6 @@ public class AttachmentTools {
         sb.append("Created: %s by %s\n\n".formatted(attachment.createdOn(),
                 attachment.author() != null ? attachment.author().name() : "unknown"));
 
-        ProgressSupport.report(context, 1, 3, "Extracting attachment content");
         var maybeText = attachmentService.extractText(attachment);
         if (maybeText.isPresent()) {
             sb.append("--- Content ---\n");
@@ -92,29 +87,19 @@ public class AttachmentTools {
                     .formatted(attachment.contentUrl()));
         }
 
-        ProgressSupport.done(context, "Attachment content ready");
         return sb.toString();
-    }
-
-    public String getAttachmentContent(int attachmentId) {
-        return getAttachmentContent(attachmentId, null);
     }
 
     @McpTool(description = "Get metadata about extracted attachment text and the chunking plan. " +
             "Useful before requesting chunks from large text, PDF, DOCX, XLSX, or PPTX attachments.")
     public AttachmentTextInfo getAttachmentTextInfo(
-            @McpToolParam(description = "Attachment ID number") int attachmentId,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
         try {
-            return attachmentService.describeText(attachmentId, reporterFor(context));
+            return attachmentService.describeText(attachmentId);
         } catch (AttachmentNotFoundException e) {
             throw new IllegalArgumentException(e.getMessage());
         }
-    }
-
-    public AttachmentTextInfo getAttachmentTextInfo(int attachmentId) {
-        return getAttachmentTextInfo(attachmentId, null);
     }
 
     @McpTool(description = "Get one chunk of extracted attachment text for large documents. " +
@@ -122,18 +107,13 @@ public class AttachmentTools {
     public AttachmentTextChunk getAttachmentTextChunk(
             @McpToolParam(description = "Attachment ID number") int attachmentId,
             @McpToolParam(description = "Chunk index starting from 0") int chunkIndex,
-            @McpToolParam(description = "Chunk size in characters, default 12000", required = false) Integer chunkSize,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Chunk size in characters, default 12000", required = false) Integer chunkSize
     ) {
         try {
-            return attachmentService.fetchChunk(attachmentId, chunkIndex, chunkSize, reporterFor(context));
+            return attachmentService.fetchChunk(attachmentId, chunkIndex, chunkSize);
         } catch (AttachmentNotFoundException e) {
             throw new IllegalArgumentException(e.getMessage());
         }
-    }
-
-    public AttachmentTextChunk getAttachmentTextChunk(int attachmentId, int chunkIndex, Integer chunkSize) {
-        return getAttachmentTextChunk(attachmentId, chunkIndex, chunkSize, null);
     }
 
     @McpTool(description = "Download an image attachment from Redmine and return it for visual analysis. " +
@@ -172,8 +152,7 @@ public class AttachmentTools {
             @McpToolParam(description = "Text to search for (case-insensitive)") String query,
             @McpToolParam(description = "Issue ID to search attachments of (optional)", required = false) Integer issueId,
             @McpToolParam(description = "Project identifier to search across recent issues (optional)", required = false) String projectId,
-            @McpToolParam(description = "Max issues to scan when searching by project, default 10", required = false) Integer limit,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Max issues to scan when searching by project, default 10", required = false) Integer limit
     ) {
         if (issueId == null && (projectId == null || projectId.isBlank())) {
             return "At least one of issueId or projectId must be provided";
@@ -181,16 +160,12 @@ public class AttachmentTools {
 
         int issueLimit = limit != null ? Math.min(Math.max(limit, 1), 50) : 10;
         var request = new AttachmentSearchRequest(query, issueId, projectId, issueLimit);
-        var result = attachmentService.search(request, reporterFor(context));
+        var result = attachmentService.search(request);
 
         if (!result.issueFound()) {
             return "Issue #%d not found".formatted(issueId);
         }
         return formatSearchResult(query, issueId, projectId, result);
-    }
-
-    public String searchAttachmentContent(String query, Integer issueId, String projectId, Integer limit) {
-        return searchAttachmentContent(query, issueId, projectId, limit, null);
     }
 
     // --- Formatting ---
@@ -240,9 +215,5 @@ public class AttachmentTools {
                 .addTextContent(message)
                 .isError(true)
                 .build();
-    }
-
-    private static ProgressReporter reporterFor(McpSyncRequestContext context) {
-        return ProgressSupport.reporterFor(context);
     }
 }

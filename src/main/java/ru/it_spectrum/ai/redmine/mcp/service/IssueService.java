@@ -83,14 +83,10 @@ public class IssueService {
     // --- Tree ---
 
     public IssueTreeView getTree(int issueId, Integer depth) {
-        return getTree(issueId, depth, new IssueFetchContext(client), ProgressReporter.NOOP);
+        return getTree(issueId, depth, new IssueFetchContext(client));
     }
 
-    public IssueTreeView getTree(int issueId, Integer depth, ProgressReporter progress) {
-        return getTree(issueId, depth, new IssueFetchContext(client), progress);
-    }
-
-    public IssueTreeView getTree(int issueId, Integer depth, IssueFetchContext ctx, ProgressReporter progress) {
+    public IssueTreeView getTree(int issueId, Integer depth, IssueFetchContext ctx) {
         int actualDepth = depth != null
                 ? Math.min(Math.max(depth, 0), MAX_TREE_DEPTH)
                 : DEFAULT_TREE_DEPTH;
@@ -98,17 +94,15 @@ public class IssueService {
         var visited = new HashSet<Integer>();
         var fetchCount = new int[]{0};
 
-        progress.stage("Loading issue tree root");
-        RedmineIssue root = fetchForTree(issueId, visited, fetchCount, ctx, progress);
+        RedmineIssue root = fetchForTree(issueId, visited, fetchCount, ctx);
         if (root == null) {
             throw new IssueNotFoundException(issueId);
         }
 
-        progress.stage("Loading parent chain");
         var ancestors = new ArrayList<RedmineIssue>();
         RedmineIssue current = root;
         while (current.parent() != null && fetchCount[0] < MAX_TREE_ISSUES) {
-            var parent = fetchForTree(current.parent().id(), visited, fetchCount, ctx, progress);
+            var parent = fetchForTree(current.parent().id(), visited, fetchCount, ctx);
             if (parent == null) {
                 break;
             }
@@ -116,13 +110,11 @@ public class IssueService {
             current = parent;
         }
 
-        progress.stage("Loading subtree");
         var subtree = nodeFromIssue(root);
-        expandChildren(subtree, root, actualDepth, 0, visited, fetchCount, ctx, progress);
+        expandChildren(subtree, root, actualDepth, 0, visited, fetchCount, ctx);
 
         var relations = root.relations() != null ? root.relations() : List.<RedmineIssue.Relation>of();
         boolean limitReached = fetchCount[0] >= MAX_TREE_ISSUES;
-        progress.done("Issue tree ready");
         return new IssueTreeView(root, ancestors, subtree, relations, fetchCount[0], limitReached);
     }
 
@@ -192,13 +184,11 @@ public class IssueService {
     // --- Tree helpers ---
 
     private RedmineIssue fetchForTree(int issueId, Set<Integer> visited, int[] fetchCount,
-                                      IssueFetchContext ctx, ProgressReporter progress) {
+                                      IssueFetchContext ctx) {
         if (!visited.add(issueId) || fetchCount[0] >= MAX_TREE_ISSUES) {
             return null;
         }
         fetchCount[0]++;
-        progress.report(fetchCount[0], MAX_TREE_ISSUES,
-                "Loaded tree node %d/%d".formatted(fetchCount[0], MAX_TREE_ISSUES));
         return ctx.getIssueForTree(issueId);
     }
 
@@ -221,7 +211,7 @@ public class IssueService {
     private void expandChildren(IssueTreeView.TreeNode parentNode, RedmineIssue parentIssue,
                                 int maxDepth, int currentDepth,
                                 Set<Integer> visited, int[] fetchCount,
-                                IssueFetchContext ctx, ProgressReporter progress) {
+                                IssueFetchContext ctx) {
         if (parentIssue.children() == null || parentIssue.children().isEmpty()) {
             return;
         }
@@ -235,11 +225,11 @@ public class IssueService {
             if (fetchCount[0] >= MAX_TREE_ISSUES) {
                 break;
             }
-            var fullChild = fetchForTree(child.id(), visited, fetchCount, ctx, progress);
+            var fullChild = fetchForTree(child.id(), visited, fetchCount, ctx);
             if (fullChild != null) {
                 var childNode = nodeFromIssue(fullChild);
                 parentNode.children().add(childNode);
-                expandChildren(childNode, fullChild, maxDepth, currentDepth + 1, visited, fetchCount, ctx, progress);
+                expandChildren(childNode, fullChild, maxDepth, currentDepth + 1, visited, fetchCount, ctx);
             } else {
                 parentNode.children().add(stubFromChild(child));
             }

@@ -157,8 +157,8 @@ class IssueServiceTest {
         when(client.getIssueForTree(1)).thenReturn(root);
 
         var ctx = new IssueFetchContext(client);
-        service.getTree(1, 0, ctx, ProgressReporter.NOOP);
-        service.getTree(1, 0, ctx, ProgressReporter.NOOP);
+        service.getTree(1, 0, ctx);
+        service.getTree(1, 0, ctx);
 
         // Second call uses the cached issue from ctx.treeIssues
         verify(client, times(1)).getIssueForTree(1);

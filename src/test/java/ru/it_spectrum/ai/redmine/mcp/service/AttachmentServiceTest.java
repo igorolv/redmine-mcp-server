@@ -108,7 +108,7 @@ class AttachmentServiceTest {
         when(extractor.extractText(att)).thenReturn("Hello world");
         when(extractor.detectExtractionType(att)).thenReturn("text");
 
-        var info = service.describeText(5, ProgressReporter.NOOP);
+        var info = service.describeText(5);
 
         assertThat(info.attachmentId()).isEqualTo(5);
         assertThat(info.filename()).isEqualTo("doc.txt");
@@ -127,7 +127,7 @@ class AttachmentServiceTest {
         when(extractor.extractText(att)).thenReturn(text);
         when(extractor.detectExtractionType(att)).thenReturn("text");
 
-        var info = service.describeText(5, ProgressReporter.NOOP);
+        var info = service.describeText(5);
 
         assertThat(info.previewTruncated()).isTrue();
     }
@@ -135,7 +135,7 @@ class AttachmentServiceTest {
     @Test
     void describeTextShouldThrowWhenAttachmentMissing() {
         when(client.getAttachment(99)).thenReturn(null);
-        assertThatThrownBy(() -> service.describeText(99, ProgressReporter.NOOP))
+        assertThatThrownBy(() -> service.describeText(99))
                 .isInstanceOf(AttachmentNotFoundException.class);
     }
 
@@ -145,7 +145,7 @@ class AttachmentServiceTest {
         when(client.getAttachment(5)).thenReturn(att);
         when(extractor.extractText(att)).thenReturn(null);
 
-        assertThatThrownBy(() -> service.describeText(5, ProgressReporter.NOOP))
+        assertThatThrownBy(() -> service.describeText(5))
                 .isInstanceOf(AttachmentNotExtractableException.class)
                 .satisfies(e -> {
                     var ex = (AttachmentNotExtractableException) e;
@@ -162,7 +162,7 @@ class AttachmentServiceTest {
         when(client.getAttachment(5)).thenReturn(att);
         when(extractor.extractText(att)).thenReturn("Z".repeat(8_000));
 
-        var chunk = service.fetchChunk(5, 0, 2_500, ProgressReporter.NOOP);
+        var chunk = service.fetchChunk(5, 0, 2_500);
 
         assertThat(chunk.attachmentId()).isEqualTo(5);
         assertThat(chunk.chunkIndex()).isZero();
@@ -176,7 +176,7 @@ class AttachmentServiceTest {
         when(client.getAttachment(5)).thenReturn(att);
         when(extractor.extractText(att)).thenReturn("short");
 
-        assertThatThrownBy(() -> service.fetchChunk(5, 7, null, ProgressReporter.NOOP))
+        assertThatThrownBy(() -> service.fetchChunk(5, 7, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("out of range");
     }
@@ -184,7 +184,7 @@ class AttachmentServiceTest {
     @Test
     void fetchChunkShouldThrowWhenAttachmentMissing() {
         when(client.getAttachment(99)).thenReturn(null);
-        assertThatThrownBy(() -> service.fetchChunk(99, 0, null, ProgressReporter.NOOP))
+        assertThatThrownBy(() -> service.fetchChunk(99, 0, null))
                 .isInstanceOf(AttachmentNotFoundException.class);
     }
 
@@ -250,7 +250,7 @@ class AttachmentServiceTest {
         when(client.getIssue(99)).thenReturn(null);
         var request = new AttachmentSearchRequest("anything", 99, null, 10);
 
-        var result = service.search(request, ProgressReporter.NOOP);
+        var result = service.search(request);
 
         assertThat(result.issueFound()).isFalse();
         assertThat(result.issues()).isEmpty();
@@ -266,7 +266,7 @@ class AttachmentServiceTest {
                 .thenReturn("OAuth and JWT are configured. Refer to OAuth docs.");
 
         var request = new AttachmentSearchRequest("oauth", 1, null, 10);
-        var result = service.search(request, ProgressReporter.NOOP);
+        var result = service.search(request);
 
         assertThat(result.issueFound()).isTrue();
         assertThat(result.issues()).hasSize(1);
@@ -289,7 +289,7 @@ class AttachmentServiceTest {
         when(client.getIssue(1)).thenReturn(issue(1, List.of(bin)));
         lenient().when(extractor.isTextExtractable("image.png", "image/png")).thenReturn(false);
 
-        var result = service.search(new AttachmentSearchRequest("x", 1, null, 10), ProgressReporter.NOOP);
+        var result = service.search(new AttachmentSearchRequest("x", 1, null, 10));
 
         assertThat(result.issueFound()).isTrue();
         assertThat(result.issues()).isEmpty();

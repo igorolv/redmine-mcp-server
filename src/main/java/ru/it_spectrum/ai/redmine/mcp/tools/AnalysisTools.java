@@ -2,7 +2,6 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
-import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
@@ -44,11 +43,9 @@ public class AnalysisTools {
             "Optionally filter by version/milestone. One call replaces dozens of listIssues calls.")
     public String getProjectSummary(
             @McpToolParam(description = "Project identifier") String projectId,
-            @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId
     ) {
-        var openBatch = fetchAllIssues(projectId, "open", versionId, null,
-                context, "open issues for project %s".formatted(projectId));
+        var openBatch = fetchAllIssues(projectId, "open", versionId, null);
         int closedCount = client.listIssues(projectId, "closed", null, null,
                 null, versionId, null, null, 0, 1).totalCount();
 
@@ -108,13 +105,7 @@ public class AnalysisTools {
                 .filter(i -> i.spentHours() != null)
                 .mapToDouble(RedmineIssue::spentHours).sum();
         sb.append("Hours: %.1f estimated, %.1f spent\n".formatted(estimated, spent));
-        ProgressSupport.done(context, "Project summary ready");
-
         return sb.toString();
-    }
-
-    public String getProjectSummary(String projectId, Integer versionId) {
-        return getProjectSummary(projectId, versionId, null);
     }
 
     // ── getUserWorkload ────────────────────────────────────────────────
@@ -124,8 +115,7 @@ public class AnalysisTools {
             "Defaults to the current authenticated user if no userId is provided.")
     public String getUserWorkload(
             @McpToolParam(description = "User ID (optional, defaults to current user)", required = false) Integer userId,
-            @McpToolParam(description = "Project identifier to limit scope (optional)", required = false) String projectId,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Project identifier to limit scope (optional)", required = false) String projectId
     ) {
         int actualUserId;
         String userName;
@@ -142,8 +132,7 @@ public class AnalysisTools {
             userName = user.firstname() + " " + user.lastname();
         }
 
-        var batch = fetchAllIssues(projectId, "open", null, actualUserId,
-                context, "open issues for %s".formatted(userName));
+        var batch = fetchAllIssues(projectId, "open", null, actualUserId);
         var issues = batch.issues;
 
         var sb = new StringBuilder();
@@ -204,13 +193,7 @@ public class AnalysisTools {
             }
             sb.append("\n");
         }
-        ProgressSupport.done(context, "User workload ready");
-
         return sb.toString();
-    }
-
-    public String getUserWorkload(Integer userId, String projectId) {
-        return getUserWorkload(userId, projectId, null);
     }
 
     // ── getVersionChangelog ────────────────────────────────────────────
@@ -219,8 +202,7 @@ public class AnalysisTools {
             "with status and summary. Shows both open and closed issues for the version.")
     public String getVersionChangelog(
             @McpToolParam(description = "Project identifier") String projectId,
-            @McpToolParam(description = "Version/milestone ID") int versionId,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Version/milestone ID") int versionId
     ) {
         // Find version metadata
         var versions = client.getProjectVersions(projectId);
@@ -228,8 +210,7 @@ public class AnalysisTools {
                 .filter(v -> v.id() == versionId)
                 .findFirst().orElse(null);
 
-        var batch = fetchAllIssues(projectId, "*", versionId, null,
-                context, "issues for version #%d".formatted(versionId));
+        var batch = fetchAllIssues(projectId, "*", versionId, null);
         var issues = batch.issues;
 
         var sb = new StringBuilder();
@@ -276,13 +257,7 @@ public class AnalysisTools {
             sb.append(", %.1fh estimated, %.1fh spent".formatted(estimated, spent));
         }
         sb.append("\n");
-        ProgressSupport.done(context, "Version changelog ready");
-
         return sb.toString();
-    }
-
-    public String getVersionChangelog(String projectId, int versionId) {
-        return getVersionChangelog(projectId, versionId, null);
     }
 
     // ── getBlockerChain ────────────────────────────────────────────────
@@ -291,14 +266,12 @@ public class AnalysisTools {
             "Shows what blocks this issue (must be resolved first) and what this issue blocks. " +
             "Follows blocks/blocked_by relations recursively to reveal the critical path.")
     public String getBlockerChain(
-            @McpToolParam(description = "Issue ID number") int issueId,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Issue ID number") int issueId
     ) {
         var visited = new HashSet<Integer>();
         var fetchCount = new int[]{0};
-        ProgressSupport.stage(context, "Loading blocker chain root");
 
-        RedmineIssue root = fetchBlockerIssue(issueId, visited, fetchCount, context, "Loaded blocker node");
+        RedmineIssue root = fetchBlockerIssue(issueId, visited, fetchCount);
         if (root == null) {
             return "Issue #%d not found".formatted(issueId);
         }
@@ -308,8 +281,7 @@ public class AnalysisTools {
 
         // Collect "blocked by" (upstream: what must be resolved first)
         var blockedBy = new ArrayList<BlockerNode>();
-        ProgressSupport.stage(context, "Traversing upstream blockers");
-        collectBlockers(root, true, visited, fetchCount, blockedBy, 0, context);
+        collectBlockers(root, true, visited, fetchCount, blockedBy, 0);
 
         // Reset visited for downstream (keep root)
         visited.clear();
@@ -318,8 +290,7 @@ public class AnalysisTools {
 
         // Collect "blocks" (downstream: what waits on this issue)
         var blocks = new ArrayList<BlockerNode>();
-        ProgressSupport.stage(context, "Traversing downstream blockers");
-        collectBlockers(root, false, visited, fetchCount, blocks, 0, context);
+        collectBlockers(root, false, visited, fetchCount, blocks, 0);
 
         if (blockedBy.isEmpty() && blocks.isEmpty()) {
             sb.append("\nNo blocking relations found.\n");
@@ -353,13 +324,7 @@ public class AnalysisTools {
         int totalIssues = 1 + blockedBy.size() + blocks.size();
 
         sb.append("\nChain depth: %d, Total issues: %d\n".formatted(totalDepth, totalIssues));
-        ProgressSupport.done(context, "Blocker chain ready");
-
         return sb.toString();
-    }
-
-    public String getBlockerChain(int issueId) {
-        return getBlockerChain(issueId, null);
     }
 
     // ── getStaleIssues ─────────────────────────────────────────────────
@@ -426,8 +391,7 @@ public class AnalysisTools {
             "Provides a risk score summary.")
     public String getReleaseRisks(
             @McpToolParam(description = "Project identifier") String projectId,
-            @McpToolParam(description = "Version/milestone ID") int versionId,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Version/milestone ID") int versionId
     ) {
         // Version metadata
         var versions = client.getProjectVersions(projectId);
@@ -436,8 +400,7 @@ public class AnalysisTools {
                 .findFirst().orElse(null);
 
         // Open issues for this version
-        var batch = fetchAllIssues(projectId, "open", versionId, null,
-                context, "open issues for version #%d".formatted(versionId));
+        var batch = fetchAllIssues(projectId, "open", versionId, null);
         var issues = batch.issues;
 
         var sb = new StringBuilder();
@@ -531,13 +494,7 @@ public class AnalysisTools {
             sb.append("\nRisk score: %d risk items across %d categories in %d open issues\n"
                     .formatted(riskItems, riskCategories, issues.size()));
         }
-        ProgressSupport.done(context, "Release risk analysis ready");
-
         return sb.toString();
-    }
-
-    public String getReleaseRisks(String projectId, int versionId) {
-        return getReleaseRisks(projectId, versionId, null);
     }
 
     // ── compareVersions ────────────────────────────────────────────────
@@ -548,8 +505,7 @@ public class AnalysisTools {
     public String compareVersions(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "First version/milestone ID") int versionId1,
-            @McpToolParam(description = "Second version/milestone ID") int versionId2,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Second version/milestone ID") int versionId2
     ) {
         var versions = client.getProjectVersions(projectId);
         var v1Meta = versions.stream().filter(v -> v.id() == versionId1).findFirst().orElse(null);
@@ -558,10 +514,8 @@ public class AnalysisTools {
         String v1Name = v1Meta != null ? v1Meta.name() : "#" + versionId1;
         String v2Name = v2Meta != null ? v2Meta.name() : "#" + versionId2;
 
-        var batch1 = fetchAllIssues(projectId, "*", versionId1, null,
-                context, "issues for %s".formatted(v1Name));
-        var batch2 = fetchAllIssues(projectId, "*", versionId2, null,
-                context, "issues for %s".formatted(v2Name));
+        var batch1 = fetchAllIssues(projectId, "*", versionId1, null);
+        var batch2 = fetchAllIssues(projectId, "*", versionId2, null);
 
         var ids1 = batch1.issues.stream().map(RedmineIssue::id).collect(Collectors.toSet());
         var ids2 = batch2.issues.stream().map(RedmineIssue::id).collect(Collectors.toSet());
@@ -604,13 +558,7 @@ public class AnalysisTools {
         sb.append("\nCompletion:\n");
         sb.append("  %s: %s\n".formatted(v1Name, percentClosed(closed1, batch1.issues.size())));
         sb.append("  %s: %s\n".formatted(v2Name, percentClosed(closed2, batch2.issues.size())));
-        ProgressSupport.done(context, "Version comparison ready");
-
         return sb.toString();
-    }
-
-    public String compareVersions(String projectId, int versionId1, int versionId2) {
-        return compareVersions(projectId, versionId1, versionId2, null);
     }
 
     // ── Shared helpers ─────────────────────────────────────────────────
@@ -623,28 +571,14 @@ public class AnalysisTools {
 
     private IssuesBatch fetchAllIssues(String projectId, String statusId,
                                         Integer versionId, Integer assignedToId) {
-        return fetchAllIssues(projectId, statusId, versionId, assignedToId, null, "issues");
-    }
-
-    private IssuesBatch fetchAllIssues(String projectId, String statusId,
-                                        Integer versionId, Integer assignedToId,
-                                        McpSyncRequestContext context, String progressLabel) {
         var all = new ArrayList<RedmineIssue>();
         int offset = 0;
         int total = 0;
-        ProgressSupport.stage(context, "Loading %s".formatted(progressLabel));
         for (int page = 0; page < MAX_PAGES; page++) {
             var result = client.listIssues(projectId, statusId, null, assignedToId,
                     null, versionId, null, null, offset, PAGE_SIZE);
             all.addAll(result.issues());
             total = result.totalCount();
-            int loaded = Math.min(all.size(), total);
-            if (total > 0) {
-                ProgressSupport.report(context, loaded, total,
-                        "Loaded %d/%d %s".formatted(loaded, total, progressLabel));
-            } else {
-                ProgressSupport.stage(context, "No %s found".formatted(progressLabel));
-            }
             if (offset + PAGE_SIZE >= total) break;
             offset += PAGE_SIZE;
         }
@@ -657,24 +591,16 @@ public class AnalysisTools {
     }
 
     private RedmineIssue fetchBlockerIssue(int issueId, Set<Integer> visited, int[] fetchCount) {
-        return fetchBlockerIssue(issueId, visited, fetchCount, null, "Loaded blocker issue");
-    }
-
-    private RedmineIssue fetchBlockerIssue(int issueId, Set<Integer> visited, int[] fetchCount,
-                                           McpSyncRequestContext context, String messagePrefix) {
         if (!visited.add(issueId) || fetchCount[0] >= MAX_BLOCKER_ISSUES) {
             return null;
         }
         fetchCount[0]++;
-        ProgressSupport.report(context, fetchCount[0], MAX_BLOCKER_ISSUES,
-                "%s %d/%d".formatted(messagePrefix, fetchCount[0], MAX_BLOCKER_ISSUES));
         return client.getIssueForTree(issueId);
     }
 
     private void collectBlockers(RedmineIssue issue, boolean upstream,
                                   Set<Integer> visited, int[] fetchCount,
-                                  List<BlockerNode> result, int depth,
-                                  McpSyncRequestContext context) {
+                                  List<BlockerNode> result, int depth) {
         if (issue.relations() == null || depth >= MAX_BLOCKER_DEPTH) return;
 
         for (var rel : issue.relations()) {
@@ -693,11 +619,11 @@ public class AnalysisTools {
                 targetId = rel.issueToId();
             }
 
-            RedmineIssue target = fetchBlockerIssue(targetId, visited, fetchCount, context, "Loaded blocker node");
+            RedmineIssue target = fetchBlockerIssue(targetId, visited, fetchCount);
             if (target == null) continue;
 
             result.add(new BlockerNode(target, depth));
-            collectBlockers(target, upstream, visited, fetchCount, result, depth + 1, context);
+            collectBlockers(target, upstream, visited, fetchCount, result, depth + 1);
         }
     }
 

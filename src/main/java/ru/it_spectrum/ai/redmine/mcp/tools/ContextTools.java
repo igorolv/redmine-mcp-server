@@ -2,7 +2,6 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
-import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
@@ -45,10 +44,8 @@ public class ContextTools {
             "related issues with descriptions, document attachments extracted inline (PDF/DOCX/XLSX), " +
             "and recent discussion notes. Ideal first call when investigating or implementing a task.")
     public String getIssueFullContext(
-            @McpToolParam(description = "Issue ID number") int issueId,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Issue ID number") int issueId
     ) {
-        ProgressSupport.report(context, 0, 6, "Loading issue");
         // 1. Fetch the issue with full details
         var issue = client.getIssue(issueId);
         if (issue == null) {
@@ -85,7 +82,6 @@ public class ContextTools {
         // === Parent context ===
         RedmineIssue parent = null;
         if (issue.parent() != null) {
-            ProgressSupport.report(context, 1, 6, "Loading parent context");
             parent = client.getIssue(issue.parent().id());
             fetchCount++;
             if (parent != null) {
@@ -103,7 +99,6 @@ public class ContextTools {
 
         // === Siblings (same parent) ===
         if (parent != null && parent.children() != null && parent.children().size() > 1) {
-            ProgressSupport.report(context, 2, 6, "Loading sibling issues");
             var siblings = new ArrayList<RedmineIssue>();
             for (var child : parent.children()) {
                 if (child.id() != issueId && siblings.size() < MAX_SIBLINGS) {
@@ -141,7 +136,6 @@ public class ContextTools {
 
         // === Related issues with descriptions ===
         if (issue.relations() != null && !issue.relations().isEmpty()) {
-            ProgressSupport.report(context, 3, 6, "Loading related issues");
             var relatedByType = new LinkedHashMap<String, List<RedmineIssue>>();
             var relTypeMap = new LinkedHashMap<Integer, String>();
             int relCount = 0;
@@ -183,7 +177,6 @@ public class ContextTools {
 
         // === Attachments ===
         if (issue.attachments() != null && !issue.attachments().isEmpty()) {
-            ProgressSupport.report(context, 4, 6, "Extracting issue attachments");
             sb.append("\n--- Attachments (%d) ---\n".formatted(issue.attachments().size()));
             for (var att : issue.attachments()) {
                 sb.append("  [%d] %s (%s, %s)\n".formatted(
@@ -218,7 +211,6 @@ public class ContextTools {
 
             // Also extract from parent's attachments (specs are often there)
             if (parent != null && parent.attachments() != null) {
-                ProgressSupport.report(context, 5, 6, "Extracting parent attachments");
                 for (var att : parent.attachments()) {
                     if (docsExtracted >= MAX_INLINE_DOCS || totalDocText >= MAX_TOTAL_DOC_TEXT) break;
 
@@ -242,7 +234,6 @@ public class ContextTools {
         }
 
         // === Recent notes ===
-        ProgressSupport.report(context, 6, 6, "Formatting recent notes");
         if (issue.journals() != null) {
             var notes = issue.journals().stream()
                     .filter(j -> j.notes() != null && !j.notes().isBlank())
@@ -264,13 +255,8 @@ public class ContextTools {
         }
 
         sb.append("\n[%d API calls made]\n".formatted(fetchCount));
-        ProgressSupport.done(context, "Issue context loaded");
 
         return sb.toString();
-    }
-
-    public String getIssueFullContext(int issueId) {
-        return getIssueFullContext(issueId, null);
     }
 
     // ── getIssueSiblings ─────────────────────────────────────────────
@@ -360,11 +346,9 @@ public class ContextTools {
             "Useful for finding reference implementations and prior solutions before starting work.")
     public String findRelatedClosedIssues(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Maximum results, default 15", required = false) Integer limit,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Maximum results, default 15", required = false) Integer limit
     ) {
         int maxResults = limit != null ? Math.min(Math.max(limit, 1), 30) : 15;
-        ProgressSupport.report(context, 0, 3, "Loading issue and direct relations");
 
         var issue = client.getIssue(issueId);
         if (issue == null) {
@@ -407,7 +391,6 @@ public class ContextTools {
 
         // 2. Closed siblings (same parent)
         if (issue.parent() != null && foundIds.size() - 1 < maxResults) {
-            ProgressSupport.report(context, 1, 3, "Scanning sibling issues");
             var parent = client.getIssueForTree(issue.parent().id());
             if (parent != null && parent.children() != null) {
                 var closedSiblings = new ArrayList<RedmineIssue>();
@@ -432,7 +415,6 @@ public class ContextTools {
 
         // 3. Similar closed issues (same project + tracker, optionally same version)
         if (foundIds.size() - 1 < maxResults && issue.project() != null) {
-            ProgressSupport.report(context, 2, 3, "Scanning similar closed issues");
             int remaining = maxResults - (foundIds.size() - 1);
             Integer trackerId = issue.tracker() != null ? issue.tracker().id() : null;
             Integer versionId = issue.fixedVersion() != null ? issue.fixedVersion().id() : null;
@@ -480,13 +462,8 @@ public class ContextTools {
         } else {
             sb.append("Total: %d closed issues found\n".formatted(totalFound));
         }
-        ProgressSupport.done(context, "Related closed issue search ready");
 
         return sb.toString();
-    }
-
-    public String findRelatedClosedIssues(int issueId, Integer limit) {
-        return findRelatedClosedIssues(issueId, limit, null);
     }
 
     // ── findLatestAttachment ──────────────────────────────────────────
@@ -498,10 +475,8 @@ public class ContextTools {
     public String findLatestAttachment(
             @McpToolParam(description = "Filename pattern to search (case-insensitive substring match, e.g. 'spec', 'ТЗ', 'requirements')") String pattern,
             @McpToolParam(description = "Issue ID to start search from") int issueId,
-            @McpToolParam(description = "Also search in project-wide recent issues (true/false, default false)", required = false) Boolean searchProject,
-            McpSyncRequestContext context
+            @McpToolParam(description = "Also search in project-wide recent issues (true/false, default false)", required = false) Boolean searchProject
     ) {
-        ProgressSupport.report(context, 0, 4, "Loading base issue");
         var issue = client.getIssue(issueId);
         if (issue == null) {
             return "Issue #%d not found".formatted(issueId);
@@ -515,7 +490,6 @@ public class ContextTools {
 
         // Search in parent
         if (issue.parent() != null) {
-            ProgressSupport.report(context, 1, 4, "Scanning parent and sibling attachments");
             var parent = client.getIssue(issue.parent().id());
             if (parent != null) {
                 collectAttachmentMatches(parent, patternLower, "parent #%d".formatted(parent.id()), matches);
@@ -537,7 +511,6 @@ public class ContextTools {
 
         // Search in related issues
         if (issue.relations() != null) {
-            ProgressSupport.report(context, 2, 4, "Scanning related issues");
             for (var rel : issue.relations()) {
                 if (matches.size() >= 30) break;
                 int relatedId = rel.issueId() == issueId ? rel.issueToId() : rel.issueId();
@@ -551,7 +524,6 @@ public class ContextTools {
 
         // Optionally search project-wide
         if (Boolean.TRUE.equals(searchProject) && issue.project() != null) {
-            ProgressSupport.report(context, 3, 4, "Scanning recent project issues");
             var page = client.listIssues(String.valueOf(issue.project().id()), "*",
                     null, null, null, null, "updated_on:desc", null, 0, 20);
             for (var candidate : page.issues()) {
@@ -564,7 +536,6 @@ public class ContextTools {
             }
         }
 
-        ProgressSupport.report(context, 4, 4, "Sorting matches");
         // Sort by date descending (newest first)
         matches.sort((a, b) -> {
             if (a.attachment.createdOn() == null) return 1;
@@ -605,12 +576,7 @@ public class ContextTools {
             sb.append("\n");
         }
 
-        ProgressSupport.done(context, "Attachment search complete");
         return sb.toString();
-    }
-
-    public String findLatestAttachment(String pattern, int issueId, Boolean searchProject) {
-        return findLatestAttachment(pattern, issueId, searchProject, null);
     }
 
     // ── getIssueNetwork ───────────────────────────────────────────────
@@ -622,8 +588,7 @@ public class ContextTools {
             "Follows relations up to the specified depth.")
     public String getIssueNetwork(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "How many levels of relations to follow, default 2, max 3", required = false) Integer depth,
-            McpSyncRequestContext context
+            @McpToolParam(description = "How many levels of relations to follow, default 2, max 3", required = false) Integer depth
     ) {
         int maxDepth = depth != null ? Math.min(Math.max(depth, 1), 3) : 2;
         int maxIssues = 40;
@@ -632,7 +597,6 @@ public class ContextTools {
         var edges = new ArrayList<NetworkEdge>();
 
         // Fetch root
-        ProgressSupport.stage(context, "Loading issue network root");
         var root = client.getIssueForTree(issueId);
         if (root == null) {
             return "Issue #%d not found".formatted(issueId);
@@ -648,8 +612,6 @@ public class ContextTools {
             int[] item = queue.get(qi++);
             int currentId = item[0];
             int currentDepth = item[1];
-            ProgressSupport.report(context, visited.size(), maxIssues,
-                    "Traversing issue network at depth %d".formatted(currentDepth));
 
             var current = visited.get(currentId);
             if (current == null || current.relations() == null) continue;
@@ -735,13 +697,8 @@ public class ContextTools {
             if (isCurrent) sb.append("  \u2190 current");
             sb.append("\n");
         }
-        ProgressSupport.done(context, "Issue network ready");
 
         return sb.toString();
-    }
-
-    public String getIssueNetwork(int issueId, Integer depth) {
-        return getIssueNetwork(issueId, depth, null);
     }
 
     // --- Helpers for findRelatedClosedIssues ---

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import ru.it_spectrum.ai.redmine.mcp.client.AttachmentTextCache;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
@@ -17,14 +16,10 @@ import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.chunking.FixedSizeTextChunker;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -134,29 +129,6 @@ class ContextToolsTest {
             assertThat(result).doesNotContain("Siblings");
         }
 
-        @Test
-        void shouldReportProgressForFullContext() {
-            var parent = issueBuilder(100, "Epic: Reports Module")
-                    .children(List.of(child(123, "Date Filter"), child(124, "Charts")))
-                    .build();
-            var issue = issueBuilder(123, "Implement date filter")
-                    .parent(new IdName(100, "Epic: Reports Module"))
-                    .relations(List.of(new RedmineIssue.Relation(1, 123, 95, "relates", null)))
-                    .journals(List.of(journal(1, "Alice", "Check the date format spec")))
-                    .build();
-            var siblingCharts = issueForTree(124, "Add charts", new IdName(1, "New"), null, null);
-            var related = issueForTree(95, "Date API endpoint", new IdName(3, "Closed"), null, "REST endpoint");
-            var context = progressContext("token");
-
-            when(client.getIssue(123)).thenReturn(issue);
-            when(client.getIssue(100)).thenReturn(parent);
-            when(client.getIssueForTree(124)).thenReturn(siblingCharts);
-            when(client.getIssueForTree(95)).thenReturn(related);
-
-            tools.getIssueFullContext(123, context);
-
-            verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
-        }
     }
 
     // ── getIssueSiblings ────────────────────────────────────────────
@@ -258,31 +230,6 @@ class ContextToolsTest {
             assertThat(result).contains("#61 Done task [Closed]");
         }
 
-        @Test
-        void shouldReportProgressForRelatedClosedIssues() {
-            var issue = issueBuilder(60, "My task")
-                    .parent(new IdName(50, "Epic"))
-                    .description("Description")
-                    .relations(List.of(new RedmineIssue.Relation(1, 60, 40, "relates", null)))
-                    .build();
-            var parentWithChildren = issueForTreeWithChildren(50, "Epic",
-                    new IdName(2, "In Progress"),
-                    List.of(child(60, "My task"), child(61, "Done task")));
-            var closed40 = issueForTree(40, "Old related task",
-                    new IdName(3, "Closed"), new IdName(1, "Alice"), "This was already done");
-            var closedSib = issueForTree(61, "Done task",
-                    new IdName(3, "Closed"), new IdName(2, "Bob"), "Completed implementation");
-            var context = progressContext("token");
-
-            when(client.getIssue(60)).thenReturn(issue);
-            when(client.getIssueForTree(40)).thenReturn(closed40);
-            when(client.getIssueForTree(50)).thenReturn(parentWithChildren);
-            when(client.getIssueForTree(61)).thenReturn(closedSib);
-
-            tools.findRelatedClosedIssues(60, null, context);
-
-            verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
-        }
     }
 
     // ── findLatestAttachment ────────────────────────────────────────
@@ -348,31 +295,6 @@ class ContextToolsTest {
             assertThat(result).contains("No matching attachments found");
         }
 
-        @Test
-        void shouldReportProgressForLatestAttachmentSearch() {
-            var parentAtt = attachment(20, "requirements.pdf", "2025-03-01T00:00:00Z");
-            var parent = issueBuilder(50, "Epic")
-                    .children(List.of(child(100, "My task"), child(101, "Other task")))
-                    .attachments(List.of(parentAtt))
-                    .build();
-            var issue = issueBuilder(100, "My task")
-                    .parent(new IdName(50, "Epic"))
-                    .relations(List.of(new RedmineIssue.Relation(1, 100, 102, "relates", null)))
-                    .build();
-            var related = issueBuilder(102, "Related task")
-                    .attachments(List.of(attachment(30, "requirements_v2.pdf", "2025-04-01T00:00:00Z")))
-                    .build();
-            var context = progressContext("token");
-
-            when(client.getIssue(100)).thenReturn(issue);
-            when(client.getIssue(50)).thenReturn(parent);
-            when(client.getIssue(101)).thenReturn(issueBuilder(101, "Other task").build());
-            when(client.getIssue(102)).thenReturn(related);
-
-            tools.findLatestAttachment("requirements", 100, false, context);
-
-            verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
-        }
     }
 
     // ── getIssueNetwork ─────────────────────────────────────────────
@@ -416,28 +338,6 @@ class ContextToolsTest {
             assertThat(tools.getIssueNetwork(999, null)).contains("not found");
         }
 
-        @Test
-        void shouldReportProgressForIssueNetwork() {
-            var root = issueForTreeWithRelations(10, "Root task",
-                    new IdName(1, "New"), new IdName(1, "Alice"),
-                    List.of(
-                            new RedmineIssue.Relation(1, 10, 20, "blocks", null),
-                            new RedmineIssue.Relation(2, 10, 30, "relates", null)
-                    ));
-            var blocked = issueForTree(20, "Blocked task",
-                    new IdName(1, "New"), new IdName(2, "Bob"), null);
-            var related = issueForTree(30, "Related task",
-                    new IdName(3, "Closed"), null, null);
-            var context = progressContext("token");
-
-            when(client.getIssueForTree(10)).thenReturn(root);
-            when(client.getIssueForTree(20)).thenReturn(blocked);
-            when(client.getIssueForTree(30)).thenReturn(related);
-
-            tools.getIssueNetwork(10, 1, context);
-
-            verify(context, atLeastOnce()).progress(any(java.util.function.Consumer.class));
-        }
     }
 
     // ── Test helpers ────────────────────────────────────────────────
@@ -554,14 +454,4 @@ class ContextToolsTest {
                 null, new IdName(1, "Author"), createdOn);
     }
 
-    private static McpSyncRequestContext progressContext(Object token) {
-        var context = mock(McpSyncRequestContext.class);
-        var request = io.modelcontextprotocol.spec.McpSchema.CallToolRequest.builder()
-                .name("contextTool")
-                .arguments(Map.of())
-                .progressToken(token)
-                .build();
-        when(context.request()).thenReturn(request);
-        return context;
-    }
 }
