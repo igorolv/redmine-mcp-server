@@ -9,7 +9,6 @@ import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,17 +24,20 @@ public class ContextTools {
     private static final int MAX_DOC_TEXT_LENGTH = 10_000;
     private static final int MAX_TOTAL_DOC_TEXT = 30_000;
     private static final int MAX_PARENT_DESC_LENGTH = 3_000;
-    private static final int MAX_RELATED_DESC_LENGTH = 1_500;
     private static final int MAX_RECENT_NOTES = 10;
     private static final int MAX_NOTE_LENGTH = 500;
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
 
     private final RedmineClient client;
     private final AttachmentService attachmentService;
+    private final JsonResponses json;
+    private final ToolErrors errors;
 
-    public ContextTools(RedmineClient client, AttachmentService attachmentService) {
+    public ContextTools(RedmineClient client, AttachmentService attachmentService, JsonResponses json, ToolErrors errors) {
         this.client = client;
         this.attachmentService = attachmentService;
+        this.json = json;
+        this.errors = errors;
     }
 
     @McpTool(description = "Get full context needed to understand and implement a Redmine issue. " +
@@ -46,60 +48,20 @@ public class ContextTools {
     public String getIssueFullContext(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
-        // 1. Fetch the issue with full details
         var issue = client.getIssue(issueId);
         if (issue == null) {
-            return "Issue #%d not found".formatted(issueId);
+            return errors.notFound("issue", "#" + issueId);
         }
 
-        var sb = new StringBuilder();
         int fetchCount = 1;
-
-        // === Issue header ===
-        sb.append("=== Issue #%d: %s ===\n".formatted(issue.id(), issue.subject()));
-        sb.append("Project: %s | Tracker: %s | Status: %s | Priority: %s\n".formatted(
-                name(issue.project()), name(issue.tracker()), name(issue.status()), name(issue.priority())));
-        sb.append("Author: %s".formatted(name(issue.author())));
-        if (issue.assignedTo() != null) sb.append(" | Assigned: %s".formatted(issue.assignedTo().name()));
-        if (issue.fixedVersion() != null) sb.append(" | Version: %s".formatted(issue.fixedVersion().name()));
-        sb.append("\n");
-        if (issue.startDate() != null) sb.append("Start: %s".formatted(issue.startDate()));
-        if (issue.dueDate() != null) sb.append(" | Due: %s".formatted(issue.dueDate()));
-        if (issue.estimatedHours() != null) sb.append(" | Est: %.1fh".formatted(issue.estimatedHours()));
-        if (issue.spentHours() != null && issue.spentHours() > 0) sb.append(" | Spent: %.1fh".formatted(issue.spentHours()));
-        sb.append(" | Done: %d%%\n".formatted(issue.doneRatio()));
-
-        // Custom fields
-        appendCustomFields(sb, issue.customFields());
-
-        // Description
-        if (issue.description() != null && !issue.description().isBlank()) {
-            sb.append("\n--- Description ---\n");
-            sb.append(issue.description());
-            sb.append("\n");
-        }
-
-        // === Parent context ===
         RedmineIssue parent = null;
         if (issue.parent() != null) {
             parent = client.getIssue(issue.parent().id());
             fetchCount++;
-            if (parent != null) {
-                sb.append("\n--- Parent: #%d %s ---\n".formatted(parent.id(), parent.subject()));
-                sb.append("Status: %s | Assigned: %s | Done: %d%%\n".formatted(
-                        name(parent.status()),
-                        parent.assignedTo() != null ? parent.assignedTo().name() : "\u2014",
-                        parent.doneRatio()));
-                if (parent.description() != null && !parent.description().isBlank()) {
-                    sb.append(truncate(parent.description(), MAX_PARENT_DESC_LENGTH));
-                    sb.append("\n");
-                }
-            }
         }
 
-        // === Siblings (same parent) ===
+        var siblings = new ArrayList<RedmineIssue>();
         if (parent != null && parent.children() != null && parent.children().size() > 1) {
-            var siblings = new ArrayList<RedmineIssue>();
             for (var child : parent.children()) {
                 if (child.id() != issueId && siblings.size() < MAX_SIBLINGS) {
                     var sibling = client.getIssueForTree(child.id());
@@ -107,37 +69,10 @@ public class ContextTools {
                     if (sibling != null) siblings.add(sibling);
                 }
             }
-
-            if (!siblings.isEmpty()) {
-                long closedCount = siblings.stream().filter(s -> isClosedStatus(s.status())).count();
-                int total = siblings.size() + 1; // +1 for current issue
-                sb.append("\n--- Siblings (%d issues, %d/%d closed) ---\n".formatted(
-                        total, closedCount, total));
-                for (var sibling : siblings) {
-                    String marker = isClosedStatus(sibling.status()) ? "\u2713" : "\u25cb";
-                    sb.append("  %s #%d %s [%s]".formatted(marker, sibling.id(), sibling.subject(), name(sibling.status())));
-                    if (sibling.assignedTo() != null) sb.append(" (%s)".formatted(sibling.assignedTo().name()));
-                    if (sibling.doneRatio() > 0) sb.append(" done:%d%%".formatted(sibling.doneRatio()));
-                    if (sibling.dueDate() != null) sb.append(" due:%s".formatted(sibling.dueDate()));
-                    sb.append("\n");
-                }
-            }
         }
 
-        // === Children (subtasks) ===
-        if (issue.children() != null && !issue.children().isEmpty()) {
-            sb.append("\n--- Subtasks (%d) ---\n".formatted(issue.children().size()));
-            for (var child : issue.children()) {
-                sb.append("  - #%d %s".formatted(child.id(), child.subject()));
-                if (child.tracker() != null) sb.append(" [%s]".formatted(child.tracker().name()));
-                sb.append("\n");
-            }
-        }
-
-        // === Related issues with descriptions ===
+        var relatedByType = new LinkedHashMap<String, List<RedmineIssue>>();
         if (issue.relations() != null && !issue.relations().isEmpty()) {
-            var relatedByType = new LinkedHashMap<String, List<RedmineIssue>>();
-            var relTypeMap = new LinkedHashMap<Integer, String>();
             int relCount = 0;
 
             for (var rel : issue.relations()) {
@@ -149,114 +84,44 @@ public class ContextTools {
                 relCount++;
                 if (related != null) {
                     relatedByType.computeIfAbsent(relType, k -> new ArrayList<>()).add(related);
-                    relTypeMap.put(relatedId, relType);
-                }
-            }
-
-            if (!relatedByType.isEmpty()) {
-                int totalRelated = relatedByType.values().stream().mapToInt(List::size).sum();
-                sb.append("\n--- Related Issues (%d) ---\n".formatted(totalRelated));
-                relatedByType.forEach((relType, issues) -> {
-                    for (var related : issues) {
-                        sb.append("  %s #%d: %s [%s]".formatted(
-                                relType, related.id(), related.subject(), name(related.status())));
-                        if (related.assignedTo() != null)
-                            sb.append(" (%s)".formatted(related.assignedTo().name()));
-                        sb.append("\n");
-                        if (related.description() != null && !related.description().isBlank()) {
-                            String desc = truncate(related.description(), MAX_RELATED_DESC_LENGTH);
-                            // Indent description
-                            sb.append("    ");
-                            sb.append(desc.replace("\n", "\n    "));
-                            sb.append("\n");
-                        }
-                    }
-                });
-            }
-        }
-
-        // === Attachments ===
-        if (issue.attachments() != null && !issue.attachments().isEmpty()) {
-            sb.append("\n--- Attachments (%d) ---\n".formatted(issue.attachments().size()));
-            for (var att : issue.attachments()) {
-                sb.append("  [%d] %s (%s, %s)\n".formatted(
-                        att.id(), att.filename(),
-                        att.contentType() != null ? att.contentType() : "?",
-                        formatSize(att.filesize())));
-            }
-
-            // Auto-extract text from document/text attachments
-            int docsExtracted = 0;
-            int totalDocText = 0;
-            for (var att : issue.attachments()) {
-                if (docsExtracted >= MAX_INLINE_DOCS || totalDocText >= MAX_TOTAL_DOC_TEXT) break;
-
-                String ext = attachmentService.fileExtension(att);
-                if (IMAGE_EXTENSIONS.contains(ext)) continue;
-
-                if (!attachmentService.isTextExtractable(att)) continue;
-
-                String text = attachmentService.extractText(att).orElse(null);
-                if (text == null || text.isBlank()) continue;
-
-                int allowedLength = Math.min(MAX_DOC_TEXT_LENGTH, MAX_TOTAL_DOC_TEXT - totalDocText);
-                if (allowedLength <= 0) break;
-
-                sb.append("\n--- %s (extracted) ---\n".formatted(att.filename()));
-                sb.append(truncate(text, allowedLength));
-                sb.append("\n");
-                docsExtracted++;
-                totalDocText += Math.min(text.length(), allowedLength);
-            }
-
-            // Also extract from parent's attachments (specs are often there)
-            if (parent != null && parent.attachments() != null) {
-                for (var att : parent.attachments()) {
-                    if (docsExtracted >= MAX_INLINE_DOCS || totalDocText >= MAX_TOTAL_DOC_TEXT) break;
-
-                    String ext = attachmentService.fileExtension(att);
-                    if (IMAGE_EXTENSIONS.contains(ext)) continue;
-                    if (!attachmentService.isTextExtractable(att)) continue;
-
-                    String text = attachmentService.extractText(att).orElse(null);
-                    if (text == null || text.isBlank()) continue;
-
-                    int allowedLength = Math.min(MAX_DOC_TEXT_LENGTH, MAX_TOTAL_DOC_TEXT - totalDocText);
-                    if (allowedLength <= 0) break;
-
-                    sb.append("\n--- %s (from parent #%d) ---\n".formatted(att.filename(), parent.id()));
-                    sb.append(truncate(text, allowedLength));
-                    sb.append("\n");
-                    docsExtracted++;
-                    totalDocText += Math.min(text.length(), allowedLength);
                 }
             }
         }
 
-        // === Recent notes ===
+        var documents = new ArrayList<DocumentExcerpt>();
+        collectDocumentExcerpts(issue, "issue", issue.id(), documents);
+        if (parent != null) {
+            collectDocumentExcerpts(parent, "parent", parent.id(), documents);
+        }
+
+        List<RedmineIssue.Journal> recentNotes = List.of();
         if (issue.journals() != null) {
             var notes = issue.journals().stream()
                     .filter(j -> j.notes() != null && !j.notes().isBlank())
                     .toList();
             if (!notes.isEmpty()) {
                 int startIdx = Math.max(0, notes.size() - MAX_RECENT_NOTES);
-                var recentNotes = notes.subList(startIdx, notes.size());
-                sb.append("\n--- Recent Notes (%d of %d) ---\n".formatted(recentNotes.size(), notes.size()));
-                for (var journal : recentNotes) {
-                    sb.append("\n  [%s] %s:\n".formatted(
-                            formatTimestamp(journal.createdOn()),
-                            journal.user() != null ? journal.user().name() : "unknown"));
-                    String note = truncate(journal.notes(), MAX_NOTE_LENGTH);
-                    sb.append("  ");
-                    sb.append(note.replace("\n", "\n  "));
-                    sb.append("\n");
-                }
+                recentNotes = notes.subList(startIdx, notes.size()).stream()
+                        .map(j -> new RedmineIssue.Journal(j.id(), j.user(),
+                                truncate(j.notes(), MAX_NOTE_LENGTH), j.createdOn(), j.details()))
+                        .toList();
             }
         }
 
-        sb.append("\n[%d API calls made]\n".formatted(fetchCount));
+        int siblingTotal = siblings.size() + (parent != null ? 1 : 0);
+        int siblingClosed = (int) siblings.stream().filter(s -> isClosedStatus(s.status())).count();
 
-        return sb.toString();
+        return json.write(new IssueFullContextResult(
+                issue,
+                parent != null ? withTruncatedDescription(parent, MAX_PARENT_DESC_LENGTH) : null,
+                new SiblingSummary(siblingTotal, siblingClosed, siblings),
+                issue.children() != null ? issue.children() : List.of(),
+                relatedByType,
+                issue.attachments() != null ? issue.attachments() : List.of(),
+                documents,
+                recentNotes,
+                fetchCount
+        ));
     }
 
     // ── getIssueSiblings ─────────────────────────────────────────────
@@ -270,20 +135,20 @@ public class ContextTools {
     ) {
         var issue = client.getIssueForTree(issueId);
         if (issue == null) {
-            return "Issue #%d not found".formatted(issueId);
+            return errors.notFound("issue", "#" + issueId);
         }
 
         if (issue.parent() == null) {
-            return "Issue #%d has no parent — cannot determine siblings".formatted(issueId);
+            return json.write(new SiblingsResult(issue, null, List.of(), 0, 0, 0, "no_parent"));
         }
 
         var parent = client.getIssue(issue.parent().id());
         if (parent == null) {
-            return "Parent issue #%d not found".formatted(issue.parent().id());
+            return errors.notFound("parent issue", "#" + issue.parent().id());
         }
 
         if (parent.children() == null || parent.children().size() <= 1) {
-            return "Issue #%d is the only child of #%d %s".formatted(issueId, parent.id(), parent.subject());
+            return json.write(new SiblingsResult(issue, parent, List.of(), 0, 1, 0, "only_child"));
         }
 
         // Fetch all siblings with details
@@ -301,41 +166,16 @@ public class ContextTools {
         long closedCount = siblings.stream().filter(s -> isClosedStatus(s.status())).count();
         int total = siblings.size();
 
-        var sb = new StringBuilder();
-        sb.append("Siblings of #%d: %s\n".formatted(issueId, issue.subject()));
-        sb.append("Parent: #%d %s [%s]\n".formatted(parent.id(), parent.subject(), name(parent.status())));
-        sb.append("Progress: %d/%d closed (%d%%)\n\n".formatted(
-                closedCount, total, total > 0 ? Math.round(100.0 * closedCount / total) : 0));
-
-        for (var sibling : siblings) {
-            boolean isCurrent = sibling.id() == issueId;
-            String marker;
-            if (isCurrent) marker = "\u25b6";
-            else if (isClosedStatus(sibling.status())) marker = "\u2713";
-            else marker = "\u25cb";
-
-            sb.append("%s #%d %s\n".formatted(marker, sibling.id(), sibling.subject()));
-            sb.append("  [%s] %s | %s".formatted(
-                    name(sibling.tracker()), name(sibling.status()), name(sibling.priority())));
-            if (sibling.assignedTo() != null) sb.append(" | %s".formatted(sibling.assignedTo().name()));
-            sb.append("\n");
-            if (sibling.doneRatio() > 0) sb.append("  Done: %d%%".formatted(sibling.doneRatio()));
-            if (sibling.dueDate() != null) sb.append("  Due: %s".formatted(sibling.dueDate()));
-            if (sibling.estimatedHours() != null) sb.append("  Est: %.1fh".formatted(sibling.estimatedHours()));
-            if (sibling.doneRatio() > 0 || sibling.dueDate() != null || sibling.estimatedHours() != null) {
-                sb.append("\n");
-            }
-
-            // Short description for closed siblings (reference implementations)
-            if (!isCurrent && sibling.description() != null && !sibling.description().isBlank()) {
-                String desc = sibling.description().replace("\n", " ").strip();
-                if (desc.length() > 150) desc = desc.substring(0, 150) + "...";
-                sb.append("  %s\n".formatted(desc));
-            }
-            sb.append("\n");
-        }
-
-        return sb.toString();
+        int progressPercent = total > 0 ? (int) Math.round(100.0 * closedCount / total) : 0;
+        return json.write(new SiblingsResult(
+                currentFull != null ? currentFull : issue,
+                parent,
+                siblings,
+                (int) closedCount,
+                total,
+                progressPercent,
+                "ok"
+        ));
     }
 
     // ── findRelatedClosedIssues ───────────────────────────────────────
@@ -352,11 +192,8 @@ public class ContextTools {
 
         var issue = client.getIssue(issueId);
         if (issue == null) {
-            return "Issue #%d not found".formatted(issueId);
+            return errors.notFound("issue", "#" + issueId);
         }
-
-        var sb = new StringBuilder();
-        sb.append("Related closed issues for #%d: %s\n\n".formatted(issue.id(), issue.subject()));
 
         var foundIds = new java.util.LinkedHashSet<Integer>();
         foundIds.add(issueId); // exclude self
@@ -376,24 +213,11 @@ public class ContextTools {
             }
         }
 
-        if (!directClosed.isEmpty()) {
-            sb.append("Direct relations (closed):\n");
-            for (var related : directClosed) {
-                String relType = issue.relations().stream()
-                        .filter(r -> (r.issueId() == related.id() || r.issueToId() == related.id()))
-                        .findFirst()
-                        .map(r -> formatRelationType(r, issueId))
-                        .orElse("relates");
-                appendClosedIssue(sb, related, relType);
-            }
-            sb.append("\n");
-        }
-
         // 2. Closed siblings (same parent)
+        var closedSiblings = new ArrayList<RedmineIssue>();
         if (issue.parent() != null && foundIds.size() - 1 < maxResults) {
             var parent = client.getIssueForTree(issue.parent().id());
             if (parent != null && parent.children() != null) {
-                var closedSiblings = new ArrayList<RedmineIssue>();
                 for (var child : parent.children()) {
                     if (foundIds.size() - 1 >= maxResults) break;
                     if (foundIds.contains(child.id())) continue;
@@ -403,24 +227,17 @@ public class ContextTools {
                         foundIds.add(child.id());
                     }
                 }
-                if (!closedSiblings.isEmpty()) {
-                    sb.append("Closed siblings (parent #%d %s):\n".formatted(parent.id(), parent.subject()));
-                    for (var sibling : closedSiblings) {
-                        appendClosedIssue(sb, sibling, "sibling");
-                    }
-                    sb.append("\n");
-                }
             }
         }
 
         // 3. Similar closed issues (same project + tracker, optionally same version)
+        var similar = new ArrayList<RedmineIssue>();
         if (foundIds.size() - 1 < maxResults && issue.project() != null) {
             int remaining = maxResults - (foundIds.size() - 1);
             Integer trackerId = issue.tracker() != null ? issue.tracker().id() : null;
             Integer versionId = issue.fixedVersion() != null ? issue.fixedVersion().id() : null;
 
             // Try same version first
-            var similar = new ArrayList<RedmineIssue>();
             if (versionId != null) {
                 var page = client.listIssues(
                         String.valueOf(issue.project().id()), "closed", trackerId,
@@ -446,24 +263,15 @@ public class ContextTools {
                     if (similar.size() >= remaining) break;
                 }
             }
-
-            if (!similar.isEmpty()) {
-                sb.append("Similar closed issues (same project/tracker):\n");
-                for (var s : similar) {
-                    appendClosedIssue(sb, s, null);
-                }
-                sb.append("\n");
-            }
         }
 
-        int totalFound = foundIds.size() - 1;
-        if (totalFound == 0) {
-            sb.append("No related closed issues found.\n");
-        } else {
-            sb.append("Total: %d closed issues found\n".formatted(totalFound));
-        }
-
-        return sb.toString();
+        return json.write(new RelatedClosedIssuesResult(
+                issue,
+                directClosed,
+                closedSiblings,
+                similar,
+                foundIds.size() - 1
+        ));
     }
 
     // ── findLatestAttachment ──────────────────────────────────────────
@@ -479,7 +287,7 @@ public class ContextTools {
     ) {
         var issue = client.getIssue(issueId);
         if (issue == null) {
-            return "Issue #%d not found".formatted(issueId);
+            return errors.notFound("issue", "#" + issueId);
         }
 
         String patternLower = pattern.toLowerCase();
@@ -547,36 +355,12 @@ public class ContextTools {
         var seen = new java.util.HashSet<Integer>();
         matches.removeIf(m -> !seen.add(m.attachment.id()));
 
-        var sb = new StringBuilder();
-        sb.append("Attachments matching \"%s\" (from issue #%d context)\n\n".formatted(pattern, issueId));
-
-        if (matches.isEmpty()) {
-            sb.append("No matching attachments found.\n");
-            return sb.toString();
-        }
-
-        sb.append("Found %d attachments (newest first):\n\n".formatted(matches.size()));
-
-        // Mark the latest
-        boolean first = true;
-        for (var match : matches) {
-            var att = match.attachment;
-            if (first) {
-                sb.append(">>> LATEST:\n");
-                first = false;
-            }
-            sb.append("  [%d] %s (%s, %s)\n".formatted(
-                    att.id(), att.filename(),
-                    att.contentType() != null ? att.contentType() : "?",
-                    formatSize(att.filesize())));
-            sb.append("  Source: %s | Date: %s | Author: %s\n".formatted(
-                    match.source,
-                    att.createdOn() != null ? att.createdOn().substring(0, Math.min(10, att.createdOn().length())) : "?",
-                    att.author() != null ? att.author().name() : "?"));
-            sb.append("\n");
-        }
-
-        return sb.toString();
+        return json.write(new LatestAttachmentResult(
+                pattern,
+                issueId,
+                matches.isEmpty() ? null : matches.getFirst(),
+                matches
+        ));
     }
 
     // ── getIssueNetwork ───────────────────────────────────────────────
@@ -599,7 +383,7 @@ public class ContextTools {
         // Fetch root
         var root = client.getIssueForTree(issueId);
         if (root == null) {
-            return "Issue #%d not found".formatted(issueId);
+            return errors.notFound("issue", "#" + issueId);
         }
         visited.put(issueId, root);
 
@@ -662,62 +446,88 @@ public class ContextTools {
             }
         }
 
-        // Format output
-        var sb = new StringBuilder();
-        sb.append("Issue network for #%d: %s\n".formatted(issueId, root.subject()));
-        sb.append("Nodes: %d issues, Edges: %d relations (depth: %d)\n\n".formatted(
-                visited.size(), edges.size(), maxDepth));
-
-        // Group edges by type
         var edgesByType = edges.stream()
                 .collect(Collectors.groupingBy(e -> e.type, LinkedHashMap::new, Collectors.toList()));
 
-        edgesByType.forEach((type, typeEdges) -> {
-            sb.append("%s (%d):\n".formatted(type, typeEdges.size()));
-            for (var edge : typeEdges) {
-                var from = visited.get(edge.fromId);
-                var to = visited.get(edge.toId);
-                String fromLabel = from != null ? "#%d %s".formatted(from.id(), from.subject()) : "#%d".formatted(edge.fromId);
-                String toLabel = to != null ? "#%d %s".formatted(to.id(), to.subject()) : "#%d".formatted(edge.toId);
-                sb.append("  %s \u2192 %s".formatted(fromLabel, toLabel));
-                if (edge.delay != null && edge.delay != 0) sb.append(" (delay: %d days)".formatted(edge.delay));
-                sb.append("\n");
-            }
-            sb.append("\n");
-        });
-
-        // Issue index with status/assignee
-        sb.append("--- Issue index ---\n");
-        for (var entry : visited.entrySet()) {
-            var iss = entry.getValue();
-            boolean isCurrent = iss.id() == issueId;
-            sb.append("  #%-5d [%s] %s".formatted(iss.id(), name(iss.status()), name(iss.priority())));
-            if (iss.assignedTo() != null) sb.append(" | %s".formatted(iss.assignedTo().name()));
-            if (iss.dueDate() != null) sb.append(" | due:%s".formatted(iss.dueDate()));
-            if (isCurrent) sb.append("  \u2190 current");
-            sb.append("\n");
-        }
-
-        return sb.toString();
+        return json.write(new IssueNetworkResult(
+                root,
+                maxDepth,
+                visited.size() >= maxIssues,
+                visited,
+                edges,
+                edgesByType
+        ));
     }
 
-    // --- Helpers for findRelatedClosedIssues ---
+    // --- Result models ---
 
-    private void appendClosedIssue(StringBuilder sb, RedmineIssue issue, String relationType) {
-        sb.append("  #%d %s [%s]".formatted(issue.id(), issue.subject(), name(issue.status())));
-        if (relationType != null) sb.append(" (%s)".formatted(relationType));
-        if (issue.assignedTo() != null) sb.append(" \u2014 %s".formatted(issue.assignedTo().name()));
-        sb.append("\n");
-        if (issue.description() != null && !issue.description().isBlank()) {
-            String desc = issue.description().replace("\n", " ").strip();
-            if (desc.length() > 200) desc = desc.substring(0, 200) + "...";
-            sb.append("    %s\n".formatted(desc));
-        }
+    public record IssueFullContextResult(
+            RedmineIssue issue,
+            RedmineIssue parent,
+            SiblingSummary siblings,
+            List<RedmineIssue.Child> children,
+            Map<String, List<RedmineIssue>> relatedByType,
+            List<RedmineAttachment> attachments,
+            List<DocumentExcerpt> documents,
+            List<RedmineIssue.Journal> recentNotes,
+            int apiCalls
+    ) {
+    }
+
+    public record SiblingSummary(int total, int closed, List<RedmineIssue> issues) {
+    }
+
+    public record DocumentExcerpt(
+            RedmineAttachment attachment,
+            String source,
+            int sourceIssueId,
+            String extractionType,
+            String text,
+            boolean truncated
+    ) {
+    }
+
+    public record SiblingsResult(
+            RedmineIssue issue,
+            RedmineIssue parent,
+            List<RedmineIssue> siblings,
+            int closed,
+            int total,
+            int progressPercent,
+            String status
+    ) {
+    }
+
+    public record RelatedClosedIssuesResult(
+            RedmineIssue issue,
+            List<RedmineIssue> direct,
+            List<RedmineIssue> siblings,
+            List<RedmineIssue> similar,
+            int total
+    ) {
+    }
+
+    public record LatestAttachmentResult(
+            String pattern,
+            int issueId,
+            AttachmentMatch latest,
+            List<AttachmentMatch> matches
+    ) {
+    }
+
+    public record IssueNetworkResult(
+            RedmineIssue root,
+            int depth,
+            boolean limitReached,
+            Map<Integer, RedmineIssue> nodes,
+            List<NetworkEdge> edges,
+            Map<String, List<NetworkEdge>> edgesByType
+    ) {
     }
 
     // --- Helpers for findLatestAttachment ---
 
-    private record AttachmentMatch(RedmineAttachment attachment, String source) {
+    public record AttachmentMatch(RedmineAttachment attachment, String source) {
     }
 
     private void collectAttachmentMatches(RedmineIssue issue, String patternLower,
@@ -732,7 +542,7 @@ public class ContextTools {
 
     // --- Helpers for getIssueNetwork ---
 
-    private record NetworkEdge(int fromId, int toId, String type, Integer delay) {
+    public record NetworkEdge(int fromId, int toId, String type, Integer delay) {
     }
 
     private String reverseRelType(String type) {
@@ -767,24 +577,6 @@ public class ContextTools {
         };
     }
 
-    private void appendCustomFields(StringBuilder sb, List<RedmineIssue.CustomField> customFields) {
-        if (customFields == null) {
-            return;
-        }
-
-        var nonEmptyFields = customFields.stream()
-                .filter(cf -> cf != null && !cf.isEmpty())
-                .toList();
-        if (nonEmptyFields.isEmpty()) {
-            return;
-        }
-
-        sb.append("Custom fields:\n");
-        for (var cf : nonEmptyFields) {
-            sb.append("  [%d] %s: %s\n".formatted(cf.id(), cf.name(), cf.displayValue()));
-        }
-    }
-
     // --- Status helpers ---
 
     private boolean isClosedStatus(IdName status) {
@@ -794,28 +586,53 @@ public class ContextTools {
                 || lower.contains("resolved") || lower.contains("done");
     }
 
-    // --- Formatting helpers ---
-
-    private String name(IdName idName) {
-        return idName != null ? idName.name() : "\u2014";
-    }
-
     private String truncate(String text, int maxLength) {
         if (text.length() <= maxLength) return text;
         return text.substring(0, maxLength) + "... (truncated)";
     }
 
-    private String formatTimestamp(String timestamp) {
-        if (timestamp == null) return "?";
-        if (timestamp.length() >= 16) {
-            return timestamp.substring(0, 10) + " " + timestamp.substring(11, 16);
+    private void collectDocumentExcerpts(RedmineIssue sourceIssue, String source,
+                                         int sourceIssueId, List<DocumentExcerpt> documents) {
+        if (sourceIssue.attachments() == null) return;
+        int totalDocText = documents.stream().mapToInt(d -> d.text().length()).sum();
+        for (var att : sourceIssue.attachments()) {
+            if (documents.size() >= MAX_INLINE_DOCS || totalDocText >= MAX_TOTAL_DOC_TEXT) break;
+
+            String ext = attachmentService.fileExtension(att);
+            if (IMAGE_EXTENSIONS.contains(ext)) continue;
+            if (!attachmentService.isTextExtractable(att)) continue;
+
+            String text = attachmentService.extractText(att).orElse(null);
+            if (text == null || text.isBlank()) continue;
+
+            int allowedLength = Math.min(MAX_DOC_TEXT_LENGTH, MAX_TOTAL_DOC_TEXT - totalDocText);
+            if (allowedLength <= 0) break;
+
+            String truncatedText = truncate(text, allowedLength);
+            documents.add(new DocumentExcerpt(
+                    att,
+                    source,
+                    sourceIssueId,
+                    attachmentService.detectExtractionType(att),
+                    truncatedText,
+                    text.length() > allowedLength
+            ));
+            totalDocText += truncatedText.length();
         }
-        return timestamp;
     }
 
-    private String formatSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return "%.1f KB".formatted(bytes / 1024.0);
-        return "%.1f MB".formatted(bytes / (1024.0 * 1024));
+    private RedmineIssue withTruncatedDescription(RedmineIssue issue, int maxLength) {
+        String description = issue.description();
+        if (description != null && description.length() > maxLength) {
+            description = truncate(description, maxLength);
+        }
+        return new RedmineIssue(
+                issue.id(), issue.project(), issue.tracker(), issue.status(), issue.priority(),
+                issue.author(), issue.assignedTo(), issue.parent(), issue.fixedVersion(), issue.category(),
+                issue.subject(), description, issue.startDate(), issue.dueDate(), issue.doneRatio(),
+                issue.estimatedHours(), issue.spentHours(), issue.isPrivate(),
+                issue.createdOn(), issue.updatedOn(), issue.customFields(), issue.attachments(),
+                issue.journals(), issue.relations(), issue.children()
+        );
     }
 }

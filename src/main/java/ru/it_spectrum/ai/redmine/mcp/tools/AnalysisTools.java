@@ -20,7 +20,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,9 +30,13 @@ public class AnalysisTools {
     private static final int MAX_BLOCKER_ISSUES = 30;
 
     private final RedmineClient client;
+    private final JsonResponses json;
+    private final ToolErrors errors;
 
-    public AnalysisTools(RedmineClient client) {
+    public AnalysisTools(RedmineClient client, JsonResponses json, ToolErrors errors) {
         this.client = client;
+        this.json = json;
+        this.errors = errors;
     }
 
     // ── getProjectSummary ──────────────────────────────────────────────
@@ -53,59 +56,38 @@ public class AnalysisTools {
         int openCount = openBatch.totalCount;
         int total = openCount + closedCount;
 
-        var sb = new StringBuilder();
-        sb.append("Project summary: %s\n".formatted(projectId));
-        if (versionId != null) {
-            sb.append("Version filter: #%d\n".formatted(versionId));
-        }
-        sb.append("\nOverview: %d open, %d closed (%d total)".formatted(openCount, closedCount, total));
-        if (openBatch.truncated()) {
-            sb.append(" [breakdown based on first %d open issues]".formatted(issues.size()));
-        }
-        sb.append("\n");
-
-        // By status
         var byStatus = groupAndCount(issues, i -> name(i.status()));
-        sb.append("\nBy status:\n");
-        byStatus.forEach((k, v) -> sb.append("  %s: %d\n".formatted(k, v)));
-
-        // By tracker
         var byTracker = groupAndCount(issues, i -> name(i.tracker()));
-        sb.append("\nBy tracker:\n");
-        byTracker.forEach((k, v) -> sb.append("  %s: %d\n".formatted(k, v)));
-
-        // By priority
         var byPriority = groupAndCount(issues, i -> name(i.priority()));
-        sb.append("\nBy priority:\n");
-        byPriority.forEach((k, v) -> sb.append("  %s: %d\n".formatted(k, v)));
-
-        // By assignee
         var byAssignee = groupAndCount(issues,
                 i -> i.assignedTo() != null ? i.assignedTo().name() : "Unassigned");
-        sb.append("\nBy assignee:\n");
-        byAssignee.forEach((k, v) -> {
-            long overdue = issues.stream()
-                    .filter(i -> k.equals(i.assignedTo() != null ? i.assignedTo().name() : "Unassigned"))
-                    .filter(this::isOverdue)
-                    .count();
-            sb.append("  %s: %d".formatted(k, v));
-            if (overdue > 0) sb.append(" (%d overdue)".formatted(overdue));
-            sb.append("\n");
-        });
-
-        // Overdue
+        var assignees = byAssignee.entrySet().stream()
+                .map(e -> new AssigneeSummary(
+                        e.getKey(),
+                        e.getValue(),
+                        (int) issues.stream()
+                                .filter(i -> e.getKey().equals(i.assignedTo() != null
+                                        ? i.assignedTo().name() : "Unassigned"))
+                                .filter(this::isOverdue)
+                                .count()))
+                .toList();
         long overdueCount = issues.stream().filter(this::isOverdue).count();
-        sb.append("\nOverdue: %d issues past due date\n".formatted(overdueCount));
-
-        // Hours
         double estimated = issues.stream()
                 .filter(i -> i.estimatedHours() != null)
                 .mapToDouble(RedmineIssue::estimatedHours).sum();
         double spent = issues.stream()
                 .filter(i -> i.spentHours() != null)
                 .mapToDouble(RedmineIssue::spentHours).sum();
-        sb.append("Hours: %.1f estimated, %.1f spent\n".formatted(estimated, spent));
-        return sb.toString();
+
+        return json.write(new ProjectSummaryResult(
+                projectId, versionId,
+                new IssueCountSummary(openCount, closedCount, total),
+                openBatch.truncated(),
+                issues.size(),
+                byStatus, byTracker, byPriority, assignees,
+                (int) overdueCount,
+                new HoursSummary(estimated, spent)
+        ));
     }
 
     // ── getUserWorkload ────────────────────────────────────────────────
@@ -126,7 +108,7 @@ public class AnalysisTools {
         } else {
             var user = client.getCurrentUser();
             if (user == null) {
-                return "Could not retrieve current user";
+                return errors.unavailable("current user");
             }
             actualUserId = user.id();
             userName = user.firstname() + " " + user.lastname();
@@ -134,12 +116,6 @@ public class AnalysisTools {
 
         var batch = fetchAllIssues(projectId, "open", null, actualUserId);
         var issues = batch.issues;
-
-        var sb = new StringBuilder();
-        sb.append("Workload for %s\n".formatted(userName));
-        if (batch.truncated()) {
-            sb.append("[Based on first %d of %d issues]\n".formatted(issues.size(), batch.totalCount));
-        }
 
         double estimated = issues.stream()
                 .filter(i -> i.estimatedHours() != null)
@@ -149,31 +125,22 @@ public class AnalysisTools {
                 .mapToDouble(RedmineIssue::spentHours).sum();
         long overdueCount = issues.stream().filter(this::isOverdue).count();
 
-        sb.append("\nTotal: %d open issues (%.1f estimated hours, %.1f spent)\n"
-                .formatted(batch.totalCount, estimated, spent));
-        sb.append("Overdue: %d issues\n".formatted(overdueCount));
-
-        // By project
         var byProject = issues.stream()
                 .collect(Collectors.groupingBy(
                         i -> name(i.project()),
                         LinkedHashMap::new,
                         Collectors.toList()));
 
-        sb.append("\nBy project:\n");
-        byProject.forEach((proj, projIssues) -> {
-            double projEst = projIssues.stream()
-                    .filter(i -> i.estimatedHours() != null)
-                    .mapToDouble(RedmineIssue::estimatedHours).sum();
-            sb.append("  %s (%d issues, %.1fh est):\n".formatted(proj, projIssues.size(), projEst));
-            var byPriority = groupAndCount(projIssues, i -> name(i.priority()));
-            sb.append("    %s\n".formatted(
-                    byPriority.entrySet().stream()
-                            .map(e -> "%s: %d".formatted(e.getKey(), e.getValue()))
-                            .collect(Collectors.joining(", "))));
-        });
+        var projects = byProject.entrySet().stream()
+                .map(e -> new ProjectWorkload(
+                        e.getKey(),
+                        e.getValue().size(),
+                        e.getValue().stream()
+                                .filter(i -> i.estimatedHours() != null)
+                                .mapToDouble(RedmineIssue::estimatedHours).sum(),
+                        groupAndCount(e.getValue(), i -> name(i.priority()))))
+                .toList();
 
-        // Top issues by priority (highest first)
         var priorityOrder = client.getIssuePriorities().stream()
                 .collect(Collectors.toMap(p -> p.name(), p -> p.id()));
         var sorted = issues.stream()
@@ -184,16 +151,14 @@ public class AnalysisTools {
                 .limit(10)
                 .toList();
 
-        sb.append("\nTop issues by priority:\n");
-        for (var issue : sorted) {
-            sb.append("  #%d [%s] %s".formatted(issue.id(), name(issue.priority()), issue.subject()));
-            if (issue.dueDate() != null) {
-                sb.append(" \u2014 due %s".formatted(issue.dueDate()));
-                if (isOverdue(issue)) sb.append(" (OVERDUE)");
-            }
-            sb.append("\n");
-        }
-        return sb.toString();
+        return json.write(new UserWorkloadResult(
+                actualUserId, userName, projectId,
+                batch.totalCount, issues.size(), batch.truncated(),
+                new HoursSummary(estimated, spent),
+                (int) overdueCount,
+                projects,
+                sorted
+        ));
     }
 
     // ── getVersionChangelog ────────────────────────────────────────────
@@ -213,35 +178,11 @@ public class AnalysisTools {
         var batch = fetchAllIssues(projectId, "*", versionId, null);
         var issues = batch.issues;
 
-        var sb = new StringBuilder();
-        sb.append("Changelog for %s (project: %s)\n".formatted(
-                version != null ? version.name() : "version #" + versionId, projectId));
-        if (version != null) {
-            sb.append("Status: %s".formatted(version.status()));
-            if (version.dueDate() != null) sb.append(" | Due: %s".formatted(version.dueDate()));
-            sb.append("\n");
-        }
-        if (batch.truncated()) {
-            sb.append("[Showing first %d of %d issues]\n".formatted(issues.size(), batch.totalCount));
-        }
-
-        // Group by tracker
         var byTracker = issues.stream()
                 .collect(Collectors.groupingBy(
                         i -> name(i.tracker()),
                         LinkedHashMap::new,
                         Collectors.toList()));
-
-        sb.append("\n");
-        byTracker.forEach((tracker, trackerIssues) -> {
-            sb.append("%s (%d):\n".formatted(tracker, trackerIssues.size()));
-            for (var issue : trackerIssues) {
-                sb.append("  - #%d %s [%s]".formatted(issue.id(), issue.subject(), name(issue.status())));
-                if (issue.assignedTo() != null) sb.append(" (%s)".formatted(issue.assignedTo().name()));
-                sb.append("\n");
-            }
-            sb.append("\n");
-        });
 
         long closed = issues.stream().filter(i -> isClosedStatus(i.status())).count();
         long open = issues.size() - closed;
@@ -252,12 +193,13 @@ public class AnalysisTools {
                 .filter(i -> i.spentHours() != null)
                 .mapToDouble(RedmineIssue::spentHours).sum();
 
-        sb.append("Summary: %d issues (%d closed, %d open)".formatted(issues.size(), closed, open));
-        if (estimated > 0 || spent > 0) {
-            sb.append(", %.1fh estimated, %.1fh spent".formatted(estimated, spent));
-        }
-        sb.append("\n");
-        return sb.toString();
+        return json.write(new VersionChangelogResult(
+                projectId, versionId, version,
+                batch.totalCount, issues.size(), batch.truncated(),
+                byTracker,
+                new IssueCountSummary((int) open, (int) closed, issues.size()),
+                new HoursSummary(estimated, spent)
+        ));
     }
 
     // ── getBlockerChain ────────────────────────────────────────────────
@@ -273,13 +215,9 @@ public class AnalysisTools {
 
         RedmineIssue root = fetchBlockerIssue(issueId, visited, fetchCount);
         if (root == null) {
-            return "Issue #%d not found".formatted(issueId);
+            return errors.notFound("issue", "#" + issueId);
         }
 
-        var sb = new StringBuilder();
-        sb.append("Blocker chain for #%d: %s\n".formatted(root.id(), root.subject()));
-
-        // Collect "blocked by" (upstream: what must be resolved first)
         var blockedBy = new ArrayList<BlockerNode>();
         collectBlockers(root, true, visited, fetchCount, blockedBy, 0);
 
@@ -292,39 +230,14 @@ public class AnalysisTools {
         var blocks = new ArrayList<BlockerNode>();
         collectBlockers(root, false, visited, fetchCount, blocks, 0);
 
-        if (blockedBy.isEmpty() && blocks.isEmpty()) {
-            sb.append("\nNo blocking relations found.\n");
-            return sb.toString();
-        }
-
-        if (!blockedBy.isEmpty()) {
-            sb.append("\nBlocked by (must be resolved first):\n");
-            for (var node : blockedBy) {
-                String indent = "  " + "  ".repeat(node.depth);
-                sb.append(indent);
-                if (node.depth > 0) sb.append("\u2514\u2500 ");
-                appendBlockerNode(sb, node.issue);
-            }
-        }
-
-        if (!blocks.isEmpty()) {
-            sb.append("\nBlocks (waiting on #%d):\n".formatted(issueId));
-            for (var node : blocks) {
-                String indent = "  " + "  ".repeat(node.depth);
-                sb.append(indent);
-                if (node.depth > 0) sb.append("\u2514\u2500 ");
-                appendBlockerNode(sb, node.issue);
-            }
-        }
-
-        // Critical path
         int upstreamDepth = blockedBy.stream().mapToInt(n -> n.depth).max().orElse(0);
         int downstreamDepth = blocks.stream().mapToInt(n -> n.depth).max().orElse(0);
         int totalDepth = upstreamDepth + 1 + downstreamDepth;
         int totalIssues = 1 + blockedBy.size() + blocks.size();
 
-        sb.append("\nChain depth: %d, Total issues: %d\n".formatted(totalDepth, totalIssues));
-        return sb.toString();
+        return json.write(new BlockerChainResult(
+                root, blockedBy, blocks, totalDepth, totalIssues
+        ));
     }
 
     // ── getStaleIssues ─────────────────────────────────────────────────
@@ -352,36 +265,11 @@ public class AnalysisTools {
                 })
                 .toList();
 
-        var sb = new StringBuilder();
-        sb.append("Stale issues in project %s (not updated for %d+ days)\n\n".formatted(projectId, minDays));
-
-        if (stale.isEmpty()) {
-            sb.append("No stale issues found.\n");
-            return sb.toString();
-        }
-
-        for (var issue : stale) {
-            long daysAgo = daysAgo(issue.updatedOn());
-            sb.append("#%-5d %s [%s] %s \u2014 last updated %s (%d days ago)\n".formatted(
-                    issue.id(), issue.subject(), name(issue.tracker()), name(issue.priority()),
-                    issue.updatedOn() != null ? issue.updatedOn().substring(0, 10) : "?", daysAgo));
-            sb.append("       ");
-            if (issue.assignedTo() != null) {
-                sb.append("Assigned: %s".formatted(issue.assignedTo().name()));
-            } else {
-                sb.append("Unassigned");
-            }
-            if (issue.dueDate() != null) {
-                sb.append(" | Due: %s".formatted(issue.dueDate()));
-                if (isOverdue(issue)) sb.append(" (OVERDUE)");
-            }
-            sb.append("\n\n");
-        }
-
         long oldest = stale.stream().mapToLong(i -> daysAgo(i.updatedOn())).max().orElse(0);
-        sb.append("Found %d stale issues (oldest: %d days)\n".formatted(stale.size(), oldest));
-
-        return sb.toString();
+        var staleItems = stale.stream()
+                .map(i -> new StaleIssue(i, daysAgo(i.updatedOn()), isOverdue(i)))
+                .toList();
+        return json.write(new StaleIssuesResult(projectId, minDays, actualLimit, staleItems, oldest));
     }
 
     // ── getReleaseRisks ────────────────────────────────────────────────
@@ -403,56 +291,12 @@ public class AnalysisTools {
         var batch = fetchAllIssues(projectId, "open", versionId, null);
         var issues = batch.issues;
 
-        var sb = new StringBuilder();
-        sb.append("Release risks for %s (project: %s)\n".formatted(
-                version != null ? version.name() : "version #" + versionId, projectId));
-        if (version != null && version.dueDate() != null) {
-            sb.append("Version due date: %s\n".formatted(version.dueDate()));
-        }
-        sb.append("Open issues: %d\n".formatted(batch.totalCount));
-        if (batch.truncated()) {
-            sb.append("[Analysis based on first %d issues]\n".formatted(issues.size()));
-        }
-
-        int riskItems = 0;
-        int riskCategories = 0;
-
-        // BLOCKERS — issues with blocking relations
         var blockers = issues.stream()
                 .filter(i -> i.relations() != null && i.relations().stream()
                         .anyMatch(r -> "blocks".equals(r.relationType()) && r.issueId() == i.id()))
                 .toList();
-        if (!blockers.isEmpty()) {
-            riskCategories++;
-            sb.append("\nBLOCKERS (open issues with blocking relations): %d\n".formatted(blockers.size()));
-            for (var issue : blockers) {
-                var blocked = issue.relations().stream()
-                        .filter(r -> "blocks".equals(r.relationType()) && r.issueId() == issue.id())
-                        .map(r -> "#" + r.issueToId())
-                        .collect(Collectors.joining(", "));
-                sb.append("  #%d %s [%s] blocks %s\n".formatted(
-                        issue.id(), issue.subject(), name(issue.status()), blocked));
-                riskItems++;
-            }
-        }
-
-        // OVERDUE
         var overdue = issues.stream().filter(this::isOverdue).toList();
-        if (!overdue.isEmpty()) {
-            riskCategories++;
-            sb.append("\nOVERDUE (past due date): %d\n".formatted(overdue.size()));
-            for (var issue : overdue) {
-                long days = daysOverdue(issue);
-                sb.append("  #%d %s [%s] due %s (%d days overdue)\n".formatted(
-                        issue.id(), issue.subject(), name(issue.priority()),
-                        issue.dueDate(), days));
-                riskItems++;
-            }
-        }
-
-        // HIGH PRIORITY — fetch priorities to identify top ones
         var priorities = client.getIssuePriorities();
-        // Consider the top third of priorities as "high"
         Set<String> highPriorityNames = new HashSet<>();
         if (priorities.size() >= 3) {
             int highThreshold = priorities.size() - priorities.size() / 3;
@@ -466,35 +310,21 @@ public class AnalysisTools {
         var highPriority = issues.stream()
                 .filter(i -> highPriorityNames.contains(name(i.priority())))
                 .toList();
-        if (!highPriority.isEmpty()) {
-            riskCategories++;
-            sb.append("\nHIGH PRIORITY (open): %d\n".formatted(highPriority.size()));
-            for (var issue : highPriority) {
-                sb.append("  #%d %s [%s]".formatted(issue.id(), issue.subject(), name(issue.priority())));
-                if (issue.assignedTo() != null) sb.append(" assigned %s".formatted(issue.assignedTo().name()));
-                sb.append("\n");
-                riskItems++;
-            }
-        }
-
-        // UNASSIGNED
         var unassigned = issues.stream().filter(i -> i.assignedTo() == null).toList();
-        if (!unassigned.isEmpty()) {
-            riskCategories++;
-            sb.append("\nUNASSIGNED: %d\n".formatted(unassigned.size()));
-            for (var issue : unassigned) {
-                sb.append("  #%d %s [%s]\n".formatted(issue.id(), issue.subject(), name(issue.priority())));
-                riskItems++;
-            }
-        }
+        var categories = new ArrayList<RiskCategory>();
+        if (!blockers.isEmpty()) categories.add(new RiskCategory("blockers", blockers));
+        if (!overdue.isEmpty()) categories.add(new RiskCategory("overdue", overdue));
+        if (!highPriority.isEmpty()) categories.add(new RiskCategory("high_priority", highPriority));
+        if (!unassigned.isEmpty()) categories.add(new RiskCategory("unassigned", unassigned));
+        int riskItems = categories.stream().mapToInt(c -> c.issues().size()).sum();
 
-        if (riskItems == 0) {
-            sb.append("\nNo risks identified.\n");
-        } else {
-            sb.append("\nRisk score: %d risk items across %d categories in %d open issues\n"
-                    .formatted(riskItems, riskCategories, issues.size()));
-        }
-        return sb.toString();
+        return json.write(new ReleaseRisksResult(
+                projectId, versionId, version,
+                batch.totalCount, issues.size(), batch.truncated(),
+                highPriorityNames,
+                categories,
+                new RiskScore(riskItems, categories.size(), issues.size())
+        ));
     }
 
     // ── compareVersions ────────────────────────────────────────────────
@@ -527,38 +357,16 @@ public class AnalysisTools {
         long closed1 = batch1.issues.stream().filter(i -> isClosedStatus(i.status())).count();
         long closed2 = batch2.issues.stream().filter(i -> isClosedStatus(i.status())).count();
 
-        var sb = new StringBuilder();
-        sb.append("Comparison: %s \u2192 %s (project: %s)\n\n".formatted(v1Name, v2Name, projectId));
-
-        sb.append("%s: %d issues (%d closed, %d open)\n".formatted(
-                v1Name, batch1.totalCount, closed1, batch1.issues.size() - closed1));
-        sb.append("%s: %d issues (%d closed, %d open)\n".formatted(
-                v2Name, batch2.totalCount, closed2, batch2.issues.size() - closed2));
-
-        sb.append("\nOnly in %s (%d issues):\n".formatted(v1Name, onlyIn1.size()));
-        for (var issue : onlyIn1) {
-            sb.append("  #%d %s [%s] %s\n".formatted(
-                    issue.id(), issue.subject(), name(issue.tracker()), name(issue.status())));
-        }
-
-        sb.append("\nOnly in %s (%d issues):\n".formatted(v2Name, onlyIn2.size()));
-        for (var issue : onlyIn2) {
-            sb.append("  #%d %s [%s] %s\n".formatted(
-                    issue.id(), issue.subject(), name(issue.tracker()), name(issue.status())));
-        }
-
-        if (!inBoth.isEmpty()) {
-            sb.append("\nIn both (%d issues):\n".formatted(inBoth.size()));
-            for (var issue : inBoth) {
-                sb.append("  #%d %s [%s] %s\n".formatted(
-                        issue.id(), issue.subject(), name(issue.tracker()), name(issue.status())));
-            }
-        }
-
-        sb.append("\nCompletion:\n");
-        sb.append("  %s: %s\n".formatted(v1Name, percentClosed(closed1, batch1.issues.size())));
-        sb.append("  %s: %s\n".formatted(v2Name, percentClosed(closed2, batch2.issues.size())));
-        return sb.toString();
+        return json.write(new VersionComparisonResult(
+                projectId,
+                new VersionScope(versionId1, v1Name, v1Meta, batch1.totalCount,
+                        batch1.issues.size(), (int) closed1, batch1.issues.size() - (int) closed1,
+                        completionPercent(closed1, batch1.issues.size()), batch1.truncated()),
+                new VersionScope(versionId2, v2Name, v2Meta, batch2.totalCount,
+                        batch2.issues.size(), (int) closed2, batch2.issues.size() - (int) closed2,
+                        completionPercent(closed2, batch2.issues.size()), batch2.truncated()),
+                onlyIn1, onlyIn2, inBoth
+        ));
     }
 
     // ── Shared helpers ─────────────────────────────────────────────────
@@ -567,6 +375,128 @@ public class AnalysisTools {
         boolean truncated() {
             return issues.size() < totalCount;
         }
+    }
+
+    public record IssueCountSummary(int open, int closed, int total) {
+    }
+
+    public record HoursSummary(double estimated, double spent) {
+    }
+
+    public record AssigneeSummary(String assignee, int total, int overdue) {
+    }
+
+    public record ProjectSummaryResult(
+            String projectId,
+            Integer versionId,
+            IssueCountSummary counts,
+            boolean truncated,
+            int analyzedOpenIssues,
+            Map<String, Integer> byStatus,
+            Map<String, Integer> byTracker,
+            Map<String, Integer> byPriority,
+            List<AssigneeSummary> byAssignee,
+            int overdue,
+            HoursSummary hours
+    ) {
+    }
+
+    public record ProjectWorkload(
+            String project,
+            int issueCount,
+            double estimatedHours,
+            Map<String, Integer> byPriority
+    ) {
+    }
+
+    public record UserWorkloadResult(
+            int userId,
+            String userName,
+            String projectId,
+            int totalOpenIssues,
+            int analyzedIssues,
+            boolean truncated,
+            HoursSummary hours,
+            int overdue,
+            List<ProjectWorkload> byProject,
+            List<RedmineIssue> topIssues
+    ) {
+    }
+
+    public record VersionChangelogResult(
+            String projectId,
+            int versionId,
+            RedmineVersion version,
+            int totalIssues,
+            int analyzedIssues,
+            boolean truncated,
+            Map<String, List<RedmineIssue>> byTracker,
+            IssueCountSummary counts,
+            HoursSummary hours
+    ) {
+    }
+
+    public record BlockerChainResult(
+            RedmineIssue root,
+            List<BlockerNode> blockedBy,
+            List<BlockerNode> blocks,
+            int chainDepth,
+            int totalIssues
+    ) {
+    }
+
+    public record StaleIssue(RedmineIssue issue, long daysSinceUpdated, boolean overdue) {
+    }
+
+    public record StaleIssuesResult(
+            String projectId,
+            int daysSinceUpdate,
+            int limit,
+            List<StaleIssue> issues,
+            long oldestDaysSinceUpdated
+    ) {
+    }
+
+    public record RiskCategory(String kind, List<RedmineIssue> issues) {
+    }
+
+    public record RiskScore(int items, int categories, int openIssues) {
+    }
+
+    public record ReleaseRisksResult(
+            String projectId,
+            int versionId,
+            RedmineVersion version,
+            int totalOpenIssues,
+            int analyzedIssues,
+            boolean truncated,
+            Set<String> highPriorityNames,
+            List<RiskCategory> categories,
+            RiskScore score
+    ) {
+    }
+
+    public record VersionScope(
+            int versionId,
+            String name,
+            RedmineVersion version,
+            int totalIssues,
+            int analyzedIssues,
+            int closed,
+            int open,
+            int completionPercent,
+            boolean truncated
+    ) {
+    }
+
+    public record VersionComparisonResult(
+            String projectId,
+            VersionScope first,
+            VersionScope second,
+            List<RedmineIssue> onlyInFirst,
+            List<RedmineIssue> onlyInSecond,
+            List<RedmineIssue> inBoth
+    ) {
     }
 
     private IssuesBatch fetchAllIssues(String projectId, String statusId,
@@ -587,7 +517,7 @@ public class AnalysisTools {
 
     // ── Blocker helpers ────────────────────────────────────────────────
 
-    private record BlockerNode(RedmineIssue issue, int depth) {
+    public record BlockerNode(RedmineIssue issue, int depth) {
     }
 
     private RedmineIssue fetchBlockerIssue(int issueId, Set<Integer> visited, int[] fetchCount) {
@@ -625,14 +555,6 @@ public class AnalysisTools {
             result.add(new BlockerNode(target, depth));
             collectBlockers(target, upstream, visited, fetchCount, result, depth + 1);
         }
-    }
-
-    private void appendBlockerNode(StringBuilder sb, RedmineIssue issue) {
-        sb.append("#%d %s [%s]".formatted(issue.id(), issue.subject(), name(issue.status())));
-        if (issue.assignedTo() != null) {
-            sb.append(" (%s)".formatted(issue.assignedTo().name()));
-        }
-        sb.append("\n");
     }
 
     // ── Date/status helpers ────────────────────────────────────────────
@@ -681,9 +603,9 @@ public class AnalysisTools {
                 || lower.contains("resolved") || lower.contains("done");
     }
 
-    private String percentClosed(long closed, int total) {
-        if (total == 0) return "no issues";
-        return "%d%% closed (%d/%d)".formatted(Math.round(100.0 * closed / total), closed, total);
+    private int completionPercent(long closed, int total) {
+        if (total == 0) return 0;
+        return (int) Math.round(100.0 * closed / total);
     }
 
     // ── Generic helpers ────────────────────────────────────────────────

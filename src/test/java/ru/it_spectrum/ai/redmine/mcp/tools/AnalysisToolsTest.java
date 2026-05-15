@@ -32,7 +32,7 @@ class AnalysisToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new AnalysisTools(client);
+        tools = new AnalysisTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // ── getProjectSummary ──────────────────────────────────────────────
@@ -53,19 +53,17 @@ class AnalysisToolsTest {
 
         String result = tools.getProjectSummary("proj", null);
 
-        assertThat(result).contains("Project summary: proj");
-        assertThat(result).contains("3 open, 5 closed (8 total)");
-        assertThat(result).contains("By status:");
-        assertThat(result).contains("New: 2");
-        assertThat(result).contains("In Progress: 1");
-        assertThat(result).contains("By tracker:");
-        assertThat(result).contains("Bug: 1");
-        assertThat(result).contains("Feature: 1");
-        assertThat(result).contains("By priority:");
-        assertThat(result).contains("Normal: 1");
-        assertThat(result).contains("By assignee:");
-        assertThat(result).contains("Alice: 1");
-        assertThat(result).contains("Unassigned: 1");
+        assertThat(result).contains("\"projectId\":\"proj\"");
+        assertThat(result).contains("\"open\":3");
+        assertThat(result).contains("\"closed\":5");
+        assertThat(result).contains("\"total\":8");
+        assertThat(result).contains("\"New\":2");
+        assertThat(result).contains("\"In Progress\":1");
+        assertThat(result).contains("\"Bug\":1");
+        assertThat(result).contains("\"Feature\":1");
+        assertThat(result).contains("\"Normal\":1");
+        assertThat(result).contains("\"assignee\":\"Alice\"");
+        assertThat(result).contains("\"assignee\":\"Unassigned\"");
     }
 
     @Test
@@ -83,8 +81,8 @@ class AnalysisToolsTest {
 
         String result = tools.getProjectSummary("proj", null);
 
-        assertThat(result).contains("Overdue: 1 issues past due date");
-        assertThat(result).contains("1 overdue");
+        assertThat(result).contains("\"overdue\":1");
+        assertThat(result).contains("\"assignee\":\"Alice\"");
     }
 
     // ── getUserWorkload ────────────────────────────────────────────────
@@ -107,13 +105,13 @@ class AnalysisToolsTest {
 
         String result = tools.getUserWorkload(null, null);
 
-        assertThat(result).contains("Workload for Alice Smith");
-        assertThat(result).contains("Total: 2 open issues");
-        assertThat(result).contains("By project:");
+        assertThat(result).contains("\"userName\":\"Alice Smith\"");
+        assertThat(result).contains("\"totalOpenIssues\":2");
+        assertThat(result).contains("\"byProject\"");
         assertThat(result).contains("proj-a");
         assertThat(result).contains("proj-b");
-        assertThat(result).contains("Top issues by priority:");
-        assertThat(result).contains("#1");
+        assertThat(result).contains("\"topIssues\"");
+        assertThat(result).contains("\"id\":1");
     }
 
     @Test
@@ -122,7 +120,8 @@ class AnalysisToolsTest {
 
         String result = tools.getUserWorkload(null, null);
 
-        assertThat(result).isEqualTo("Could not retrieve current user");
+        assertThat(result).contains("\"kind\":\"unavailable\"");
+        assertThat(result).contains("current user unavailable");
     }
 
     // ── getVersionChangelog ────────────────────────────────────────────
@@ -144,14 +143,21 @@ class AnalysisToolsTest {
 
         String result = tools.getVersionChangelog("proj", 10);
 
-        assertThat(result).contains("Changelog for v2.0 (project: proj)");
-        assertThat(result).contains("Status: open | Due: 2025-06-01");
-        assertThat(result).contains("Bug (2):");
-        assertThat(result).contains("#1 Fix crash [Closed]");
-        assertThat(result).contains("#3 Fix leak [Closed]");
-        assertThat(result).contains("Feature (1):");
-        assertThat(result).contains("#2 Add OAuth [In Progress]");
-        assertThat(result).contains("Summary: 3 issues (2 closed, 1 open)");
+        assertThat(result).contains("\"projectId\":\"proj\"");
+        assertThat(result).contains("\"versionId\":10");
+        assertThat(result).contains("\"name\":\"v2.0\"");
+        assertThat(result).contains("\"status\":\"open\"");
+        assertThat(result).contains("2025-06-01");
+        assertThat(result).contains("\"Bug\"");
+        assertThat(result).contains("\"id\":1");
+        assertThat(result).contains("Fix crash");
+        assertThat(result).contains("\"id\":3");
+        assertThat(result).contains("Fix leak");
+        assertThat(result).contains("\"Feature\"");
+        assertThat(result).contains("\"id\":2");
+        assertThat(result).contains("Add OAuth");
+        assertThat(result).contains("\"closed\":2");
+        assertThat(result).contains("\"open\":1");
     }
 
     // ── getBlockerChain ────────────────────────────────────────────────
@@ -176,11 +182,15 @@ class AnalysisToolsTest {
 
         String result = tools.getBlockerChain(100);
 
-        assertThat(result).contains("Blocker chain for #100: Main task");
-        assertThat(result).contains("Blocked by");
-        assertThat(result).contains("#200 Prerequisite");
-        assertThat(result).contains("Blocks");
-        assertThat(result).contains("#300 Downstream");
+        assertThat(result).contains("\"root\"");
+        assertThat(result).contains("\"id\":100");
+        assertThat(result).contains("Main task");
+        assertThat(result).contains("\"blockedBy\"");
+        assertThat(result).contains("\"id\":200");
+        assertThat(result).contains("Prerequisite");
+        assertThat(result).contains("\"blocks\"");
+        assertThat(result).contains("\"id\":300");
+        assertThat(result).contains("Downstream");
     }
 
     @Test
@@ -190,7 +200,8 @@ class AnalysisToolsTest {
 
         String result = tools.getBlockerChain(100);
 
-        assertThat(result).contains("No blocking relations found");
+        assertThat(result).contains("\"blockedBy\":[]");
+        assertThat(result).contains("\"blocks\":[]");
     }
 
     @Test
@@ -199,7 +210,8 @@ class AnalysisToolsTest {
 
         String result = tools.getBlockerChain(999);
 
-        assertThat(result).isEqualTo("Issue #999 not found");
+        assertThat(result).contains("\"kind\":\"not_found\"");
+        assertThat(result).contains("issue #999 not found");
     }
 
     // ── getStaleIssues ─────────────────────────────────────────────────
@@ -221,11 +233,11 @@ class AnalysisToolsTest {
 
         String result = tools.getStaleIssues("proj", 30, null);
 
-        assertThat(result).contains("Stale issues in project proj");
-        assertThat(result).contains("#1");
+        assertThat(result).contains("\"projectId\":\"proj\"");
+        assertThat(result).contains("\"id\":1");
         assertThat(result).contains("Old issue");
-        assertThat(result).doesNotContain("#2");
-        assertThat(result).contains("Found 1 stale issues");
+        assertThat(result).doesNotContain("Recent issue");
+        assertThat(result).contains("\"issues\"");
     }
 
     @Test
@@ -241,7 +253,7 @@ class AnalysisToolsTest {
 
         String result = tools.getStaleIssues("proj", 30, null);
 
-        assertThat(result).contains("No stale issues found");
+        assertThat(result).contains("\"issues\":[]");
     }
 
     // ── getReleaseRisks ────────────────────────────────────────────────
@@ -286,13 +298,16 @@ class AnalysisToolsTest {
 
         String result = tools.getReleaseRisks("proj", 10);
 
-        assertThat(result).contains("Release risks for v2.0");
-        assertThat(result).contains("BLOCKERS");
-        assertThat(result).contains("#1 Blocker bug");
-        assertThat(result).contains("OVERDUE");
-        assertThat(result).contains("UNASSIGNED");
-        assertThat(result).contains("#2 Unassigned task");
-        assertThat(result).contains("Risk score:");
+        assertThat(result).contains("\"versionId\":10");
+        assertThat(result).contains("\"name\":\"v2.0\"");
+        assertThat(result).contains("\"kind\":\"blockers\"");
+        assertThat(result).contains("\"id\":1");
+        assertThat(result).contains("Blocker bug");
+        assertThat(result).contains("\"kind\":\"overdue\"");
+        assertThat(result).contains("\"kind\":\"unassigned\"");
+        assertThat(result).contains("\"id\":2");
+        assertThat(result).contains("Unassigned task");
+        assertThat(result).contains("\"score\"");
     }
 
     @Test
@@ -305,7 +320,8 @@ class AnalysisToolsTest {
 
         String result = tools.getReleaseRisks("proj", 10);
 
-        assertThat(result).contains("No risks identified");
+        assertThat(result).contains("\"categories\":[]");
+        assertThat(result).contains("\"items\":0");
     }
 
     // ── compareVersions ────────────────────────────────────────────────
@@ -336,14 +352,19 @@ class AnalysisToolsTest {
 
         String result = tools.compareVersions("proj", 10, 20);
 
-        assertThat(result).contains("Comparison: v1.0 \u2192 v2.0");
-        assertThat(result).contains("Only in v1.0 (1 issues):");
-        assertThat(result).contains("#1 Fix bug");
-        assertThat(result).contains("Only in v2.0 (1 issues):");
-        assertThat(result).contains("#3 New feature");
-        assertThat(result).contains("In both (1 issues):");
-        assertThat(result).contains("#2 Shared task");
-        assertThat(result).contains("Completion:");
+        assertThat(result).contains("\"projectId\":\"proj\"");
+        assertThat(result).contains("\"name\":\"v1.0\"");
+        assertThat(result).contains("\"name\":\"v2.0\"");
+        assertThat(result).contains("\"onlyInFirst\"");
+        assertThat(result).contains("\"id\":1");
+        assertThat(result).contains("Fix bug");
+        assertThat(result).contains("\"onlyInSecond\"");
+        assertThat(result).contains("\"id\":3");
+        assertThat(result).contains("New feature");
+        assertThat(result).contains("\"inBoth\"");
+        assertThat(result).contains("\"id\":2");
+        assertThat(result).contains("Shared task");
+        assertThat(result).contains("\"completionPercent\"");
     }
 
     // ── Test helpers ───────────────────────────────────────────────────

@@ -35,7 +35,7 @@ class ContextToolsTest {
         var service = new AttachmentService(client,
                 new DocumentTextExtractor(client, new AttachmentTextCache()),
                 new FixedSizeTextChunker());
-        tools = new ContextTools(client, service);
+        tools = new ContextTools(client, service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
 
         // Default stub for listIssues — many tools call it for "similar" searches
         lenient().when(client.listIssues(
@@ -80,13 +80,20 @@ class ContextToolsTest {
 
             String result = tools.getIssueFullContext(123);
 
-            assertThat(result).contains("=== Issue #123: Implement date filter ===");
-            assertThat(result).contains("Assigned: Bob");
+            assertThat(result).contains("\"issue\"");
+            assertThat(result).contains("\"id\":123");
+            assertThat(result).contains("Implement date filter");
+            assertThat(result).contains("Bob");
             assertThat(result).contains("Filter issues by date range");
-            assertThat(result).contains("Parent: #100 Epic: Reports Module");
-            assertThat(result).contains("Siblings");
-            assertThat(result).contains("#124 Add charts");
-            assertThat(result).contains("relates #95: Date API endpoint [Closed]");
+            assertThat(result).contains("\"parent\"");
+            assertThat(result).contains("\"id\":100");
+            assertThat(result).contains("Epic: Reports Module");
+            assertThat(result).contains("\"siblings\"");
+            assertThat(result).contains("\"id\":124");
+            assertThat(result).contains("Add charts");
+            assertThat(result).contains("\"relates\"");
+            assertThat(result).contains("\"id\":95");
+            assertThat(result).contains("Date API endpoint");
             assertThat(result).contains("Check the date format spec");
         }
 
@@ -103,9 +110,12 @@ class ContextToolsTest {
 
             String result = tools.getIssueFullContext(123);
 
-            assertThat(result).contains("Custom fields:");
-            assertThat(result).contains("[3] # в системе заказчика: 502167");
-            assertThat(result).contains("[10] applications: rtk, sskv");
+            assertThat(result).contains("custom_fields");
+            assertThat(result).contains("# в системе заказчика");
+            assertThat(result).contains("502167");
+            assertThat(result).contains("applications");
+            assertThat(result).contains("rtk");
+            assertThat(result).contains("sskv");
         }
 
         @Test
@@ -124,7 +134,8 @@ class ContextToolsTest {
 
             String result = tools.getIssueFullContext(10);
 
-            assertThat(result).contains("Issue #10: Standalone task");
+            assertThat(result).contains("\"id\":10");
+            assertThat(result).contains("Standalone task");
             assertThat(result).doesNotContain("Parent:");
             assertThat(result).doesNotContain("Siblings");
         }
@@ -161,11 +172,18 @@ class ContextToolsTest {
 
             String result = tools.getIssueSiblings(102);
 
-            assertThat(result).contains("Siblings of #102: Part B");
-            assertThat(result).contains("Parent: #100 Epic");
-            assertThat(result).contains("1/3 closed");
-            assertThat(result).contains("#101 Part A");
-            assertThat(result).contains("#103 Part C");
+            assertThat(result).contains("\"status\":\"ok\"");
+            assertThat(result).contains("\"id\":102");
+            assertThat(result).contains("Part B");
+            assertThat(result).contains("\"parent\"");
+            assertThat(result).contains("\"id\":100");
+            assertThat(result).contains("Epic");
+            assertThat(result).contains("\"closed\":1");
+            assertThat(result).contains("\"total\":3");
+            assertThat(result).contains("\"id\":101");
+            assertThat(result).contains("Part A");
+            assertThat(result).contains("\"id\":103");
+            assertThat(result).contains("Part C");
         }
 
         @Test
@@ -176,7 +194,7 @@ class ContextToolsTest {
             when(client.getIssueForTree(10)).thenReturn(issue);
 
             String result = tools.getIssueSiblings(10);
-            assertThat(result).contains("no parent");
+            assertThat(result).contains("\"status\":\"no_parent\"");
         }
     }
 
@@ -201,8 +219,10 @@ class ContextToolsTest {
 
             String result = tools.findRelatedClosedIssues(50, null);
 
-            assertThat(result).contains("Direct relations (closed):");
-            assertThat(result).contains("#40 Old related task [Closed]");
+            assertThat(result).contains("\"direct\"");
+            assertThat(result).contains("\"id\":40");
+            assertThat(result).contains("Old related task");
+            assertThat(result).contains("Closed");
         }
 
         @Test
@@ -226,8 +246,10 @@ class ContextToolsTest {
 
             String result = tools.findRelatedClosedIssues(60, null);
 
-            assertThat(result).contains("Closed siblings");
-            assertThat(result).contains("#61 Done task [Closed]");
+            assertThat(result).contains("\"siblings\"");
+            assertThat(result).contains("\"id\":61");
+            assertThat(result).contains("Done task");
+            assertThat(result).contains("Closed");
         }
 
     }
@@ -250,8 +272,8 @@ class ContextToolsTest {
 
             String result = tools.findLatestAttachment("spec", 100, null);
 
-            assertThat(result).contains("Found 2 attachments");
-            assertThat(result).contains("LATEST");
+            assertThat(result).contains("\"matches\"");
+            assertThat(result).contains("\"latest\"");
             assertThat(result).contains("spec_v2.docx");
             int v2pos = result.indexOf("spec_v2.docx");
             int v1pos = result.indexOf("spec_v1.docx");
@@ -281,7 +303,7 @@ class ContextToolsTest {
 
             String result = tools.findLatestAttachment("requirements", 100, null);
 
-            assertThat(result).contains("Found 2 attachments");
+            assertThat(result).contains("\"matches\"");
             assertThat(result).contains("requirements_updated.pdf");
             assertThat(result).contains("requirements.pdf");
         }
@@ -292,7 +314,7 @@ class ContextToolsTest {
             when(client.getIssue(100)).thenReturn(issue);
 
             String result = tools.findLatestAttachment("spec", 100, null);
-            assertThat(result).contains("No matching attachments found");
+            assertThat(result).contains("\"matches\":[]");
         }
 
     }
@@ -323,13 +345,17 @@ class ContextToolsTest {
 
             String result = tools.getIssueNetwork(10, 1);
 
-            assertThat(result).contains("Issue network for #10: Root task");
-            assertThat(result).contains("Nodes: 3");
+            assertThat(result).contains("\"root\"");
+            assertThat(result).contains("\"id\":10");
+            assertThat(result).contains("Root task");
+            assertThat(result).contains("\"nodes\"");
             assertThat(result).contains("blocks");
-            assertThat(result).contains("#20 Blocked task");
+            assertThat(result).contains("\"id\":20");
+            assertThat(result).contains("Blocked task");
             assertThat(result).contains("relates");
-            assertThat(result).contains("#30 Related task");
-            assertThat(result).contains("Issue index");
+            assertThat(result).contains("\"id\":30");
+            assertThat(result).contains("Related task");
+            assertThat(result).contains("\"edges\"");
         }
 
         @Test
