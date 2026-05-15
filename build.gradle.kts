@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.spring.boot.starter)
     implementation(libs.spring.ai.mcp.server)
     implementation("org.springframework:spring-web")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation(libs.poi.ooxml)
     implementation(libs.pdfbox)
 

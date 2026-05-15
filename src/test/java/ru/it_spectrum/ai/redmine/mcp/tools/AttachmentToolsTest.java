@@ -40,7 +40,7 @@ class AttachmentToolsTest {
         var service = new AttachmentService(client,
                 new DocumentTextExtractor(client, new AttachmentTextCache()),
                 new FixedSizeTextChunker());
-        tools = new AttachmentTools(service);
+        tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- listAttachments ---
@@ -60,10 +60,14 @@ class AttachmentToolsTest {
 
         String result = tools.listAttachments(100);
 
-        assertThat(result).contains("Attachments for issue #100 (2 files):");
-        assertThat(result).containsPattern("\\[10] report\\.pdf \\(application/pdf, 146[.,]5 KB\\)");
-        assertThat(result).contains("Description: Monthly report");
-        assertThat(result).containsPattern("\\[11] screenshot\\.png \\(image/png, 48[.,]8 KB\\)");
+        assertThat(result).contains("\"issueId\":100");
+        assertThat(result).contains("\"id\":10");
+        assertThat(result).contains("report.pdf");
+        assertThat(result).contains("application/pdf");
+        assertThat(result).contains("Monthly report");
+        assertThat(result).contains("\"id\":11");
+        assertThat(result).contains("screenshot.png");
+        assertThat(result).contains("image/png");
     }
 
     @Test
@@ -73,7 +77,8 @@ class AttachmentToolsTest {
 
         String result = tools.listAttachments(200);
 
-        assertThat(result).isEqualTo("Issue #200 has no attachments");
+        assertThat(result).contains("\"issueId\":200");
+        assertThat(result).contains("\"attachments\":[]");
     }
 
     @Test
@@ -82,7 +87,8 @@ class AttachmentToolsTest {
 
         String result = tools.listAttachments(999);
 
-        assertThat(result).isEqualTo("Issue #999 not found");
+        assertThat(result).contains("\"kind\":\"not_found\"");
+        assertThat(result).contains("issue #999 not found");
     }
 
     // --- getImageAttachment ---
@@ -170,11 +176,16 @@ class AttachmentToolsTest {
 
         String result = tools.searchAttachmentContent("OAuth", 100, null, null);
 
-        assertThat(result).contains("Attachment content search for \"OAuth\" in issue #100");
-        assertThat(result).contains("Issue #100: Test issue");
-        assertThat(result).contains("[50] spec.txt");
+        assertThat(result).contains("\"query\":\"OAuth\"");
+        assertThat(result).contains("\"issueId\":100");
+        assertThat(result).contains("\"issueId\":100");
+        assertThat(result).contains("Test issue");
+        assertThat(result).contains("\"attachmentId\":50");
+        assertThat(result).contains("spec.txt");
         assertThat(result).contains("OAuth");
-        assertThat(result).contains("Found 1 matches in 1 attachments across 1 issues");
+        assertThat(result).contains("\"totalMatches\":1");
+        assertThat(result).contains("\"matchingAttachments\":1");
+        assertThat(result).contains("\"matchingIssues\":1");
     }
 
     @Test
@@ -192,11 +203,13 @@ class AttachmentToolsTest {
 
         String result = tools.searchAttachmentContent("OAuth", 100, null, null);
 
-        assertThat(result).contains("Attachment content search for \"OAuth\" in issue #100");
-        assertThat(result).contains("Issue #100: Test issue");
-        assertThat(result).contains("[51] docs.zip");
+        assertThat(result).contains("\"query\":\"OAuth\"");
+        assertThat(result).contains("\"issueId\":100");
+        assertThat(result).contains("Test issue");
+        assertThat(result).contains("\"attachmentId\":51");
+        assertThat(result).contains("docs.zip");
         assertThat(result).contains("OAuth inside a ZIP archive");
-        assertThat(result).contains("Found 1 matches in 1 attachments across 1 issues");
+        assertThat(result).contains("\"totalMatches\":1");
     }
 
     @Test
@@ -211,7 +224,7 @@ class AttachmentToolsTest {
 
         String result = tools.searchAttachmentContent("OAuth", 100, null, null);
 
-        assertThat(result).contains("No matches found");
+        assertThat(result).contains("\"totalMatches\":0");
     }
 
     @Test
@@ -224,7 +237,7 @@ class AttachmentToolsTest {
 
         String result = tools.searchAttachmentContent("test", 100, null, null);
 
-        assertThat(result).contains("scanned 0 attachments");
+        assertThat(result).contains("\"scannedAttachments\":0");
     }
 
     @Test
@@ -245,8 +258,9 @@ class AttachmentToolsTest {
 
         String result = tools.searchAttachmentContent("OAuth", null, "proj", null);
 
-        assertThat(result).contains("Attachment content search for \"OAuth\" in project proj");
-        assertThat(result).contains("Issue #101");
+        assertThat(result).contains("\"query\":\"OAuth\"");
+        assertThat(result).contains("\"projectId\":\"proj\"");
+        assertThat(result).contains("\"issueId\":101");
         assertThat(result).contains("OAuth");
     }
 
@@ -254,6 +268,7 @@ class AttachmentToolsTest {
     void shouldRequireIssueIdOrProjectId() {
         String result = tools.searchAttachmentContent("test", null, null, null);
 
+        assertThat(result).contains("\"kind\":\"argument\"");
         assertThat(result).contains("At least one of issueId or projectId must be provided");
     }
 
@@ -269,7 +284,8 @@ class AttachmentToolsTest {
 
         String result = tools.searchAttachmentContent("oauth", 100, null, null);
 
-        assertThat(result).contains("Found 1 matches in 1 attachments");
+        assertThat(result).contains("\"totalMatches\":1");
+        assertThat(result).contains("\"matchingAttachments\":1");
     }
 
     // --- helpers ---

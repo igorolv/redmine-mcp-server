@@ -30,7 +30,8 @@ class IssueToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new IssueTools(client, new IssueService(client));
+        tools = new IssueTools(client, new IssueService(client),
+                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- getMyIssues ---
@@ -50,10 +51,13 @@ class IssueToolsTest {
 
         String result = tools.getMyIssues(null, null, null, null, null);
 
-        assertThat(result).contains("My issues (John Doe, 2 total");
-        assertThat(result).contains("#101");
+        assertThat(result).contains("\"user\"");
+        assertThat(result).contains("\"firstname\":\"John\"");
+        assertThat(result).contains("\"lastname\":\"Doe\"");
+        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("\"id\":101");
         assertThat(result).contains("Fix login bug");
-        assertThat(result).contains("#102");
+        assertThat(result).contains("\"id\":102");
         assertThat(result).contains("Update docs");
     }
 
@@ -69,8 +73,9 @@ class IssueToolsTest {
 
         String result = tools.getMyIssues("backend", "open", "updated_on:desc", 10, 0);
 
-        assertThat(result).contains("My issues (John Doe, 1 total");
-        assertThat(result).contains("#201");
+        assertThat(result).contains("\"firstname\":\"John\"");
+        assertThat(result).contains("\"total_count\":1");
+        assertThat(result).contains("\"id\":201");
         assertThat(result).contains("Deploy service");
     }
 
@@ -84,7 +89,7 @@ class IssueToolsTest {
 
         String result = tools.getMyIssues(null, null, null, null, null);
 
-        assertThat(result).contains("My issues (John Doe, 0 total");
+        assertThat(result).contains("\"total_count\":0");
     }
 
     @Test
@@ -93,7 +98,8 @@ class IssueToolsTest {
 
         String result = tools.getMyIssues(null, null, null, null, null);
 
-        assertThat(result).isEqualTo("Could not retrieve current user");
+        assertThat(result).contains("\"kind\":\"unavailable\"");
+        assertThat(result).contains("current user unavailable");
     }
 
     // --- listIssues with queryId ---
@@ -106,7 +112,7 @@ class IssueToolsTest {
 
         String result = tools.listIssues(null, null, null, null, null, null, 7, null, null, null);
 
-        assertThat(result).contains("#301");
+        assertThat(result).contains("\"id\":301");
         assertThat(result).contains("Filtered issue");
     }
 
@@ -120,7 +126,7 @@ class IssueToolsTest {
         String result = tools.listIssues(null, null, null, null, null, null,
                 null, "cf_10=rtk&cf_3=502167", null, null, null);
 
-        assertThat(result).contains("#302");
+        assertThat(result).contains("\"id\":302");
         assertThat(result).contains("RTK issue");
     }
 
@@ -129,6 +135,7 @@ class IssueToolsTest {
         String result = tools.listIssues(null, null, null, null, null, null,
                 null, "applications=rtk", null, null, null);
 
+        assertThat(result).contains("\"kind\":\"argument\"");
         assertThat(result).contains("Invalid custom field key");
     }
 
@@ -159,10 +166,13 @@ class IssueToolsTest {
 
         String result = tools.getIssue(100);
 
-        assertThat(result).contains("Issue #100: Parent issue");
-        assertThat(result).contains("Subtasks (2):");
-        assertThat(result).contains("#501 Fix null pointer [Bug]");
-        assertThat(result).contains("#502 Write tests [Task]");
+        assertThat(result).contains("\"id\":100");
+        assertThat(result).contains("Parent issue");
+        assertThat(result).contains("\"children\"");
+        assertThat(result).contains("\"id\":501");
+        assertThat(result).contains("Fix null pointer");
+        assertThat(result).contains("\"id\":502");
+        assertThat(result).contains("Write tests");
     }
 
     @Test
@@ -191,9 +201,12 @@ class IssueToolsTest {
 
         String result = tools.getIssue(101);
 
-        assertThat(result).contains("[3] # в системе заказчика: 502167");
-        assertThat(result).contains("[10] applications: rtk, sskv");
-        assertThat(result).doesNotContain("Решена в версии");
+        assertThat(result).contains("# в системе заказчика");
+        assertThat(result).contains("502167");
+        assertThat(result).contains("applications");
+        assertThat(result).contains("rtk");
+        assertThat(result).contains("sskv");
+        assertThat(result).contains("Решена в версии");
     }
 
     @Test
@@ -203,8 +216,8 @@ class IssueToolsTest {
 
         String result = tools.getIssue(200);
 
-        assertThat(result).contains("Issue #200: No children issue");
-        assertThat(result).doesNotContain("Subtasks");
+        assertThat(result).contains("\"id\":200");
+        assertThat(result).contains("No children issue");
     }
 
     @Test
@@ -213,7 +226,8 @@ class IssueToolsTest {
 
         String result = tools.getIssue(999);
 
-        assertThat(result).isEqualTo("Issue #999 not found");
+        assertThat(result).contains("\"kind\":\"not_found\"");
+        assertThat(result).contains("issue #999 not found");
     }
 
     // --- searchAll ---
@@ -231,10 +245,14 @@ class IssueToolsTest {
 
         String result = tools.searchAll("auth", null, null);
 
-        assertThat(result).contains("Search results for 'auth': 2 total");
-        assertThat(result).contains("[issue] #101 Login bug");
+        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("\"type\":\"issue\"");
+        assertThat(result).contains("\"id\":101");
+        assertThat(result).contains("Login bug");
         assertThat(result).contains("Cannot login with LDAP");
-        assertThat(result).contains("[wiki-page] #5 Auth Guide");
+        assertThat(result).contains("\"type\":\"wiki-page\"");
+        assertThat(result).contains("\"id\":5");
+        assertThat(result).contains("Auth Guide");
     }
 
     // --- searchIssues ---
@@ -247,8 +265,8 @@ class IssueToolsTest {
 
         String result = tools.searchIssues("login", null, null, null);
 
-        assertThat(result).contains("Found 1 total results");
-        assertThat(result).contains("#101");
+        assertThat(result).contains("\"totalCount\":1");
+        assertThat(result).contains("\"id\":101");
         assertThat(result).contains("Login bug");
     }
 
@@ -260,7 +278,7 @@ class IssueToolsTest {
 
         String result = tools.searchIssues("deploy", "infra", 10, 0);
 
-        assertThat(result).contains("#201");
+        assertThat(result).contains("\"id\":201");
         assertThat(result).contains("Deploy failure");
     }
 
@@ -286,14 +304,17 @@ class IssueToolsTest {
 
         String result = tools.getIssueTree(300, null);
 
-        assertThat(result).contains("Issue tree for #300: Current task");
-        assertThat(result).contains("Parent chain:");
-        assertThat(result).contains("#100 Root task");
-        assertThat(result).contains("#200 Parent task");
-        assertThat(result).contains("#300 Current task");
-        assertThat(result).contains("current");
-        assertThat(result).contains("Subtree");
-        assertThat(result).contains("#400 Child task");
+        assertThat(result).contains("\"root\"");
+        assertThat(result).contains("\"id\":300");
+        assertThat(result).contains("Current task");
+        assertThat(result).contains("\"ancestors\"");
+        assertThat(result).contains("\"id\":100");
+        assertThat(result).contains("Root task");
+        assertThat(result).contains("\"id\":200");
+        assertThat(result).contains("Parent task");
+        assertThat(result).contains("\"subtree\"");
+        assertThat(result).contains("\"id\":400");
+        assertThat(result).contains("Child task");
     }
 
     @Test
@@ -311,11 +332,14 @@ class IssueToolsTest {
 
         String result = tools.getIssueTree(1, 1);
 
-        assertThat(result).contains("#1 Root");
-        assertThat(result).contains("#2 L1");
+        assertThat(result).contains("\"id\":1");
+        assertThat(result).contains("Root");
+        assertThat(result).contains("\"id\":2");
+        assertThat(result).contains("L1");
         // L2 should appear as child stub (from Child record) but not be expanded
-        assertThat(result).contains("#3 L2");
-        assertThat(result).doesNotContain("#4 L3");
+        assertThat(result).contains("\"id\":3");
+        assertThat(result).contains("L2");
+        assertThat(result).doesNotContain("L3");
     }
 
     @Test
@@ -324,7 +348,8 @@ class IssueToolsTest {
 
         String result = tools.getIssueTree(999, null);
 
-        assertThat(result).isEqualTo("Issue #999 not found");
+        assertThat(result).contains("\"kind\":\"not_found\"");
+        assertThat(result).contains("issue #999 not found");
     }
 
     @Test
@@ -338,9 +363,12 @@ class IssueToolsTest {
 
         String result = tools.getIssueTree(100, null);
 
-        assertThat(result).contains("Relations:");
-        assertThat(result).contains("#100 blocks #200");
-        assertThat(result).contains("#300 relates #100");
+        assertThat(result).contains("\"relations\"");
+        assertThat(result).contains("\"issue_id\":100");
+        assertThat(result).contains("\"issue_to_id\":200");
+        assertThat(result).contains("\"relation_type\":\"blocks\"");
+        assertThat(result).contains("\"issue_id\":300");
+        assertThat(result).contains("\"relation_type\":\"relates\"");
     }
 
     // --- getIssueHistory ---
@@ -380,14 +408,20 @@ class IssueToolsTest {
 
         String result = tools.getIssueHistory(100);
 
-        assertThat(result).contains("History of #100: Test issue");
-        assertThat(result).contains("[Created] by John");
-        assertThat(result).contains("Status: New \u2192 In Progress");
+        assertThat(result).contains("\"issue\"");
+        assertThat(result).contains("Test issue");
+        assertThat(result).contains("\"kind\":\"CREATED\"");
+        assertThat(result).contains("\"actor\":\"John\"");
+        assertThat(result).contains("\"fieldLabel\":\"Status\"");
+        assertThat(result).contains("\"oldValue\":\"New\"");
+        assertThat(result).contains("\"newValue\":\"In Progress\"");
         assertThat(result).contains("Starting work");
-        assertThat(result).contains("Assigned to: John \u2192 Jane");
-        assertThat(result).contains("Status durations:");
-        assertThat(result).contains("New:");
-        assertThat(result).contains("In Progress:");
+        assertThat(result).contains("\"fieldLabel\":\"Assigned to\"");
+        assertThat(result).contains("\"oldValue\":\"John\"");
+        assertThat(result).contains("\"newValue\":\"Jane\"");
+        assertThat(result).contains("\"statusDurations\"");
+        assertThat(result).contains("New");
+        assertThat(result).contains("In Progress");
     }
 
     @Test
@@ -396,7 +430,8 @@ class IssueToolsTest {
 
         String result = tools.getIssueHistory(999);
 
-        assertThat(result).isEqualTo("Issue #999 not found");
+        assertThat(result).contains("\"kind\":\"not_found\"");
+        assertThat(result).contains("issue #999 not found");
     }
 
     @Test
@@ -420,10 +455,10 @@ class IssueToolsTest {
 
         String result = tools.getIssueHistory(100);
 
-        assertThat(result).contains("History of #100: Simple issue");
-        assertThat(result).contains("[Created] by John");
-        assertThat(result).contains("Status durations:");
-        assertThat(result).contains("New:");
+        assertThat(result).contains("Simple issue");
+        assertThat(result).contains("\"kind\":\"CREATED\"");
+        assertThat(result).contains("\"statusDurations\"");
+        assertThat(result).contains("New");
     }
 
     @Test
@@ -453,7 +488,8 @@ class IssueToolsTest {
 
         String result = tools.getIssueHistory(101);
 
-        assertThat(result).contains("applications [cf_10]: set to rtk");
+        assertThat(result).contains("\"fieldLabel\":\"applications [cf_10]\"");
+        assertThat(result).contains("\"newValue\":\"rtk\"");
     }
 
     // --- helpers ---

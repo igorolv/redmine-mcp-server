@@ -24,7 +24,7 @@ class ReferenceDataToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new ReferenceDataTools(client);
+        tools = new ReferenceDataTools(client, ToolJsonTestSupport.json());
     }
 
     // --- listStatuses ---
@@ -39,10 +39,10 @@ class ReferenceDataToolsTest {
 
         String result = tools.listStatuses();
 
-        assertThat(result).contains("Issue statuses:");
-        assertThat(result).contains("- [1] New");
-        assertThat(result).contains("- [2] In Progress");
-        assertThat(result).contains("- [5] Closed");
+        assertThat(result).contains("\"id\":1");
+        assertThat(result).contains("\"name\":\"New\"");
+        assertThat(result).contains("\"name\":\"In Progress\"");
+        assertThat(result).contains("\"name\":\"Closed\"");
     }
 
     @Test
@@ -51,7 +51,7 @@ class ReferenceDataToolsTest {
 
         String result = tools.listStatuses();
 
-        assertThat(result).isEqualTo("No statuses found");
+        assertThat(result).isEqualTo("[]");
     }
 
     // --- listTrackers ---
@@ -66,10 +66,9 @@ class ReferenceDataToolsTest {
 
         String result = tools.listTrackers();
 
-        assertThat(result).contains("Trackers:");
-        assertThat(result).contains("- [1] Bug");
-        assertThat(result).contains("- [2] Feature");
-        assertThat(result).contains("- [3] Support");
+        assertThat(result).contains("\"name\":\"Bug\"");
+        assertThat(result).contains("\"name\":\"Feature\"");
+        assertThat(result).contains("\"name\":\"Support\"");
     }
 
     @Test
@@ -78,7 +77,7 @@ class ReferenceDataToolsTest {
 
         String result = tools.listTrackers();
 
-        assertThat(result).isEqualTo("No trackers found");
+        assertThat(result).isEqualTo("[]");
     }
 
     // --- listPriorities ---
@@ -94,11 +93,10 @@ class ReferenceDataToolsTest {
 
         String result = tools.listPriorities();
 
-        assertThat(result).contains("Issue priorities:");
-        assertThat(result).contains("- [1] Low");
-        assertThat(result).contains("- [2] Normal");
-        assertThat(result).contains("- [3] High");
-        assertThat(result).contains("- [4] Urgent");
+        assertThat(result).contains("\"name\":\"Low\"");
+        assertThat(result).contains("\"name\":\"Normal\"");
+        assertThat(result).contains("\"name\":\"High\"");
+        assertThat(result).contains("\"name\":\"Urgent\"");
     }
 
     @Test
@@ -107,7 +105,7 @@ class ReferenceDataToolsTest {
 
         String result = tools.listPriorities();
 
-        assertThat(result).isEqualTo("No priorities found");
+        assertThat(result).isEqualTo("[]");
     }
 
     // --- listIssueCategories ---
@@ -122,10 +120,9 @@ class ReferenceDataToolsTest {
 
         String result = tools.listIssueCategories("my-project");
 
-        assertThat(result).contains("Issue categories for project my-project");
-        assertThat(result).contains("- [1] Backend");
-        assertThat(result).contains("- [2] Frontend");
-        assertThat(result).contains("- [3] DevOps");
+        assertThat(result).contains("\"name\":\"Backend\"");
+        assertThat(result).contains("\"name\":\"Frontend\"");
+        assertThat(result).contains("\"name\":\"DevOps\"");
     }
 
     @Test
@@ -134,7 +131,7 @@ class ReferenceDataToolsTest {
 
         String result = tools.listIssueCategories("empty-project");
 
-        assertThat(result).isEqualTo("No issue categories found for project: empty-project");
+        assertThat(result).isEqualTo("[]");
     }
 
     // --- listTimeEntryActivities ---
@@ -149,10 +146,9 @@ class ReferenceDataToolsTest {
 
         String result = tools.listTimeEntryActivities();
 
-        assertThat(result).contains("Time entry activities:");
-        assertThat(result).contains("- [8] Design");
-        assertThat(result).contains("- [9] Development");
-        assertThat(result).contains("- [10] Testing");
+        assertThat(result).contains("\"name\":\"Design\"");
+        assertThat(result).contains("\"name\":\"Development\"");
+        assertThat(result).contains("\"name\":\"Testing\"");
     }
 
     @Test
@@ -161,7 +157,7 @@ class ReferenceDataToolsTest {
 
         String result = tools.listTimeEntryActivities();
 
-        assertThat(result).isEqualTo("No time entry activities found");
+        assertThat(result).isEqualTo("[]");
     }
 
     // --- listQueries ---
@@ -176,10 +172,13 @@ class ReferenceDataToolsTest {
 
         String result = tools.listQueries(null, null);
 
-        assertThat(result).contains("Saved queries: 3 total");
-        assertThat(result).contains("- [1] My open bugs (project #5)");
-        assertThat(result).contains("- [2] Sprint backlog [public]");
-        assertThat(result).contains("- [3] Overdue tasks (project #10)");
+        assertThat(result).contains("\"total_count\":3");
+        assertThat(result).contains("\"name\":\"My open bugs\"");
+        assertThat(result).contains("\"project_id\":5");
+        assertThat(result).contains("\"name\":\"Sprint backlog\"");
+        assertThat(result).contains("\"is_public\":true");
+        assertThat(result).contains("\"name\":\"Overdue tasks\"");
+        assertThat(result).contains("\"project_id\":10");
     }
 
     @Test
@@ -188,6 +187,7 @@ class ReferenceDataToolsTest {
 
         String result = tools.listQueries(null, null);
 
-        assertThat(result).isEqualTo("No saved queries found");
+        assertThat(result).contains("\"queries\":[]");
+        assertThat(result).contains("\"total_count\":0");
     }
 }

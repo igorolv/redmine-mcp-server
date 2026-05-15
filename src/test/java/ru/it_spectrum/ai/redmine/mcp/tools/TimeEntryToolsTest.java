@@ -25,7 +25,7 @@ class TimeEntryToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new TimeEntryTools(client);
+        tools = new TimeEntryTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- listTimeEntries ---
@@ -45,11 +45,16 @@ class TimeEntryToolsTest {
 
         String result = tools.listTimeEntries(null, null, null, null, null, null, null);
 
-        assertThat(result).contains("Time entries: 2 total");
-        assertThat(result).containsPattern("2025-03-01 \\| 2[.,]50 h \\| John \\| Development");
-        assertThat(result).contains("Issue #101");
+        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("2025-03-01");
+        assertThat(result).contains("\"hours\":2.5");
+        assertThat(result).contains("John");
+        assertThat(result).contains("Development");
+        assertThat(result).contains("\"id\":101");
         assertThat(result).contains("Fixed null pointer");
-        assertThat(result).containsPattern("1[.,]00 h \\| Jane \\| Testing");
+        assertThat(result).contains("\"hours\":1.0");
+        assertThat(result).contains("Jane");
+        assertThat(result).contains("Testing");
     }
 
     @Test
@@ -64,8 +69,10 @@ class TimeEntryToolsTest {
 
         String result = tools.listTimeEntries("backend", 200, 42, "2025-03-01", "2025-03-31", 10, 0);
 
-        assertThat(result).contains("Time entries: 1 total");
-        assertThat(result).containsPattern("4[.,]00 h \\| John \\| Development");
+        assertThat(result).contains("\"total_count\":1");
+        assertThat(result).contains("\"hours\":4.0");
+        assertThat(result).contains("John");
+        assertThat(result).contains("Development");
     }
 
     // --- getMyTimeEntries ---
@@ -86,9 +93,11 @@ class TimeEntryToolsTest {
 
         String result = tools.getMyTimeEntries(null, null, null, null, null, null);
 
-        assertThat(result).contains("My time entries (John Doe, 1 total");
-        assertThat(result).containsPattern("3[.,]00 h");
-        assertThat(result).contains("Issue #101");
+        assertThat(result).contains("\"user\"");
+        assertThat(result).contains("\"firstname\":\"John\"");
+        assertThat(result).contains("\"lastname\":\"Doe\"");
+        assertThat(result).contains("\"hours\":3.0");
+        assertThat(result).contains("\"id\":101");
     }
 
     @Test
@@ -97,6 +106,7 @@ class TimeEntryToolsTest {
 
         String result = tools.getMyTimeEntries(null, null, null, null, null, null);
 
-        assertThat(result).isEqualTo("Could not retrieve current user");
+        assertThat(result).contains("\"kind\":\"unavailable\"");
+        assertThat(result).contains("current user unavailable");
     }
 }

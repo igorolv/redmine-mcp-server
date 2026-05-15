@@ -21,9 +21,13 @@ import java.util.Base64;
 public class AttachmentTools {
 
     private final AttachmentService attachmentService;
+    private final JsonResponses json;
+    private final ToolErrors errors;
 
-    public AttachmentTools(AttachmentService attachmentService) {
+    public AttachmentTools(AttachmentService attachmentService, JsonResponses json, ToolErrors errors) {
         this.attachmentService = attachmentService;
+        this.json = json;
+        this.errors = errors;
     }
 
     @McpTool(description = "List all attachments for a specific Redmine issue. " +
@@ -33,25 +37,9 @@ public class AttachmentTools {
     ) {
         var maybeAttachments = attachmentService.listForIssue(issueId);
         if (maybeAttachments.isEmpty()) {
-            return "Issue #%d not found".formatted(issueId);
+            return errors.notFound("issue", "#" + issueId);
         }
-        var attachments = maybeAttachments.get();
-        if (attachments.isEmpty()) {
-            return "Issue #%d has no attachments".formatted(issueId);
-        }
-
-        var sb = new StringBuilder();
-        sb.append("Attachments for issue #%d (%d files):\n\n".formatted(issueId, attachments.size()));
-
-        for (var att : attachments) {
-            sb.append("- [%d] %s (%s, %s)\n".formatted(
-                    att.id(), att.filename(), att.contentType(), formatSize(att.filesize())));
-            if (att.description() != null && !att.description().isBlank()) {
-                sb.append("  Description: %s\n".formatted(att.description()));
-            }
-        }
-
-        return sb.toString();
+        return json.write(new AttachmentListResult(issueId, maybeAttachments.get()));
     }
 
     @McpTool(description = "Get the content of an attachment from Redmine. " +
@@ -65,29 +53,32 @@ public class AttachmentTools {
     ) {
         var maybeAttachment = attachmentService.find(attachmentId);
         if (maybeAttachment.isEmpty()) {
-            return "Attachment #%d not found".formatted(attachmentId);
+            return errors.notFound("attachment", "#" + attachmentId);
         }
         var attachment = maybeAttachment.get();
 
-        var sb = new StringBuilder();
-        sb.append("Attachment: %s\n".formatted(attachment.filename()));
-        sb.append("Type: %s, Size: %s\n".formatted(attachment.contentType(), formatSize(attachment.filesize())));
-        sb.append("Created: %s by %s\n\n".formatted(attachment.createdOn(),
-                attachment.author() != null ? attachment.author().name() : "unknown"));
-
         var maybeText = attachmentService.extractText(attachment);
+        String content = null;
+        boolean truncated = false;
+        String note = null;
         if (maybeText.isPresent()) {
-            sb.append("--- Content ---\n");
-            sb.append(truncate(maybeText.get()));
+            String text = maybeText.get();
+            content = truncate(text);
+            truncated = text.length() > AttachmentService.PREVIEW_LIMIT;
         } else if (attachmentService.isImage(attachment)) {
-            sb.append("Image file — use getImageAttachment to view. Content URL: %s\n"
-                    .formatted(attachment.contentUrl()));
+            note = "Image file. Use getImageAttachment to view.";
         } else {
-            sb.append("Binary file — content not displayed. Content URL: %s\n"
-                    .formatted(attachment.contentUrl()));
+            note = "Binary file. Content not displayed.";
         }
 
-        return sb.toString();
+        return json.write(new AttachmentContentResult(
+                attachment,
+                attachmentService.detectExtractionType(attachment),
+                maybeText.isPresent(),
+                truncated,
+                content,
+                note
+        ));
     }
 
     @McpTool(description = "Get metadata about extracted attachment text and the chunking plan. " +
@@ -155,7 +146,7 @@ public class AttachmentTools {
             @McpToolParam(description = "Max issues to scan when searching by project, default 10", required = false) Integer limit
     ) {
         if (issueId == null && (projectId == null || projectId.isBlank())) {
-            return "At least one of issueId or projectId must be provided";
+            return errors.argument("At least one of issueId or projectId must be provided");
         }
 
         int issueLimit = limit != null ? Math.min(Math.max(limit, 1), 50) : 10;
@@ -163,39 +154,9 @@ public class AttachmentTools {
         var result = attachmentService.search(request);
 
         if (!result.issueFound()) {
-            return "Issue #%d not found".formatted(issueId);
+            return errors.notFound("issue", "#" + issueId);
         }
-        return formatSearchResult(query, issueId, projectId, result);
-    }
-
-    // --- Formatting ---
-
-    private String formatSearchResult(String query, Integer issueId, String projectId, AttachmentSearchResult result) {
-        String scope = issueId != null ? "issue #%d".formatted(issueId)
-                : "project %s".formatted(projectId);
-        var sb = new StringBuilder();
-        sb.append("Attachment content search for \"%s\" in %s\n".formatted(query, scope));
-
-        for (var issueMatch : result.issues()) {
-            sb.append("\nIssue #%d: %s\n".formatted(issueMatch.issueId(), issueMatch.subject()));
-            for (var attMatch : issueMatch.attachments()) {
-                sb.append("  [%d] %s (%s, %s)\n".formatted(
-                        attMatch.attachmentId(), attMatch.filename(),
-                        attMatch.contentType(), formatSize(attMatch.filesize())));
-                for (var snippet : attMatch.snippets()) {
-                    sb.append("    %s\n".formatted(snippet));
-                }
-            }
-        }
-
-        var counters = result.counters();
-        if (counters.totalMatches() == 0) {
-            sb.append("\nNo matches found");
-        }
-        sb.append("\nFound %d matches in %d attachments across %d issues (scanned %d attachments in %d issues)\n"
-                .formatted(counters.totalMatches(), counters.matchingAttachments(),
-                        counters.matchingIssues(), counters.scannedAttachments(), counters.scannedIssues()));
-        return sb.toString();
+        return json.write(new AttachmentSearchResponse(query, issueId, projectId, result));
     }
 
     private String truncate(String text) {
@@ -215,5 +176,29 @@ public class AttachmentTools {
                 .addTextContent(message)
                 .isError(true)
                 .build();
+    }
+
+    public record AttachmentListResult(
+            int issueId,
+            java.util.List<ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment> attachments
+    ) {
+    }
+
+    public record AttachmentContentResult(
+            ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment attachment,
+            String extractionType,
+            boolean textExtracted,
+            boolean truncated,
+            String content,
+            String note
+    ) {
+    }
+
+    public record AttachmentSearchResponse(
+            String query,
+            Integer issueId,
+            String projectId,
+            AttachmentSearchResult result
+    ) {
     }
 }

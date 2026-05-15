@@ -25,7 +25,7 @@ class UserToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new UserTools(client);
+        tools = new UserTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     @Test
@@ -41,11 +41,15 @@ class UserToolsTest {
 
         String result = tools.getCurrentUser();
 
-        assertThat(result).contains("Current user: John Doe");
-        assertThat(result).contains("ID: 42 | Login: jdoe");
-        assertThat(result).contains("Email: jdoe@example.com");
+        assertThat(result).contains("\"id\":42");
+        assertThat(result).contains("\"login\":\"jdoe\"");
+        assertThat(result).contains("\"firstname\":\"John\"");
+        assertThat(result).contains("\"lastname\":\"Doe\"");
+        assertThat(result).contains("jdoe@example.com");
         assertThat(result).contains("Developers");
-        assertThat(result).contains("backend — Developer, Manager");
+        assertThat(result).contains("backend");
+        assertThat(result).contains("Developer");
+        assertThat(result).contains("Manager");
     }
 
     @Test
@@ -56,7 +60,8 @@ class UserToolsTest {
 
         String result = tools.getCurrentUser();
 
-        assertThat(result).contains("Current user: Solo Dev");
+        assertThat(result).contains("\"firstname\":\"Solo\"");
+        assertThat(result).contains("\"lastname\":\"Dev\"");
         assertThat(result).doesNotContain("Groups:");
         assertThat(result).doesNotContain("Project memberships:");
     }
@@ -67,6 +72,7 @@ class UserToolsTest {
 
         String result = tools.getCurrentUser();
 
-        assertThat(result).isEqualTo("Could not retrieve current user");
+        assertThat(result).contains("\"kind\":\"unavailable\"");
+        assertThat(result).contains("current user unavailable");
     }
 }

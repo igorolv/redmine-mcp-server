@@ -26,7 +26,7 @@ class ProjectToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new ProjectTools(client);
+        tools = new ProjectTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- listProjects ---
@@ -43,10 +43,12 @@ class ProjectToolsTest {
 
         String result = tools.listProjects(null, null);
 
-        assertThat(result).contains("Projects: 2 total");
-        assertThat(result).contains("Backend [backend] (id: 1)");
+        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("Backend");
+        assertThat(result).contains("backend");
         assertThat(result).contains("Backend services");
-        assertThat(result).contains("Frontend [frontend] (id: 2)");
+        assertThat(result).contains("Frontend");
+        assertThat(result).contains("frontend");
     }
 
     @Test
@@ -59,8 +61,9 @@ class ProjectToolsTest {
 
         String result = tools.listProjects(5, 10);
 
-        assertThat(result).contains("Projects: 15 total (showing 11-11)");
-        assertThat(result).contains("Mobile [mobile]");
+        assertThat(result).contains("\"total_count\":15");
+        assertThat(result).contains("Mobile");
+        assertThat(result).contains("mobile");
     }
 
     // --- getProject ---
@@ -76,14 +79,16 @@ class ProjectToolsTest {
 
         String result = tools.getProject("backend");
 
-        assertThat(result).contains("Project: Backend");
-        assertThat(result).contains("Identifier: backend");
-        assertThat(result).contains("Parent: Parent Corp");
-        assertThat(result).contains("Description: Main backend");
-        assertThat(result).contains("Homepage: https://example.com");
-        assertThat(result).contains("Public: yes");
-        assertThat(result).contains("Trackers: Bug, Feature");
-        assertThat(result).contains("Modules: issue_tracking, wiki");
+        assertThat(result).contains("\"name\":\"Backend\"");
+        assertThat(result).contains("\"identifier\":\"backend\"");
+        assertThat(result).contains("Parent Corp");
+        assertThat(result).contains("Main backend");
+        assertThat(result).contains("https://example.com");
+        assertThat(result).contains("\"is_public\":true");
+        assertThat(result).contains("Bug");
+        assertThat(result).contains("Feature");
+        assertThat(result).contains("issue_tracking");
+        assertThat(result).contains("wiki");
     }
 
     @Test
@@ -92,7 +97,8 @@ class ProjectToolsTest {
 
         String result = tools.getProject("nonexistent");
 
-        assertThat(result).isEqualTo("Project 'nonexistent' not found");
+        assertThat(result).contains("\"kind\":\"not_found\"");
+        assertThat(result).contains("project nonexistent not found");
     }
 
     // --- listProjectMembers ---
@@ -110,9 +116,11 @@ class ProjectToolsTest {
 
         String result = tools.listProjectMembers("backend", null, null);
 
-        assertThat(result).contains("Members of project 'backend': 2 total");
-        assertThat(result).contains("Alice — Developer");
-        assertThat(result).contains("QA Team (group) — Tester");
+        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("Alice");
+        assertThat(result).contains("Developer");
+        assertThat(result).contains("QA Team");
+        assertThat(result).contains("Tester");
     }
 
     // --- listVersions ---
@@ -129,10 +137,12 @@ class ProjectToolsTest {
 
         String result = tools.listVersions("backend");
 
-        assertThat(result).contains("Versions for project 'backend' (2):");
-        assertThat(result).contains("v1.0 (status: closed, due: 2025-01-15)");
+        assertThat(result).contains("\"name\":\"v1.0\"");
+        assertThat(result).contains("\"status\":\"closed\"");
+        assertThat(result).contains("2025-01-15");
         assertThat(result).contains("First release");
-        assertThat(result).contains("v2.0 (status: open)");
+        assertThat(result).contains("\"name\":\"v2.0\"");
+        assertThat(result).contains("\"status\":\"open\"");
     }
 
     @Test
@@ -141,6 +151,6 @@ class ProjectToolsTest {
 
         String result = tools.listVersions("empty");
 
-        assertThat(result).isEqualTo("No versions found for project 'empty'");
+        assertThat(result).isEqualTo("[]");
     }
 }

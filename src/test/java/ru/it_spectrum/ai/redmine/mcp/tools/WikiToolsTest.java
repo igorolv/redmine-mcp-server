@@ -25,7 +25,7 @@ class WikiToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new WikiTools(client);
+        tools = new WikiTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- getWikiPage ---
@@ -43,13 +43,13 @@ class WikiToolsTest {
 
         String result = tools.getWikiPage("backend", "Getting_Started");
 
-        assertThat(result).contains("Wiki: Getting Started");
-        assertThat(result).contains("Author: Admin");
-        assertThat(result).contains("Version: 3");
+        assertThat(result).contains("\"title\":\"Getting Started\"");
+        assertThat(result).contains("Admin");
+        assertThat(result).contains("\"version\":3");
         assertThat(result).contains("h1. Welcome");
         assertThat(result).contains("This is the start page.");
-        assertThat(result).contains("Attachments (1):");
-        assertThat(result).contains("[10] diagram.png");
+        assertThat(result).contains("\"id\":10");
+        assertThat(result).contains("diagram.png");
     }
 
     @Test
@@ -58,7 +58,8 @@ class WikiToolsTest {
 
         String result = tools.getWikiPage("backend", "Nonexistent");
 
-        assertThat(result).isEqualTo("Wiki page 'Nonexistent' not found in project 'backend'");
+        assertThat(result).contains("\"kind\":\"not_found\"");
+        assertThat(result).contains("wiki page Nonexistent not found");
     }
 
     // --- listWikiPages ---
@@ -73,9 +74,10 @@ class WikiToolsTest {
 
         String result = tools.listWikiPages("backend");
 
-        assertThat(result).contains("Wiki pages in project 'backend' (2):");
-        assertThat(result).contains("- Wiki (updated: 2025-01-01)");
-        assertThat(result).contains("- API Guide (updated: 2025-02-15)");
+        assertThat(result).contains("\"title\":\"Wiki\"");
+        assertThat(result).contains("2025-01-01");
+        assertThat(result).contains("\"title\":\"API Guide\"");
+        assertThat(result).contains("2025-02-15");
     }
 
     @Test
@@ -84,6 +86,6 @@ class WikiToolsTest {
 
         String result = tools.listWikiPages("empty");
 
-        assertThat(result).isEqualTo("No wiki pages found in project 'empty'");
+        assertThat(result).isEqualTo("[]");
     }
 }

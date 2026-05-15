@@ -46,7 +46,7 @@ class DocumentExtractionTest {
         var service = new AttachmentService(client,
                 new DocumentTextExtractor(client, new AttachmentTextCache()),
                 new FixedSizeTextChunker());
-        tools = new AttachmentTools(service);
+        tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- PDF ---
@@ -62,7 +62,7 @@ class DocumentExtractionTest {
         String result = tools.getAttachmentContent(1);
 
         assertThat(result).contains("report.pdf");
-        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("Hello from PDF document");
     }
 
@@ -76,7 +76,7 @@ class DocumentExtractionTest {
 
         String result = tools.getAttachmentContent(2);
 
-        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("Extension-detected PDF");
     }
 
@@ -94,7 +94,7 @@ class DocumentExtractionTest {
         String result = tools.getAttachmentContent(3);
 
         assertThat(result).contains("document.docx");
-        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("Hello from Word document");
         assertThat(result).contains("Second paragraph");
     }
@@ -188,7 +188,7 @@ class DocumentExtractionTest {
         String result = tools.getAttachmentContent(5);
 
         assertThat(result).contains("data.xlsx");
-        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("Sheet: Sheet1");
         assertThat(result).contains("Product | Price");
         assertThat(result).contains("Widget | 9.99");
@@ -225,7 +225,7 @@ class DocumentExtractionTest {
         String result = tools.getAttachmentContent(7);
 
         assertThat(result).contains("presentation.pptx");
-        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("Slide 1");
         assertThat(result).contains("Title Slide");
         assertThat(result).contains("Bullet point content");
@@ -244,13 +244,13 @@ class DocumentExtractionTest {
         String result = tools.getAttachmentContent(8);
 
         assertThat(result).contains("app.log");
-        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("log line 1");
         assertThat(result).contains("log line 2");
     }
 
     @Test
-    void shouldReturnJsonFileContent() {
+    void shouldReturnJsonFileContent() throws Exception {
         byte[] jsonBytes = "{\"key\": \"value\"}".getBytes();
         var attachment = attachment(9, "config.json", "application/json", jsonBytes.length);
 
@@ -259,12 +259,12 @@ class DocumentExtractionTest {
 
         String result = tools.getAttachmentContent(9);
 
-        assertThat(result).contains("--- Content ---");
-        assertThat(result).contains("{\"key\": \"value\"}");
+        assertThat(result).contains("\"textExtracted\":true");
+        assertThat(ToolJsonTestSupport.parse(result).get("content").asText()).contains("\"key\": \"value\"");
     }
 
     @Test
-    void shouldReturnXsdFileContentWithGenericContentType() {
+    void shouldReturnXsdFileContentWithGenericContentType() throws Exception {
         byte[] xsdBytes = """
                 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
                     <xs:element name="order" type="xs:string"/>
@@ -278,8 +278,9 @@ class DocumentExtractionTest {
         String result = tools.getAttachmentContent(16);
 
         assertThat(result).contains("schema.xsd");
-        assertThat(result).contains("--- Content ---");
-        assertThat(result).contains("<xs:element name=\"order\" type=\"xs:string\"/>");
+        assertThat(result).contains("\"textExtracted\":true");
+        assertThat(ToolJsonTestSupport.parse(result).get("content").asText())
+                .contains("<xs:element name=\"order\" type=\"xs:string\"/>");
     }
 
     @Test
@@ -303,7 +304,7 @@ class DocumentExtractionTest {
         String result = tools.getAttachmentContent(17);
 
         assertThat(result).contains("bundle.zip");
-        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("ZIP archive: bundle.zip");
         assertThat(result).contains("config/service.yaml (extracted");
         assertThat(result).contains("schema/order.xsd (extracted");
@@ -312,7 +313,8 @@ class DocumentExtractionTest {
         assertThat(result).contains("--- config/service.yaml ---");
         assertThat(result).contains("feature: archive extraction");
         assertThat(result).contains("--- schema/order.xsd ---");
-        assertThat(result).contains("<xs:element name=\"orderId\" type=\"xs:string\"/>");
+        assertThat(ToolJsonTestSupport.parse(result).get("content").asText())
+                .contains("<xs:element name=\"orderId\" type=\"xs:string\"/>");
         assertThat(result).contains("--- docs/decision.docx ---");
         assertThat(result).contains("Architecture decision from Word document");
     }
@@ -349,13 +351,13 @@ class DocumentExtractionTest {
         assertThat(result).contains("photo.png");
         assertThat(result).contains("Image file");
         assertThat(result).contains("getImageAttachment");
-        assertThat(result).doesNotContain("--- Content ---");
+        assertThat(result).contains("\"textExtracted\":false");
     }
 
     // --- Truncation ---
 
     @Test
-    void shouldTruncateLargeTextContent() {
+    void shouldTruncateLargeTextContent() throws Exception {
         String longText = "x".repeat(60_000);
         byte[] textBytes = longText.getBytes();
         var attachment = attachment(11, "huge.txt", "text/plain", textBytes.length);
@@ -365,10 +367,10 @@ class DocumentExtractionTest {
 
         String result = tools.getAttachmentContent(11);
 
-        assertThat(result).contains("--- Content ---");
-        assertThat(result).contains("truncated");
+        assertThat(result).contains("\"textExtracted\":true");
+        assertThat(result).contains("\"truncated\":true");
         // Total output should be limited — the extracted text part must be <= 50000 + truncation message
-        String contentPart = result.substring(result.indexOf("--- Content ---") + "--- Content ---\n".length());
+        String contentPart = ToolJsonTestSupport.parse(result).get("content").asText();
         assertThat(contentPart.length()).isLessThan(60_000);
     }
 
@@ -396,7 +398,7 @@ class DocumentExtractionTest {
         String result = tools.getAttachmentContent(12);
 
         assertThat(result).contains("corrupt.pdf");
-        assertThat(result).contains("--- Content ---");
+        assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("failed to extract text");
     }
 
