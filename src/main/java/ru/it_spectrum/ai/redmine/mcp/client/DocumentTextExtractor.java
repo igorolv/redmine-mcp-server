@@ -38,23 +38,15 @@ public class DocumentTextExtractor {
     private static final int MAX_ARCHIVE_TOTAL_BYTES = 50 * 1024 * 1024;
 
     private final RedmineClient client;
-    private final AttachmentTextCache textCache;
 
-    public DocumentTextExtractor(RedmineClient client, AttachmentTextCache textCache) {
+    public DocumentTextExtractor(RedmineClient client) {
         this.client = client;
-        this.textCache = textCache;
     }
 
     /**
      * Extract text from an attachment. Returns null if not extractable or on failure.
-     * Uses cache to avoid re-downloading/re-extracting.
      */
     public String extractText(RedmineAttachment attachment) {
-        String cached = textCache.get(attachment.id());
-        if (cached != null) {
-            return cached;
-        }
-
         String ext = getFileExtension(attachment.filename());
         String contentType = attachment.contentType() != null ? attachment.contentType() : "";
 
@@ -73,7 +65,6 @@ public class DocumentTextExtractor {
         if (text == null) {
             return null;
         }
-        textCache.put(attachment.id(), text);
         return text;
     }
 
