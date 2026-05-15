@@ -7,6 +7,22 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
+import ru.it_spectrum.ai.redmine.mcp.model.AssigneeSummary;
+import ru.it_spectrum.ai.redmine.mcp.model.BlockerChainResult;
+import ru.it_spectrum.ai.redmine.mcp.model.BlockerNode;
+import ru.it_spectrum.ai.redmine.mcp.model.HoursSummary;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueCountSummary;
+import ru.it_spectrum.ai.redmine.mcp.model.ProjectSummaryResult;
+import ru.it_spectrum.ai.redmine.mcp.model.ProjectWorkload;
+import ru.it_spectrum.ai.redmine.mcp.model.ReleaseRisksResult;
+import ru.it_spectrum.ai.redmine.mcp.model.RiskCategory;
+import ru.it_spectrum.ai.redmine.mcp.model.RiskScore;
+import ru.it_spectrum.ai.redmine.mcp.model.StaleIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.StaleIssuesResult;
+import ru.it_spectrum.ai.redmine.mcp.model.UserWorkloadResult;
+import ru.it_spectrum.ai.redmine.mcp.model.VersionChangelogResult;
+import ru.it_spectrum.ai.redmine.mcp.model.VersionComparisonResult;
+import ru.it_spectrum.ai.redmine.mcp.model.VersionScope;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -230,8 +246,8 @@ public class AnalysisTools {
         var blocks = new ArrayList<BlockerNode>();
         collectBlockers(root, false, visited, fetchCount, blocks, 0);
 
-        int upstreamDepth = blockedBy.stream().mapToInt(n -> n.depth).max().orElse(0);
-        int downstreamDepth = blocks.stream().mapToInt(n -> n.depth).max().orElse(0);
+        int upstreamDepth = blockedBy.stream().mapToInt(BlockerNode::depth).max().orElse(0);
+        int downstreamDepth = blocks.stream().mapToInt(BlockerNode::depth).max().orElse(0);
         int totalDepth = upstreamDepth + 1 + downstreamDepth;
         int totalIssues = 1 + blockedBy.size() + blocks.size();
 
@@ -377,128 +393,6 @@ public class AnalysisTools {
         }
     }
 
-    public record IssueCountSummary(int open, int closed, int total) {
-    }
-
-    public record HoursSummary(double estimated, double spent) {
-    }
-
-    public record AssigneeSummary(String assignee, int total, int overdue) {
-    }
-
-    public record ProjectSummaryResult(
-            String projectId,
-            Integer versionId,
-            IssueCountSummary counts,
-            boolean truncated,
-            int analyzedOpenIssues,
-            Map<String, Integer> byStatus,
-            Map<String, Integer> byTracker,
-            Map<String, Integer> byPriority,
-            List<AssigneeSummary> byAssignee,
-            int overdue,
-            HoursSummary hours
-    ) {
-    }
-
-    public record ProjectWorkload(
-            String project,
-            int issueCount,
-            double estimatedHours,
-            Map<String, Integer> byPriority
-    ) {
-    }
-
-    public record UserWorkloadResult(
-            int userId,
-            String userName,
-            String projectId,
-            int totalOpenIssues,
-            int analyzedIssues,
-            boolean truncated,
-            HoursSummary hours,
-            int overdue,
-            List<ProjectWorkload> byProject,
-            List<RedmineIssue> topIssues
-    ) {
-    }
-
-    public record VersionChangelogResult(
-            String projectId,
-            int versionId,
-            RedmineVersion version,
-            int totalIssues,
-            int analyzedIssues,
-            boolean truncated,
-            Map<String, List<RedmineIssue>> byTracker,
-            IssueCountSummary counts,
-            HoursSummary hours
-    ) {
-    }
-
-    public record BlockerChainResult(
-            RedmineIssue root,
-            List<BlockerNode> blockedBy,
-            List<BlockerNode> blocks,
-            int chainDepth,
-            int totalIssues
-    ) {
-    }
-
-    public record StaleIssue(RedmineIssue issue, long daysSinceUpdated, boolean overdue) {
-    }
-
-    public record StaleIssuesResult(
-            String projectId,
-            int daysSinceUpdate,
-            int limit,
-            List<StaleIssue> issues,
-            long oldestDaysSinceUpdated
-    ) {
-    }
-
-    public record RiskCategory(String kind, List<RedmineIssue> issues) {
-    }
-
-    public record RiskScore(int items, int categories, int openIssues) {
-    }
-
-    public record ReleaseRisksResult(
-            String projectId,
-            int versionId,
-            RedmineVersion version,
-            int totalOpenIssues,
-            int analyzedIssues,
-            boolean truncated,
-            Set<String> highPriorityNames,
-            List<RiskCategory> categories,
-            RiskScore score
-    ) {
-    }
-
-    public record VersionScope(
-            int versionId,
-            String name,
-            RedmineVersion version,
-            int totalIssues,
-            int analyzedIssues,
-            int closed,
-            int open,
-            int completionPercent,
-            boolean truncated
-    ) {
-    }
-
-    public record VersionComparisonResult(
-            String projectId,
-            VersionScope first,
-            VersionScope second,
-            List<RedmineIssue> onlyInFirst,
-            List<RedmineIssue> onlyInSecond,
-            List<RedmineIssue> inBoth
-    ) {
-    }
-
     private IssuesBatch fetchAllIssues(String projectId, String statusId,
                                         Integer versionId, Integer assignedToId) {
         var all = new ArrayList<RedmineIssue>();
@@ -516,9 +410,6 @@ public class AnalysisTools {
     }
 
     // ── Blocker helpers ────────────────────────────────────────────────
-
-    public record BlockerNode(RedmineIssue issue, int depth) {
-    }
 
     private RedmineIssue fetchBlockerIssue(int issueId, Set<Integer> visited, int[] fetchCount) {
         if (!visited.add(issueId) || fetchCount[0] >= MAX_BLOCKER_ISSUES) {

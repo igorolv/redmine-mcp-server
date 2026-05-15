@@ -4,6 +4,7 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
+import ru.it_spectrum.ai.redmine.mcp.model.MyTimeEntriesResult;
 
 @Service
 public class TimeEntryTools {
@@ -60,9 +61,4 @@ public class TimeEntryTools {
         return json.write(new MyTimeEntriesResult(user, page));
     }
 
-    public record MyTimeEntriesResult(
-            ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser user,
-            ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry.Page page
-    ) {
-    }
 }

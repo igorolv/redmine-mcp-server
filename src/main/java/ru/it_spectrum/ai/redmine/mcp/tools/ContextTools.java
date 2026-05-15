@@ -6,8 +6,16 @@ import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentMatch;
+import ru.it_spectrum.ai.redmine.mcp.model.DocumentExcerpt;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueFullContextResult;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueNetworkResult;
+import ru.it_spectrum.ai.redmine.mcp.model.LatestAttachmentResult;
+import ru.it_spectrum.ai.redmine.mcp.model.NetworkEdge;
+import ru.it_spectrum.ai.redmine.mcp.model.RelatedClosedIssuesResult;
+import ru.it_spectrum.ai.redmine.mcp.model.SiblingSummary;
+import ru.it_spectrum.ai.redmine.mcp.model.SiblingsResult;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -346,14 +354,14 @@ public class ContextTools {
 
         // Sort by date descending (newest first)
         matches.sort((a, b) -> {
-            if (a.attachment.createdOn() == null) return 1;
-            if (b.attachment.createdOn() == null) return -1;
-            return b.attachment.createdOn().compareTo(a.attachment.createdOn());
+            if (a.attachment().createdOn() == null) return 1;
+            if (b.attachment().createdOn() == null) return -1;
+            return b.attachment().createdOn().compareTo(a.attachment().createdOn());
         });
 
         // Deduplicate by attachment ID
         var seen = new java.util.HashSet<Integer>();
-        matches.removeIf(m -> !seen.add(m.attachment.id()));
+        matches.removeIf(m -> !seen.add(m.attachment().id()));
 
         return json.write(new LatestAttachmentResult(
                 pattern,
@@ -407,8 +415,9 @@ public class ContextTools {
                 // Add edge (avoid duplicate edges)
                 var edge = new NetworkEdge(currentId, otherId, relType, rel.delay());
                 if (edges.stream().noneMatch(e ->
-                        (e.fromId == edge.fromId && e.toId == edge.toId)
-                                || (e.fromId == edge.toId && e.toId == edge.fromId && e.type.equals(reverseRelType(edge.type))))) {
+                        (e.fromId() == edge.fromId() && e.toId() == edge.toId())
+                                || (e.fromId() == edge.toId() && e.toId() == edge.fromId()
+                                && e.type().equals(reverseRelType(edge.type()))))) {
                     edges.add(edge);
                 }
 
@@ -447,7 +456,7 @@ public class ContextTools {
         }
 
         var edgesByType = edges.stream()
-                .collect(Collectors.groupingBy(e -> e.type, LinkedHashMap::new, Collectors.toList()));
+                .collect(Collectors.groupingBy(NetworkEdge::type, LinkedHashMap::new, Collectors.toList()));
 
         return json.write(new IssueNetworkResult(
                 root,
@@ -459,76 +468,7 @@ public class ContextTools {
         ));
     }
 
-    // --- Result models ---
-
-    public record IssueFullContextResult(
-            RedmineIssue issue,
-            RedmineIssue parent,
-            SiblingSummary siblings,
-            List<RedmineIssue.Child> children,
-            Map<String, List<RedmineIssue>> relatedByType,
-            List<RedmineAttachment> attachments,
-            List<DocumentExcerpt> documents,
-            List<RedmineIssue.Journal> recentNotes,
-            int apiCalls
-    ) {
-    }
-
-    public record SiblingSummary(int total, int closed, List<RedmineIssue> issues) {
-    }
-
-    public record DocumentExcerpt(
-            RedmineAttachment attachment,
-            String source,
-            int sourceIssueId,
-            String extractionType,
-            String text,
-            boolean truncated
-    ) {
-    }
-
-    public record SiblingsResult(
-            RedmineIssue issue,
-            RedmineIssue parent,
-            List<RedmineIssue> siblings,
-            int closed,
-            int total,
-            int progressPercent,
-            String status
-    ) {
-    }
-
-    public record RelatedClosedIssuesResult(
-            RedmineIssue issue,
-            List<RedmineIssue> direct,
-            List<RedmineIssue> siblings,
-            List<RedmineIssue> similar,
-            int total
-    ) {
-    }
-
-    public record LatestAttachmentResult(
-            String pattern,
-            int issueId,
-            AttachmentMatch latest,
-            List<AttachmentMatch> matches
-    ) {
-    }
-
-    public record IssueNetworkResult(
-            RedmineIssue root,
-            int depth,
-            boolean limitReached,
-            Map<Integer, RedmineIssue> nodes,
-            List<NetworkEdge> edges,
-            Map<String, List<NetworkEdge>> edgesByType
-    ) {
-    }
-
     // --- Helpers for findLatestAttachment ---
-
-    public record AttachmentMatch(RedmineAttachment attachment, String source) {
-    }
 
     private void collectAttachmentMatches(RedmineIssue issue, String patternLower,
                                            String source, List<AttachmentMatch> matches) {
@@ -541,9 +481,6 @@ public class ContextTools {
     }
 
     // --- Helpers for getIssueNetwork ---
-
-    public record NetworkEdge(int fromId, int toId, String type, Integer delay) {
-    }
 
     private String reverseRelType(String type) {
         return switch (type) {

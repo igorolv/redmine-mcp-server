@@ -3,11 +3,14 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentContentResult;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentListResult;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResponse;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ImageProcessingFailedException;
@@ -178,27 +181,4 @@ public class AttachmentTools {
                 .build();
     }
 
-    public record AttachmentListResult(
-            int issueId,
-            java.util.List<ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment> attachments
-    ) {
-    }
-
-    public record AttachmentContentResult(
-            ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment attachment,
-            String extractionType,
-            boolean textExtracted,
-            boolean truncated,
-            String content,
-            String note
-    ) {
-    }
-
-    public record AttachmentSearchResponse(
-            String query,
-            Integer issueId,
-            String projectId,
-            AttachmentSearchResult result
-    ) {
-    }
 }
