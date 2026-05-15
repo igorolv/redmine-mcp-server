@@ -12,6 +12,7 @@ import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,7 +35,7 @@ class IssueToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new IssueTools(client);
+        tools = new IssueTools(client, new IssueService(client));
     }
 
     // --- getMyIssues ---
@@ -399,10 +401,10 @@ class IssueToolsTest {
         when(client.getIssue(100)).thenReturn(issue);
         when(client.getIssueStatuses()).thenReturn(List.of(
                 new IdName(1, "New"), new IdName(2, "In Progress"), new IdName(3, "Closed")));
-        when(client.getIssuePriorities()).thenReturn(List.of(
+        lenient().when(client.getIssuePriorities()).thenReturn(List.of(
                 new IdName(2, "Normal"), new IdName(3, "High")));
-        when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
-        when(client.getProjectVersions("1")).thenReturn(List.of());
+        lenient().when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
+        lenient().when(client.getProjectVersions("1")).thenReturn(List.of());
 
         String result = tools.getIssueHistory(100);
 
@@ -439,10 +441,10 @@ class IssueToolsTest {
         );
 
         when(client.getIssue(100)).thenReturn(issue);
-        when(client.getIssueStatuses()).thenReturn(List.of(new IdName(1, "New")));
-        when(client.getIssuePriorities()).thenReturn(List.of(new IdName(2, "Normal")));
-        when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
-        when(client.getProjectVersions("1")).thenReturn(List.of());
+        lenient().when(client.getIssueStatuses()).thenReturn(List.of(new IdName(1, "New")));
+        lenient().when(client.getIssuePriorities()).thenReturn(List.of(new IdName(2, "Normal")));
+        lenient().when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
+        lenient().when(client.getProjectVersions("1")).thenReturn(List.of());
 
         String result = tools.getIssueHistory(100);
 
@@ -472,10 +474,10 @@ class IssueToolsTest {
         );
 
         when(client.getIssue(101)).thenReturn(issue);
-        when(client.getIssueStatuses()).thenReturn(List.of(new IdName(1, "New")));
-        when(client.getIssuePriorities()).thenReturn(List.of(new IdName(2, "Normal")));
-        when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
-        when(client.getProjectVersions("1")).thenReturn(List.of());
+        lenient().when(client.getIssueStatuses()).thenReturn(List.of(new IdName(1, "New")));
+        lenient().when(client.getIssuePriorities()).thenReturn(List.of(new IdName(2, "Normal")));
+        lenient().when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
+        lenient().when(client.getProjectVersions("1")).thenReturn(List.of());
 
         String result = tools.getIssueHistory(101);
 
