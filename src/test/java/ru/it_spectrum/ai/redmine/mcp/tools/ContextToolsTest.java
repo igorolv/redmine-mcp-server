@@ -13,6 +13,8 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
+import ru.it_spectrum.ai.redmine.mcp.service.chunking.FixedSizeTextChunker;
 
 import java.util.List;
 import java.util.Map;
@@ -35,8 +37,10 @@ class ContextToolsTest {
 
     @BeforeEach
     void setUp() {
-        var extractor = new DocumentTextExtractor(client, new AttachmentTextCache());
-        tools = new ContextTools(client, extractor);
+        var service = new AttachmentService(client,
+                new DocumentTextExtractor(client, new AttachmentTextCache()),
+                new FixedSizeTextChunker());
+        tools = new ContextTools(client, service);
 
         // Default stub for listIssues — many tools call it for "similar" searches
         lenient().when(client.listIssues(

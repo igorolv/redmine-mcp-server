@@ -4,8 +4,8 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
+import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
@@ -32,11 +32,11 @@ public class ContextTools {
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
 
     private final RedmineClient client;
-    private final DocumentTextExtractor textExtractor;
+    private final AttachmentService attachmentService;
 
-    public ContextTools(RedmineClient client, DocumentTextExtractor textExtractor) {
+    public ContextTools(RedmineClient client, AttachmentService attachmentService) {
         this.client = client;
-        this.textExtractor = textExtractor;
+        this.attachmentService = attachmentService;
     }
 
     @McpTool(description = "Get full context needed to understand and implement a Redmine issue. " +
@@ -198,12 +198,12 @@ public class ContextTools {
             for (var att : issue.attachments()) {
                 if (docsExtracted >= MAX_INLINE_DOCS || totalDocText >= MAX_TOTAL_DOC_TEXT) break;
 
-                String ext = textExtractor.getFileExtension(att.filename());
+                String ext = attachmentService.fileExtension(att);
                 if (IMAGE_EXTENSIONS.contains(ext)) continue;
 
-                if (!textExtractor.isTextExtractable(att.filename(), att.contentType())) continue;
+                if (!attachmentService.isTextExtractable(att)) continue;
 
-                String text = textExtractor.extractText(att);
+                String text = attachmentService.extractText(att).orElse(null);
                 if (text == null || text.isBlank()) continue;
 
                 int allowedLength = Math.min(MAX_DOC_TEXT_LENGTH, MAX_TOTAL_DOC_TEXT - totalDocText);
@@ -222,11 +222,11 @@ public class ContextTools {
                 for (var att : parent.attachments()) {
                     if (docsExtracted >= MAX_INLINE_DOCS || totalDocText >= MAX_TOTAL_DOC_TEXT) break;
 
-                    String ext = textExtractor.getFileExtension(att.filename());
+                    String ext = attachmentService.fileExtension(att);
                     if (IMAGE_EXTENSIONS.contains(ext)) continue;
-                    if (!textExtractor.isTextExtractable(att.filename(), att.contentType())) continue;
+                    if (!attachmentService.isTextExtractable(att)) continue;
 
-                    String text = textExtractor.extractText(att);
+                    String text = attachmentService.extractText(att).orElse(null);
                     if (text == null || text.isBlank()) continue;
 
                     int allowedLength = Math.min(MAX_DOC_TEXT_LENGTH, MAX_TOTAL_DOC_TEXT - totalDocText);
