@@ -10,6 +10,8 @@ import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.service.chunking.ChunkingOptions;
+import ru.it_spectrum.ai.redmine.mcp.service.chunking.ChunkingStrategy;
 
 import io.modelcontextprotocol.spec.McpSchema;
 
@@ -28,19 +30,17 @@ import javax.imageio.ImageIO;
 @Service
 public class AttachmentTools {
     private static final int MAX_TEXT_LENGTH = 50_000;
-    private static final int DEFAULT_CHUNK_SIZE = 12_000;
-    private static final int MIN_CHUNK_SIZE = 2_000;
-    private static final int MAX_CHUNK_SIZE = 20_000;
-    private static final int DEFAULT_CHUNK_OVERLAP = 1_200;
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
     private static final int DEFAULT_MAX_WIDTH = 1024;
 
     private final RedmineClient client;
     private final DocumentTextExtractor textExtractor;
+    private final ChunkingStrategy chunker;
 
-    public AttachmentTools(RedmineClient client, DocumentTextExtractor textExtractor) {
+    public AttachmentTools(RedmineClient client, DocumentTextExtractor textExtractor, ChunkingStrategy chunker) {
         this.client = client;
         this.textExtractor = textExtractor;
+        this.chunker = chunker;
     }
 
     @McpTool(description = "List all attachments for a specific Redmine issue. " +
@@ -132,7 +132,8 @@ public class AttachmentTools {
 
         ProgressSupport.report(context, 1, 3, "Extracting attachment text");
         String text = extractTextOrThrow(attachment);
-        int chunkCount = countChunks(text, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP);
+        var options = ChunkingOptions.defaults();
+        int chunkCount = chunker.countChunks(text, options);
         ProgressSupport.done(context, "Attachment text info ready");
 
         return new AttachmentTextInfo(
@@ -142,7 +143,7 @@ public class AttachmentTools {
                 true,
                 textExtractor.detectExtractionType(attachment),
                 text.length(),
-                DEFAULT_CHUNK_SIZE,
+                options.chunkSize(),
                 chunkCount,
                 text.length() > MAX_TEXT_LENGTH
         );
@@ -168,9 +169,9 @@ public class AttachmentTools {
 
         ProgressSupport.report(context, 1, 4, "Extracting attachment text");
         String text = extractTextOrThrow(attachment);
-        int actualChunkSize = normalizeChunkSize(chunkSize);
+        var options = ChunkingOptions.ofChunkSize(chunkSize);
         ProgressSupport.report(context, 2, 4, "Building text chunks");
-        var chunks = splitIntoChunks(text, actualChunkSize, DEFAULT_CHUNK_OVERLAP);
+        var chunks = chunker.split(text, options);
 
         if (chunkIndex < 0 || chunkIndex >= chunks.size()) {
             throw new IllegalArgumentException(
@@ -442,87 +443,6 @@ public class AttachmentTools {
         return text;
     }
 
-    private int normalizeChunkSize(Integer chunkSize) {
-        if (chunkSize == null) return DEFAULT_CHUNK_SIZE;
-        return Math.max(MIN_CHUNK_SIZE, Math.min(MAX_CHUNK_SIZE, chunkSize));
-    }
-
-    // --- Text chunking ---
-
-    private int countChunks(String text, int chunkSize, int overlap) {
-        return splitIntoChunks(text, chunkSize, overlap).size();
-    }
-
-    private List<TextChunk> splitIntoChunks(String text, int chunkSize, int overlap) {
-        if (text.isBlank()) {
-            return List.of(new TextChunk(0, 0, ""));
-        }
-
-        var chunks = new ArrayList<TextChunk>();
-        int start = 0;
-
-        while (start < text.length()) {
-            int preferredEnd = Math.min(start + chunkSize, text.length());
-            int end = findChunkBoundary(text, start, preferredEnd);
-            if (end <= start) {
-                end = preferredEnd;
-            }
-
-            String rawChunk = text.substring(start, end);
-            String chunkText = rawChunk.strip();
-            if (!chunkText.isEmpty()) {
-                int leadingTrim = 0;
-                while (leadingTrim < rawChunk.length() && Character.isWhitespace(rawChunk.charAt(leadingTrim))) {
-                    leadingTrim++;
-                }
-
-                int trailingTrim = 0;
-                while (trailingTrim < rawChunk.length() - leadingTrim
-                        && Character.isWhitespace(rawChunk.charAt(rawChunk.length() - 1 - trailingTrim))) {
-                    trailingTrim++;
-                }
-
-                chunks.add(new TextChunk(
-                        start + leadingTrim,
-                        end - trailingTrim,
-                        chunkText
-                ));
-            }
-
-            if (end >= text.length()) {
-                break;
-            }
-
-            start = Math.max(end - overlap, start + 1);
-        }
-
-        return chunks;
-    }
-
-    private int findChunkBoundary(String text, int start, int preferredEnd) {
-        if (preferredEnd >= text.length()) {
-            return text.length();
-        }
-
-        int paragraphBreak = text.lastIndexOf("\n\n", preferredEnd);
-        if (paragraphBreak > start + 1000) {
-            return paragraphBreak;
-        }
-
-        int lineBreak = text.lastIndexOf('\n', preferredEnd);
-        if (lineBreak > start + 500) {
-            return lineBreak;
-        }
-
-        int sentenceBreak = Math.max(text.lastIndexOf(". ", preferredEnd), text.lastIndexOf("! ", preferredEnd));
-        sentenceBreak = Math.max(sentenceBreak, text.lastIndexOf("? ", preferredEnd));
-        if (sentenceBreak > start + 500) {
-            return sentenceBreak + 1;
-        }
-
-        return preferredEnd;
-    }
-
     // --- Helpers ---
 
     private String truncate(String text) {
@@ -534,8 +454,5 @@ public class AttachmentTools {
         if (bytes < 1024) return bytes + " B";
         if (bytes < 1024 * 1024) return "%.1f KB".formatted(bytes / 1024.0);
         return "%.1f MB".formatted(bytes / (1024.0 * 1024));
-    }
-
-    private record TextChunk(int startChar, int endChar, String text) {
     }
 }
