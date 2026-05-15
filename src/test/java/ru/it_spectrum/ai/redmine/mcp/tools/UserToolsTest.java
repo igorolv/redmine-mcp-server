@@ -9,6 +9,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineMembership;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.service.UserService;
 
 import java.util.List;
 
@@ -25,7 +26,7 @@ class UserToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new UserTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new UserTools(new UserService(client), ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     @Test

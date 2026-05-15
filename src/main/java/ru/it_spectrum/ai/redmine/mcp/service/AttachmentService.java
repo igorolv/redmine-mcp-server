@@ -7,6 +7,7 @@ import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentContentResult;
 import ru.it_spectrum.ai.redmine.mcp.model.ImageRenderResult;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
@@ -82,6 +83,33 @@ public class AttachmentService {
 
     public Optional<String> extractText(RedmineAttachment attachment) {
         return Optional.ofNullable(textExtractor.extractText(attachment));
+    }
+
+    public AttachmentContentResult readContent(int attachmentId) {
+        var attachment = findOrThrow(attachmentId);
+
+        var maybeText = extractText(attachment);
+        String content = null;
+        boolean truncated = false;
+        String note = null;
+        if (maybeText.isPresent()) {
+            String text = maybeText.get();
+            content = truncatePreview(text);
+            truncated = text.length() > PREVIEW_LIMIT;
+        } else if (isImage(attachment)) {
+            note = "Image file. Use getImageAttachment to view.";
+        } else {
+            note = "Binary file. Content not displayed.";
+        }
+
+        return new AttachmentContentResult(
+                attachment,
+                detectExtractionType(attachment),
+                maybeText.isPresent(),
+                truncated,
+                content,
+                note
+        );
     }
 
     public AttachmentTextInfo describeText(int attachmentId) {
@@ -242,6 +270,12 @@ public class AttachmentService {
         return new AttachmentSearchResult(true, matchedIssues, counters);
     }
 
+    public String formatSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return "%.1f KB".formatted(bytes / 1024.0);
+        return "%.1f MB".formatted(bytes / (1024.0 * 1024));
+    }
+
     // --- Internal ---
 
     private String extractTextOrThrow(RedmineAttachment attachment) {
@@ -250,6 +284,12 @@ public class AttachmentService {
             throw new AttachmentNotExtractableException(attachment.id(), attachment.filename());
         }
         return text;
+    }
+
+    private String truncatePreview(String text) {
+        if (text.length() <= PREVIEW_LIMIT) return text;
+        return text.substring(0, PREVIEW_LIMIT)
+                + "\n\n... (truncated, total length: %d chars)".formatted(text.length());
     }
 
     private List<RedmineIssue> loadIssuesForSearch(AttachmentSearchRequest request) {

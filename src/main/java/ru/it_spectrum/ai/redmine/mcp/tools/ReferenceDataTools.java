@@ -3,37 +3,34 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
+import ru.it_spectrum.ai.redmine.mcp.service.ReferenceDataService;
 
 @Service
 public class ReferenceDataTools {
-    private final RedmineClient client;
+    private final ReferenceDataService referenceDataService;
     private final JsonResponses json;
 
-    public ReferenceDataTools(RedmineClient client, JsonResponses json) {
-        this.client = client;
+    public ReferenceDataTools(ReferenceDataService referenceDataService, JsonResponses json) {
+        this.referenceDataService = referenceDataService;
         this.json = json;
     }
 
     @McpTool(description = "List all available issue statuses in Redmine. " +
             "Returns status IDs and names. Use these IDs for filtering in listIssues.")
     public String listStatuses() {
-        var statuses = client.getIssueStatuses();
-        return json.write(statuses);
+        return json.write(referenceDataService.listStatuses());
     }
 
     @McpTool(description = "List all available trackers in Redmine. " +
             "Returns tracker IDs and names. Use these IDs for filtering in listIssues.")
     public String listTrackers() {
-        var trackers = client.getTrackers();
-        return json.write(trackers);
+        return json.write(referenceDataService.listTrackers());
     }
 
     @McpTool(description = "List all available issue priorities in Redmine. " +
             "Returns priority IDs and names. Use these IDs for filtering in listIssues.")
     public String listPriorities() {
-        var priorities = client.getIssuePriorities();
-        return json.write(priorities);
+        return json.write(referenceDataService.listPriorities());
     }
 
     @McpTool(description = "List issue categories for a specific Redmine project. " +
@@ -41,15 +38,13 @@ public class ReferenceDataTools {
     public String listIssueCategories(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
-        var categories = client.getIssueCategories(projectId);
-        return json.write(categories);
+        return json.write(referenceDataService.listIssueCategories(projectId));
     }
 
     @McpTool(description = "List all available time entry activity types in Redmine. " +
             "Returns activity IDs and names. Use these IDs when logging time entries.")
     public String listTimeEntryActivities() {
-        var activities = client.getTimeEntryActivities();
-        return json.write(activities);
+        return json.write(referenceDataService.listTimeEntryActivities());
     }
 
     @McpTool(description = "List saved queries (custom filters) available in Redmine. " +
@@ -62,7 +57,6 @@ public class ReferenceDataTools {
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
 
-        var page = client.getQueries(actualOffset, actualLimit);
-        return json.write(page);
+        return json.write(referenceDataService.listQueries(actualOffset, actualLimit));
     }
 }

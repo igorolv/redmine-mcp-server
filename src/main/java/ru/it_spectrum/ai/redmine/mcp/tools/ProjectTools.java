@@ -3,16 +3,17 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
+import ru.it_spectrum.ai.redmine.mcp.service.ProjectService;
+import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 
 @Service
 public class ProjectTools {
-    private final RedmineClient client;
+    private final ProjectService projectService;
     private final JsonResponses json;
     private final ToolErrors errors;
 
-    public ProjectTools(RedmineClient client, JsonResponses json, ToolErrors errors) {
-        this.client = client;
+    public ProjectTools(ProjectService projectService, JsonResponses json, ToolErrors errors) {
+        this.projectService = projectService;
         this.json = json;
         this.errors = errors;
     }
@@ -26,8 +27,7 @@ public class ProjectTools {
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
 
-        var page = client.getProjects(actualOffset, actualLimit);
-        return json.write(page);
+        return json.write(projectService.listProjects(actualOffset, actualLimit));
     }
 
     @McpTool(description = "Get detailed information about a specific Redmine project. " +
@@ -35,11 +35,11 @@ public class ProjectTools {
     public String getProject(
             @McpToolParam(description = "Project identifier (string slug) or numeric ID") String projectId
     ) {
-        var project = client.getProject(projectId);
-        if (project == null) {
-            return errors.notFound("project", projectId);
+        try {
+            return json.write(projectService.getProjectOrThrow(projectId));
+        } catch (ResourceNotFoundException e) {
+            return errors.notFound(e.resource(), e.id());
         }
-        return json.write(project);
     }
 
     @McpTool(description = "List members of a Redmine project with their roles.")
@@ -51,8 +51,7 @@ public class ProjectTools {
         int actualLimit = limit != null ? limit : 100;
         int actualOffset = offset != null ? offset : 0;
 
-        var page = client.getProjectMembers(projectId, actualOffset, actualLimit);
-        return json.write(page);
+        return json.write(projectService.listMembers(projectId, actualOffset, actualLimit));
     }
 
     @McpTool(description = "List versions (milestones) of a Redmine project. " +
@@ -60,7 +59,6 @@ public class ProjectTools {
     public String listVersions(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
-        var versions = client.getProjectVersions(projectId);
-        return json.write(versions);
+        return json.write(projectService.listVersions(projectId));
     }
 }

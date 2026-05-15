@@ -3,7 +3,6 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentContentResult;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentListResult;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextChunk;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentTextInfo;
@@ -11,7 +10,6 @@ import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResponse;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ImageProcessingFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.NotAnImageAttachmentException;
@@ -54,34 +52,11 @@ public class AttachmentTools {
     public String getAttachmentContent(
             @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
-        var maybeAttachment = attachmentService.find(attachmentId);
-        if (maybeAttachment.isEmpty()) {
+        try {
+            return json.write(attachmentService.readContent(attachmentId));
+        } catch (AttachmentNotFoundException e) {
             return errors.notFound("attachment", "#" + attachmentId);
         }
-        var attachment = maybeAttachment.get();
-
-        var maybeText = attachmentService.extractText(attachment);
-        String content = null;
-        boolean truncated = false;
-        String note = null;
-        if (maybeText.isPresent()) {
-            String text = maybeText.get();
-            content = truncate(text);
-            truncated = text.length() > AttachmentService.PREVIEW_LIMIT;
-        } else if (attachmentService.isImage(attachment)) {
-            note = "Image file. Use getImageAttachment to view.";
-        } else {
-            note = "Binary file. Content not displayed.";
-        }
-
-        return json.write(new AttachmentContentResult(
-                attachment,
-                attachmentService.detectExtractionType(attachment),
-                maybeText.isPresent(),
-                truncated,
-                content,
-                note
-        ));
     }
 
     @McpTool(description = "Get metadata about extracted attachment text and the chunking plan. " +
@@ -122,7 +97,7 @@ public class AttachmentTools {
             var rendered = attachmentService.renderImage(attachmentId, maxWidth);
             String base64 = Base64.getEncoder().encodeToString(rendered.data());
             String metadata = "Attachment: %s (%s, %s)".formatted(
-                    rendered.filename(), rendered.contentType(), formatSize(rendered.size()));
+                    rendered.filename(), rendered.contentType(), attachmentService.formatSize(rendered.size()));
             return McpSchema.CallToolResult.builder()
                     .addTextContent(metadata)
                     .addContent(new McpSchema.ImageContent(null, base64, rendered.mimeType()))
@@ -160,18 +135,6 @@ public class AttachmentTools {
             return errors.notFound("issue", "#" + issueId);
         }
         return json.write(new AttachmentSearchResponse(query, issueId, projectId, result));
-    }
-
-    private String truncate(String text) {
-        if (text.length() <= AttachmentService.PREVIEW_LIMIT) return text;
-        return text.substring(0, AttachmentService.PREVIEW_LIMIT)
-                + "\n\n... (truncated, total length: %d chars)".formatted(text.length());
-    }
-
-    private String formatSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return "%.1f KB".formatted(bytes / 1024.0);
-        return "%.1f MB".formatted(bytes / (1024.0 * 1024));
     }
 
     private McpSchema.CallToolResult errorResult(String message) {

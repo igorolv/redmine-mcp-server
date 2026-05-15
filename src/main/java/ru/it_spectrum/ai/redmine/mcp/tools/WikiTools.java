@@ -3,16 +3,17 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
+import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
+import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
 
 @Service
 public class WikiTools {
-    private final RedmineClient client;
+    private final WikiService wikiService;
     private final JsonResponses json;
     private final ToolErrors errors;
 
-    public WikiTools(RedmineClient client, JsonResponses json, ToolErrors errors) {
-        this.client = client;
+    public WikiTools(WikiService wikiService, JsonResponses json, ToolErrors errors) {
+        this.wikiService = wikiService;
         this.json = json;
         this.errors = errors;
     }
@@ -23,11 +24,11 @@ public class WikiTools {
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
             @McpToolParam(description = "Wiki page title (use 'Wiki' for the start page)") String pageTitle
     ) {
-        var page = client.getWikiPage(projectId, pageTitle);
-        if (page == null) {
-            return errors.notFound("wiki page", pageTitle);
+        try {
+            return json.write(wikiService.getPageOrThrow(projectId, pageTitle));
+        } catch (ResourceNotFoundException e) {
+            return errors.notFound(e.resource(), e.id());
         }
-        return json.write(page);
     }
 
     @McpTool(description = "List all wiki pages in a Redmine project. " +
@@ -35,7 +36,6 @@ public class WikiTools {
     public String listWikiPages(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
-        var pages = client.getWikiIndex(projectId);
-        return json.write(pages);
+        return json.write(wikiService.listPages(projectId));
     }
 }

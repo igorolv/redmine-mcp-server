@@ -9,6 +9,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPage;
+import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
 
 import java.util.List;
 
@@ -25,7 +26,7 @@ class WikiToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new WikiTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new WikiTools(new WikiService(client), ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- getWikiPage ---

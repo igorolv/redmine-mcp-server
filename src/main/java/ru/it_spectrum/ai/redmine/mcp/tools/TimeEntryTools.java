@@ -3,17 +3,16 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.model.MyTimeEntriesResult;
+import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryService;
 
 @Service
 public class TimeEntryTools {
-    private final RedmineClient client;
+    private final TimeEntryService timeEntryService;
     private final JsonResponses json;
     private final ToolErrors errors;
 
-    public TimeEntryTools(RedmineClient client, JsonResponses json, ToolErrors errors) {
-        this.client = client;
+    public TimeEntryTools(TimeEntryService timeEntryService, JsonResponses json, ToolErrors errors) {
+        this.timeEntryService = timeEntryService;
         this.json = json;
         this.errors = errors;
     }
@@ -33,8 +32,7 @@ public class TimeEntryTools {
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
 
-        var page = client.getTimeEntries(projectId, issueId, userId, from, to, actualOffset, actualLimit);
-        return json.write(page);
+        return json.write(timeEntryService.list(projectId, issueId, userId, from, to, actualOffset, actualLimit));
     }
 
     @McpTool(description = "List time entries for the currently authenticated user. " +
@@ -49,16 +47,14 @@ public class TimeEntryTools {
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
-        var user = client.getCurrentUser();
-        if (user == null) {
-            return errors.unavailable("current user");
-        }
-
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
 
-        var page = client.getTimeEntries(projectId, issueId, user.id(), from, to, actualOffset, actualLimit);
-        return json.write(new MyTimeEntriesResult(user, page));
+        var result = timeEntryService.getMyTimeEntries(projectId, issueId, from, to, actualOffset, actualLimit);
+        if (result.isEmpty()) {
+            return errors.unavailable("current user");
+        }
+        return json.write(result.get());
     }
 
 }

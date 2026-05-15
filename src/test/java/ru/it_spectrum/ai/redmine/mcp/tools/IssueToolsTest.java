@@ -30,8 +30,7 @@ class IssueToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new IssueTools(client, new IssueService(client),
-                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new IssueTools(new IssueService(client), ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- getMyIssues ---

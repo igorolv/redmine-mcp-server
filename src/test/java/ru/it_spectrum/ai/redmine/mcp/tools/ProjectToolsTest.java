@@ -10,6 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineMembership;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineProject;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
+import ru.it_spectrum.ai.redmine.mcp.service.ProjectService;
 
 import java.util.List;
 
@@ -26,7 +27,8 @@ class ProjectToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new ProjectTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new ProjectTools(new ProjectService(client),
+                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- listProjects ---

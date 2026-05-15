@@ -8,6 +8,8 @@ import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
 import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
 import ru.it_spectrum.ai.redmine.mcp.model.MyIssuesResult;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,8 +69,43 @@ public class IssueService {
                 offset, limit);
     }
 
+    public Map<String, String> parseCustomFieldFilters(String customFieldFilters) {
+        if (customFieldFilters == null || customFieldFilters.isBlank()) {
+            return Map.of();
+        }
+        var filters = new java.util.LinkedHashMap<String, String>();
+        for (String token : customFieldFilters.split("[&\\r\\n]+")) {
+            String trimmed = token.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            int separatorIndex = trimmed.indexOf('=');
+            if (separatorIndex <= 0 || separatorIndex == trimmed.length() - 1) {
+                throw new IllegalArgumentException(
+                        "Invalid customFieldFilters token '%s'. Use format like 'cf_10=rtk&cf_3=502167'."
+                                .formatted(trimmed));
+            }
+            String key = decodeQueryToken(trimmed.substring(0, separatorIndex));
+            String value = decodeQueryToken(trimmed.substring(separatorIndex + 1));
+            if (!key.matches("cf_\\d+")) {
+                throw new IllegalArgumentException(
+                        "Invalid custom field key '%s'. Expected keys like cf_10.".formatted(key));
+            }
+            if (value.isBlank()) {
+                throw new IllegalArgumentException(
+                        "Invalid custom field value for '%s'. Expected a non-empty value.".formatted(key));
+            }
+            filters.put(key, value);
+        }
+        return filters;
+    }
+
     public RedmineClient.SearchWithIssues searchIssues(String query, String projectId, int offset, int limit) {
         return client.searchIssues(query, projectId, offset, limit);
+    }
+
+    public ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult searchAll(String query, int offset, int limit) {
+        return client.search(query, offset, limit);
     }
 
     public Optional<MyIssuesResult> getMyIssues(String projectId, String statusId, String sort,
@@ -385,6 +422,10 @@ public class IssueService {
 
     private static String nameOf(IdName idName) {
         return idName != null ? idName.name() : "—";
+    }
+
+    private String decodeQueryToken(String value) {
+        return URLDecoder.decode(value, StandardCharsets.UTF_8).trim();
     }
 
 }

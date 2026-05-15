@@ -3,27 +3,21 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
 
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
 public class IssueTools {
 
-    private final RedmineClient client;
     private final IssueService issueService;
     private final JsonResponses json;
     private final ToolErrors errors;
 
-    public IssueTools(RedmineClient client, IssueService issueService, JsonResponses json, ToolErrors errors) {
-        this.client = client;
+    public IssueTools(IssueService issueService, JsonResponses json, ToolErrors errors) {
         this.issueService = issueService;
         this.json = json;
         this.errors = errors;
@@ -51,7 +45,7 @@ public class IssueTools {
         int actualOffset = offset != null ? offset : 0;
         Map<String, String> parsedCustomFieldFilters;
         try {
-            parsedCustomFieldFilters = parseCustomFieldFilters(customFieldFilters);
+            parsedCustomFieldFilters = issueService.parseCustomFieldFilters(customFieldFilters);
         } catch (IllegalArgumentException e) {
             return errors.argument(e.getMessage());
         }
@@ -79,7 +73,7 @@ public class IssueTools {
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
 
-        var result = client.search(query, actualOffset, actualLimit);
+        var result = issueService.searchAll(query, actualOffset, actualLimit);
         return json.write(result);
     }
 
@@ -165,38 +159,4 @@ public class IssueTools {
         return json.write(maybeIssue.get());
     }
 
-    private Map<String, String> parseCustomFieldFilters(String customFieldFilters) {
-        if (customFieldFilters == null || customFieldFilters.isBlank()) {
-            return Map.of();
-        }
-        var filters = new LinkedHashMap<String, String>();
-        for (String token : customFieldFilters.split("[&\\r\\n]+")) {
-            String trimmed = token.trim();
-            if (trimmed.isEmpty()) {
-                continue;
-            }
-            int separatorIndex = trimmed.indexOf('=');
-            if (separatorIndex <= 0 || separatorIndex == trimmed.length() - 1) {
-                throw new IllegalArgumentException(
-                        "Invalid customFieldFilters token '%s'. Use format like 'cf_10=rtk&cf_3=502167'."
-                                .formatted(trimmed));
-            }
-            String key = decodeQueryToken(trimmed.substring(0, separatorIndex));
-            String value = decodeQueryToken(trimmed.substring(separatorIndex + 1));
-            if (!key.matches("cf_\\d+")) {
-                throw new IllegalArgumentException(
-                        "Invalid custom field key '%s'. Expected keys like cf_10.".formatted(key));
-            }
-            if (value.isBlank()) {
-                throw new IllegalArgumentException(
-                        "Invalid custom field value for '%s'. Expected a non-empty value.".formatted(key));
-            }
-            filters.put(key, value);
-        }
-        return filters;
-    }
-
-    private String decodeQueryToken(String value) {
-        return URLDecoder.decode(value, StandardCharsets.UTF_8).trim();
-    }
 }

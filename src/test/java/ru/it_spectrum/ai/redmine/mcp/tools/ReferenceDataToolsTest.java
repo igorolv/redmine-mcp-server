@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineQuery;
+import ru.it_spectrum.ai.redmine.mcp.service.ReferenceDataService;
 
 import java.util.List;
 
@@ -24,7 +25,7 @@ class ReferenceDataToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new ReferenceDataTools(client, ToolJsonTestSupport.json());
+        tools = new ReferenceDataTools(new ReferenceDataService(client), ToolJsonTestSupport.json());
     }
 
     // --- listStatuses ---

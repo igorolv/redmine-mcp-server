@@ -10,6 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
+import ru.it_spectrum.ai.redmine.mcp.service.AnalysisService;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -32,7 +33,8 @@ class AnalysisToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new AnalysisTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new AnalysisTools(new AnalysisService(client),
+                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // ── getProjectSummary ──────────────────────────────────────────────

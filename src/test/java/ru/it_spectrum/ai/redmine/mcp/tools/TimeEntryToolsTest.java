@@ -9,6 +9,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryService;
 
 import java.util.List;
 
@@ -25,7 +26,8 @@ class TimeEntryToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new TimeEntryTools(client, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new TimeEntryTools(new TimeEntryService(client),
+                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- listTimeEntries ---
