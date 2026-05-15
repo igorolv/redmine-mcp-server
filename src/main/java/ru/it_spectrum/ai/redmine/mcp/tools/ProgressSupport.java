@@ -1,6 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.tools;
 
 import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext;
+import ru.it_spectrum.ai.redmine.mcp.service.ProgressReporter;
 
 final class ProgressSupport {
 
@@ -23,6 +24,19 @@ final class ProgressSupport {
 
     static void done(McpSyncRequestContext context, String message) {
         report(context, 1, 1, message);
+    }
+
+    static ProgressReporter reporterFor(McpSyncRequestContext context) {
+        if (context == null) {
+            return ProgressReporter.NOOP;
+        }
+        return new ProgressReporter() {
+            @Override public void stage(String message) { ProgressSupport.stage(context, message); }
+            @Override public void report(int current, int total, String message) {
+                ProgressSupport.report(context, current, total, message);
+            }
+            @Override public void done(String message) { ProgressSupport.done(context, message); }
+        };
     }
 
     private static boolean supportsProgress(McpSyncRequestContext context) {

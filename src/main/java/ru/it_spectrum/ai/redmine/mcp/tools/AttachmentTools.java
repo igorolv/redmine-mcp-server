@@ -243,15 +243,6 @@ public class AttachmentTools {
     }
 
     private static ProgressReporter reporterFor(McpSyncRequestContext context) {
-        if (context == null) {
-            return ProgressReporter.NOOP;
-        }
-        return new ProgressReporter() {
-            @Override public void stage(String message) { ProgressSupport.stage(context, message); }
-            @Override public void report(int current, int total, String message) {
-                ProgressSupport.report(context, current, total, message);
-            }
-            @Override public void done(String message) { ProgressSupport.done(context, message); }
-        };
+        return ProgressSupport.reporterFor(context);
     }
 }
