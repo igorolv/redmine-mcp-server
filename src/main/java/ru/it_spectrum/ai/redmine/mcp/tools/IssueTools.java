@@ -1,5 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.tools;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,8 @@ import java.util.Map;
 
 @Service
 public class IssueTools {
+
+    private static final Logger log = LoggerFactory.getLogger(IssueTools.class);
 
     private final IssueService issueService;
     private final JsonResponses json;
@@ -41,17 +45,22 @@ public class IssueTools {
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
+        log.info("Tool call: listIssues (projectId={}, statusId={}, trackerId={}, assignedToId={}, priorityId={}, versionId={}, queryId={}, customFieldFilters={}, sort={}, limit={}, offset={})",
+                projectId, statusId, trackerId, assignedToId, priorityId, versionId, queryId, customFieldFilters, sort, limit, offset);
+        long start = System.nanoTime();
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
         Map<String, String> parsedCustomFieldFilters;
         try {
             parsedCustomFieldFilters = issueService.parseCustomFieldFilters(customFieldFilters);
         } catch (IllegalArgumentException e) {
+            ToolLogger.failed(log, "listIssues", start, e.getMessage());
             return errors.argument(e.getMessage());
         }
 
         var page = issueService.list(projectId, statusId, trackerId, assignedToId,
                 priorityId, versionId, queryId, parsedCustomFieldFilters, sort, actualOffset, actualLimit);
+        ToolLogger.completed(log, "listIssues", start);
         return json.write(page);
     }
 
@@ -70,10 +79,13 @@ public class IssueTools {
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
+        log.info("Tool call: searchAll (query={}, limit={}, offset={})", query, limit, offset);
+        long start = System.nanoTime();
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
 
         var result = issueService.searchAll(query, actualOffset, actualLimit);
+        ToolLogger.completed(log, "searchAll", start);
         return json.write(result);
     }
 
@@ -86,10 +98,13 @@ public class IssueTools {
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
+        log.info("Tool call: searchIssues (query={}, projectId={}, limit={}, offset={})", query, projectId, limit, offset);
+        long start = System.nanoTime();
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
 
         var result = issueService.searchIssues(query, projectId, actualOffset, actualLimit);
+        ToolLogger.completed(log, "searchIssues", start);
         return json.write(result);
     }
 
@@ -103,10 +118,14 @@ public class IssueTools {
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
+        log.info("Tool call: getMyIssues (projectId={}, statusId={}, sort={}, limit={}, offset={})",
+                projectId, statusId, sort, limit, offset);
+        long start = System.nanoTime();
         int actualLimit = limit != null ? limit : 25;
         int actualOffset = offset != null ? offset : 0;
 
         var maybeResult = issueService.getMyIssues(projectId, statusId, sort, actualOffset, actualLimit);
+        ToolLogger.completed(log, "getMyIssues", start);
         if (maybeResult.isEmpty()) {
             return errors.unavailable("current user");
         }
@@ -121,10 +140,14 @@ public class IssueTools {
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "How deep to traverse children, default 2, max 5", required = false) Integer depth
     ) {
+        log.info("Tool call: getIssueTree (issueId={}, depth={})", issueId, depth);
+        long start = System.nanoTime();
         IssueTreeView view;
         try {
             view = issueService.getTree(issueId, depth);
+            ToolLogger.completed(log, "getIssueTree", start);
         } catch (IssueNotFoundException e) {
+            ToolLogger.failed(log, "getIssueTree", start, e.getMessage());
             return errors.notFound("issue", "#" + e.issueId());
         }
         return json.write(view);
@@ -137,10 +160,14 @@ public class IssueTools {
     public String getIssueHistory(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
+        log.info("Tool call: getIssueHistory (issueId={})", issueId);
+        long start = System.nanoTime();
         IssueHistoryView view;
         try {
             view = issueService.getHistory(issueId);
+            ToolLogger.completed(log, "getIssueHistory", start);
         } catch (IssueNotFoundException e) {
+            ToolLogger.failed(log, "getIssueHistory", start, e.getMessage());
             return errors.notFound("issue", "#" + e.issueId());
         }
         return json.write(view);
@@ -152,7 +179,10 @@ public class IssueTools {
     public String getIssue(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
+        log.info("Tool call: getIssue (issueId={})", issueId);
+        long start = System.nanoTime();
         var maybeIssue = issueService.find(issueId);
+        ToolLogger.completed(log, "getIssue", start);
         if (maybeIssue.isEmpty()) {
             return errors.notFound("issue", "#" + issueId);
         }

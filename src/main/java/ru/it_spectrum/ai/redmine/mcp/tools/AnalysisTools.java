@@ -1,5 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.tools;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
@@ -8,6 +10,9 @@ import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 
 @Service
 public class AnalysisTools {
+
+    private static final Logger log = LoggerFactory.getLogger(AnalysisTools.class);
+
     private final AnalysisService analysisService;
     private final JsonResponses json;
     private final ToolErrors errors;
@@ -25,7 +30,11 @@ public class AnalysisTools {
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId
     ) {
-        return json.write(analysisService.getProjectSummary(projectId, versionId));
+        log.info("Tool call: getProjectSummary (projectId={}, versionId={})", projectId, versionId);
+        long start = System.nanoTime();
+        var result = analysisService.getProjectSummary(projectId, versionId);
+        ToolLogger.completed(log, "getProjectSummary", start);
+        return json.write(result);
     }
 
     @McpTool(description = "Get workload analysis for a user: open issues grouped by project and priority, " +
@@ -35,7 +44,10 @@ public class AnalysisTools {
             @McpToolParam(description = "User ID (optional, defaults to current user)", required = false) Integer userId,
             @McpToolParam(description = "Project identifier to limit scope (optional)", required = false) String projectId
     ) {
+        log.info("Tool call: getUserWorkload (userId={}, projectId={})", userId, projectId);
+        long start = System.nanoTime();
         var result = analysisService.getUserWorkload(userId, projectId);
+        ToolLogger.completed(log, "getUserWorkload", start);
         if (result.isEmpty()) {
             return errors.unavailable("current user");
         }
@@ -48,7 +60,11 @@ public class AnalysisTools {
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Version/milestone ID") int versionId
     ) {
-        return json.write(analysisService.getVersionChangelog(projectId, versionId));
+        log.info("Tool call: getVersionChangelog (projectId={}, versionId={})", projectId, versionId);
+        long start = System.nanoTime();
+        var result = analysisService.getVersionChangelog(projectId, versionId);
+        ToolLogger.completed(log, "getVersionChangelog", start);
+        return json.write(result);
     }
 
     @McpTool(description = "Trace the full chain of blocking dependencies for an issue. " +
@@ -57,9 +73,14 @@ public class AnalysisTools {
     public String getBlockerChain(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
+        log.info("Tool call: getBlockerChain (issueId={})", issueId);
+        long start = System.nanoTime();
         try {
-            return json.write(analysisService.getBlockerChain(issueId));
+            var result = analysisService.getBlockerChain(issueId);
+            ToolLogger.completed(log, "getBlockerChain", start);
+            return json.write(result);
         } catch (ResourceNotFoundException e) {
+            ToolLogger.failed(log, "getBlockerChain", start, e.getMessage());
             return errors.notFound(e.resource(), e.id());
         }
     }
@@ -71,7 +92,12 @@ public class AnalysisTools {
             @McpToolParam(description = "Minimum days since last update, default 30", required = false) Integer daysSinceUpdate,
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit
     ) {
-        return json.write(analysisService.getStaleIssues(projectId, daysSinceUpdate, limit));
+        log.info("Tool call: getStaleIssues (projectId={}, daysSinceUpdate={}, limit={})",
+                projectId, daysSinceUpdate, limit);
+        long start = System.nanoTime();
+        var result = analysisService.getStaleIssues(projectId, daysSinceUpdate, limit);
+        ToolLogger.completed(log, "getStaleIssues", start);
+        return json.write(result);
     }
 
     @McpTool(description = "Assess release risks for a version/milestone: identifies open blockers, " +
@@ -81,7 +107,11 @@ public class AnalysisTools {
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Version/milestone ID") int versionId
     ) {
-        return json.write(analysisService.getReleaseRisks(projectId, versionId));
+        log.info("Tool call: getReleaseRisks (projectId={}, versionId={})", projectId, versionId);
+        long start = System.nanoTime();
+        var result = analysisService.getReleaseRisks(projectId, versionId);
+        ToolLogger.completed(log, "getReleaseRisks", start);
+        return json.write(result);
     }
 
     @McpTool(description = "Compare two versions/milestones: shows issues unique to each version, " +
@@ -92,6 +122,11 @@ public class AnalysisTools {
             @McpToolParam(description = "First version/milestone ID") int versionId1,
             @McpToolParam(description = "Second version/milestone ID") int versionId2
     ) {
-        return json.write(analysisService.compareVersions(projectId, versionId1, versionId2));
+        log.info("Tool call: compareVersions (projectId={}, versionId1={}, versionId2={})",
+                projectId, versionId1, versionId2);
+        long start = System.nanoTime();
+        var result = analysisService.compareVersions(projectId, versionId1, versionId2);
+        ToolLogger.completed(log, "compareVersions", start);
+        return json.write(result);
     }
 }

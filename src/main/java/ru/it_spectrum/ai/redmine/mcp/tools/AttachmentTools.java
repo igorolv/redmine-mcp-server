@@ -1,5 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.tools;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ import java.util.Base64;
 @Service
 public class AttachmentTools {
 
+    private static final Logger log = LoggerFactory.getLogger(AttachmentTools.class);
+
     private final AttachmentService attachmentService;
     private final JsonResponses json;
     private final ToolErrors errors;
@@ -36,7 +40,10 @@ public class AttachmentTools {
     public String listAttachments(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
+        log.info("Tool call: listAttachments (issueId={})", issueId);
+        long start = System.nanoTime();
         var maybeAttachments = attachmentService.listForIssue(issueId);
+        ToolLogger.completed(log, "listAttachments", start);
         if (maybeAttachments.isEmpty()) {
             return errors.notFound("issue", "#" + issueId);
         }
@@ -52,9 +59,14 @@ public class AttachmentTools {
     public String getAttachmentContent(
             @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
+        log.info("Tool call: getAttachmentContent (attachmentId={})", attachmentId);
+        long start = System.nanoTime();
         try {
-            return json.write(attachmentService.readContent(attachmentId));
+            var result = attachmentService.readContent(attachmentId);
+            ToolLogger.completed(log, "getAttachmentContent", start);
+            return json.write(result);
         } catch (AttachmentNotFoundException e) {
+            ToolLogger.failed(log, "getAttachmentContent", start, e.getMessage());
             return errors.notFound("attachment", "#" + attachmentId);
         }
     }
@@ -64,9 +76,14 @@ public class AttachmentTools {
     public AttachmentTextInfo getAttachmentTextInfo(
             @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
+        log.info("Tool call: getAttachmentTextInfo (attachmentId={})", attachmentId);
+        long start = System.nanoTime();
         try {
-            return attachmentService.describeText(attachmentId);
+            var result = attachmentService.describeText(attachmentId);
+            ToolLogger.completed(log, "getAttachmentTextInfo", start);
+            return result;
         } catch (AttachmentNotFoundException e) {
+            ToolLogger.failed(log, "getAttachmentTextInfo", start, e.getMessage());
             throw new IllegalArgumentException(e.getMessage());
         }
     }
@@ -78,9 +95,15 @@ public class AttachmentTools {
             @McpToolParam(description = "Chunk index starting from 0") int chunkIndex,
             @McpToolParam(description = "Chunk size in characters, default 12000", required = false) Integer chunkSize
     ) {
+        log.info("Tool call: getAttachmentTextChunk (attachmentId={}, chunkIndex={}, chunkSize={})",
+                attachmentId, chunkIndex, chunkSize);
+        long start = System.nanoTime();
         try {
-            return attachmentService.fetchChunk(attachmentId, chunkIndex, chunkSize);
+            var result = attachmentService.fetchChunk(attachmentId, chunkIndex, chunkSize);
+            ToolLogger.completed(log, "getAttachmentTextChunk", start);
+            return result;
         } catch (AttachmentNotFoundException e) {
+            ToolLogger.failed(log, "getAttachmentTextChunk", start, e.getMessage());
             throw new IllegalArgumentException(e.getMessage());
         }
     }
@@ -93,23 +116,31 @@ public class AttachmentTools {
             @McpToolParam(description = "Maximum image width in pixels for resizing (default 1024). " +
                     "Height is scaled proportionally.", required = false) Integer maxWidth
     ) {
+        log.info("Tool call: getImageAttachment (attachmentId={}, maxWidth={})", attachmentId, maxWidth);
+        long start = System.nanoTime();
         try {
             var rendered = attachmentService.renderImage(attachmentId, maxWidth);
             String base64 = Base64.getEncoder().encodeToString(rendered.data());
             String metadata = "Attachment: %s (%s, %s)".formatted(
                     rendered.filename(), rendered.contentType(), attachmentService.formatSize(rendered.size()));
-            return McpSchema.CallToolResult.builder()
+            var result = McpSchema.CallToolResult.builder()
                     .addTextContent(metadata)
                     .addContent(new McpSchema.ImageContent(null, base64, rendered.mimeType()))
                     .build();
+            ToolLogger.completed(log, "getImageAttachment", start);
+            return result;
         } catch (AttachmentNotFoundException e) {
+            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
             return errorResult("Attachment #%d not found".formatted(e.attachmentId()));
         } catch (NotAnImageAttachmentException e) {
+            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
             return errorResult("Attachment #%d (%s) is not an image. Use getAttachmentContent for text/document files."
                     .formatted(e.attachmentId(), e.filename()));
         } catch (AttachmentDownloadFailedException e) {
+            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
             return errorResult("Failed to download attachment #%d".formatted(e.attachmentId()));
         } catch (ImageProcessingFailedException e) {
+            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
             return errorResult(e.getMessage());
         }
     }
@@ -123,13 +154,18 @@ public class AttachmentTools {
             @McpToolParam(description = "Project identifier to search across recent issues (optional)", required = false) String projectId,
             @McpToolParam(description = "Max issues to scan when searching by project, default 10", required = false) Integer limit
     ) {
+        log.info("Tool call: searchAttachmentContent (query={}, issueId={}, projectId={}, limit={})",
+                query, issueId, projectId, limit);
+        long start = System.nanoTime();
         if (issueId == null && (projectId == null || projectId.isBlank())) {
+            ToolLogger.failed(log, "searchAttachmentContent", start, "At least one of issueId or projectId must be provided");
             return errors.argument("At least one of issueId or projectId must be provided");
         }
 
         int issueLimit = limit != null ? Math.min(Math.max(limit, 1), 50) : 10;
         var request = new AttachmentSearchRequest(query, issueId, projectId, issueLimit);
         var result = attachmentService.search(request);
+        ToolLogger.completed(log, "searchAttachmentContent", start);
 
         if (!result.issueFound()) {
             return errors.notFound("issue", "#" + issueId);
