@@ -79,6 +79,28 @@ class RedmineClientTest {
     }
 
     @Test
+    void shouldLoadIssue4183Changesets() {
+        RedmineIssue issue = redmineClient.getIssue(4183);
+
+        assertThat(issue).isNotNull();
+        assertThat(issue.changesets()).isNotEmpty();
+
+        var first = issue.changesets().getFirst();
+        assertThat(first.revision()).isNotBlank();
+        assertThat(first.comments()).isNotNull();
+        assertThat(first.committedOn()).isNotBlank();
+        assertThat(first.user()).isNotNull();
+        assertThat(first.user().name()).isNotBlank();
+
+        System.out.println("Issue #" + issue.id() + " changesets: " + issue.changesets().size());
+        for (var changeset : issue.changesets().stream().limit(5).toList()) {
+            System.out.println("  " + changeset.revision() + " | "
+                    + changeset.committedOn() + " | "
+                    + (changeset.user() != null ? changeset.user().name() : "unknown"));
+        }
+    }
+
+    @Test
     void shouldListProjects() {
         var page = redmineClient.getProjects(0, 100);
 

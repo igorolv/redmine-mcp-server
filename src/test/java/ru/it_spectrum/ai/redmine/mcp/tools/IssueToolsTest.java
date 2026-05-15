@@ -175,6 +175,41 @@ class IssueToolsTest {
     }
 
     @Test
+    void shouldDisplayChangesetsInGetIssue() {
+        var changesets = List.of(
+                new RedmineIssue.Changeset(
+                        "be561082833c6d4fbeba95228a253298a1cfa874",
+                        new IdName(56, "Igor Olvovsky"),
+                        "#4183. Текущие версии snapshot",
+                        "2026-03-06T13:06:16Z")
+        );
+        var issue = new RedmineIssue(
+                4183,
+                new IdName(1, "my-project"),
+                new IdName(1, "Bug"),
+                new IdName(1, "Open"),
+                new IdName(2, "Normal"),
+                new IdName(42, "John Doe"),
+                new IdName(42, "John Doe"),
+                null, null, null,
+                "Incident with changesets", "Some description",
+                null, null, 0,
+                null, null, false,
+                "2026-03-01T00:00:00Z", "2026-03-02T00:00:00Z",
+                null, null, null, null, null, changesets
+        );
+        when(client.getIssue(4183)).thenReturn(issue);
+
+        String result = tools.getIssue(4183);
+
+        assertThat(result).contains("\"changesets\"");
+        assertThat(result).contains("be561082833c6d4fbeba95228a253298a1cfa874");
+        assertThat(result).contains("Igor Olvovsky");
+        assertThat(result).contains("#4183. Текущие версии snapshot");
+        assertThat(result).contains("\"committed_on\":\"2026-03-06T13:06:16Z\"");
+    }
+
+    @Test
     void shouldFormatCustomFieldsInGetIssue() {
         var issue = new RedmineIssue(
                 101,

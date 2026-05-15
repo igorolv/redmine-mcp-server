@@ -175,7 +175,8 @@ public class IssueTools {
 
     @McpTool(description = "Get detailed information about a specific Redmine issue by its ID. " +
             "Returns full issue details including description, status, assignee, dates, " +
-            "subtasks (children), relations, notes (journals), and attachments list.")
+            "subtasks (children), relations, notes (journals), attachments list, " +
+            "and associated repository changesets/revisions when visible to the Redmine user.")
     public String getIssue(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {

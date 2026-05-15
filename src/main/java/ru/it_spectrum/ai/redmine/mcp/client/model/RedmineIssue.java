@@ -33,8 +33,41 @@ public record RedmineIssue(
         List<RedmineAttachment> attachments,
         List<Journal> journals,
         List<Relation> relations,
-        List<Child> children
+        List<Child> children,
+        List<Changeset> changesets
 ) {
+
+    public RedmineIssue(
+            int id,
+            IdName project,
+            IdName tracker,
+            IdName status,
+            IdName priority,
+            IdName author,
+            IdName assignedTo,
+            IdName parent,
+            IdName fixedVersion,
+            IdName category,
+            String subject,
+            String description,
+            String startDate,
+            String dueDate,
+            int doneRatio,
+            Double estimatedHours,
+            Double spentHours,
+            boolean isPrivate,
+            String createdOn,
+            String updatedOn,
+            List<CustomField> customFields,
+            List<RedmineAttachment> attachments,
+            List<Journal> journals,
+            List<Relation> relations,
+            List<Child> children
+    ) {
+        this(id, project, tracker, status, priority, author, assignedTo, parent, fixedVersion, category,
+                subject, description, startDate, dueDate, doneRatio, estimatedHours, spentHours, isPrivate,
+                createdOn, updatedOn, customFields, attachments, journals, relations, children, null);
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Child(
@@ -128,6 +161,15 @@ public record RedmineIssue(
             String name,
             @JsonProperty("old_value") String oldValue,
             @JsonProperty("new_value") String newValue
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Changeset(
+            String revision,
+            IdName user,
+            String comments,
+            @JsonProperty("committed_on") String committedOn
     ) {
     }
 

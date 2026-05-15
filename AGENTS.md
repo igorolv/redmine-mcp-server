@@ -96,7 +96,7 @@ The current implementation exposes **38 read-only MCP tools** across user, proje
 | `listIssues` | List issues with filters (project, status, tracker, assignee, priority, version, saved query, custom field filters, sort). Params: `projectId`, `statusId`, `trackerId`, `assignedToId`, `priorityId`, `versionId`, `queryId`, `customFieldFilters`, `sort`, `limit`, `offset` |
 | `searchIssues` | Full-text search across issues with detailed results. Params: `query`, `projectId`, `limit`, `offset` |
 | `searchAll` | Global search across all content (issues, wiki, news, changesets). Params: `query`, `limit`, `offset` |
-| `getIssue` | Get full issue details (description, notes, relations, custom fields, attachments). Params: `issueId` |
+| `getIssue` | Get full issue details (description, notes, relations, custom fields, attachments, associated changesets/revisions). Params: `issueId` |
 | `getMyIssues` | List issues assigned to the current user. Params: `projectId`, `statusId`, `sort`, `limit`, `offset` (all optional) |
 | `getIssueTree` | Build full dependency tree: parent chain up, subtasks down, relations. Params: `issueId`, `depth` (optional, default 2, max 5) |
 | `getIssueHistory` | Full change history with timeline of status/assignment/priority changes and status durations. Params: `issueId` |
