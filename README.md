@@ -37,7 +37,7 @@ AI-клиент запускает сервер как дочерний проц
 
 ## Инструменты
 
-Сервер экспортирует **37 read-only MCP tools**.
+Сервер экспортирует **33 read-only MCP tools**.
 
 ### Пользователь
 
@@ -116,10 +116,6 @@ AI-клиент запускает сервер как дочерний проц
 | Tool | Описание |
 |---|---|
 | `getIssueFullContext` | Полный контекст задачи одним вызовом: описание, родитель (эпик/стори), siblings (scope фичи), связанные задачи с описаниями, вложения с извлечением текста (PDF/DOCX), последние комментарии. Заменяет 10+ отдельных вызовов. Параметры: `issueId` |
-| `getIssueSiblings` | Все задачи с тем же родителем: scope фичи, прогресс, кто что делает. Параметры: `issueId` |
-| `findRelatedClosedIssues` | Поиск закрытых задач-референсов: прямые связи, siblings, похожие в проекте. Полезно для изучения «как делали раньше». Параметры: `issueId`, `limit` (опц.) |
-| `findLatestAttachment` | Поиск последней версии документа по паттерну имени. Ищет в задаче, родителе, siblings, связанных. Параметры: `pattern`, `issueId`, `searchProject` (опц.) |
-| `getIssueNetwork` | Полная сеть связей задачи: все типы (relates, blocks, precedes, duplicates, parent/child). BFS-обход на заданную глубину. Параметры: `issueId`, `depth` (опц., по умолчанию 2, макс 3) |
 
 Все инструменты **read-only** — данные в Redmine не изменяются.
 
@@ -255,9 +251,7 @@ AI-клиент получает ровно те данные, которые з
 | ZIP-файл внутри архива | до 10 MB |
 | ZIP-архив суммарно | до 50 MB извлечённых данных |
 | `getIssueTree` | глубина до 5, максимум 50 задач |
-| `getIssueNetwork` | глубина до 3 |
 | `searchAttachmentContent` по проекту | до 50 последних задач |
-| `findRelatedClosedIssues` | до 30 результатов |
 
 Часть обычных списковых инструментов (`listIssues`, `listProjects`, `listTimeEntries`, `listQueries`) принимает `limit` и `offset` напрямую. Для устойчивой работы лучше не запрашивать чрезмерно большие страницы; практичный диапазон — 25-100 элементов за вызов.
 
@@ -326,7 +320,7 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   └── tools/
 │       ├── AnalysisTools.java             — 7 MCP-инструментов аналитики и анализа рисков
 │       ├── AttachmentTools.java           — 4 MCP-инструмента для вложений и изображений
-│       ├── ContextTools.java              — 5 MCP-инструментов для контекста задачи
+│       ├── ContextTools.java              — 1 MCP-инструмент для контекста задачи
 │       ├── IssueTools.java                — 7 MCP-инструментов для задач и поиска
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
 │       ├── ProgressSupport.java           — вспомогательный helper для MCP progress notifications

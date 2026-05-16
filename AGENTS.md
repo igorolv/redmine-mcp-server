@@ -1,7 +1,7 @@
 # Redmine MCP Server — Setup Guide for AI Agents
 
 This is a local MCP server that provides read-only access to a corporate Redmine instance.
-It exposes 37 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, reference data, project analytics, and task context.
+It exposes 33 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, reference data, project analytics, and task context.
 
 Step-by-step setup guides: [Claude Code](CLAUDE_CODE_SETUP.md) | [Qwen Code](QWEN_CODE_SETUP.md)
 
@@ -84,7 +84,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 
 ## Available tools
 
-The current implementation exposes **37 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, analytics, and task-context domains.
+The current implementation exposes **33 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, analytics, and task-context domains.
 
 | Tool | Description |
 |---|---|
@@ -121,10 +121,6 @@ The current implementation exposes **37 read-only MCP tools** across user, proje
 | `getReleaseRisks` | Risk assessment: open blockers, overdue, high-priority, unassigned issues for a version. Params: `projectId`, `versionId` |
 | `compareVersions` | Diff between two versions: unique issues, shared issues, completion percentages. Params: `projectId`, `versionId1`, `versionId2` |
 | `getIssueFullContext` | Full task context in one call: description, parent epic, siblings (feature scope), related issues with descriptions, document attachments extracted inline, recent notes. Replaces 10+ separate calls. Params: `issueId` |
-| `getIssueSiblings` | All issues sharing the same parent: feature scope, progress, who's doing what. Params: `issueId` |
-| `findRelatedClosedIssues` | Find closed reference issues: direct relations, siblings, similar in project. Useful for "how was this done before". Params: `issueId`, `limit` (optional) |
-| `findLatestAttachment` | Find latest version of a document by filename pattern. Searches issue, parent, siblings, related issues. Params: `pattern`, `issueId`, `searchProject` (optional) |
-| `getIssueNetwork` | Full relation network via BFS: all types (relates, blocks, precedes, duplicates, parent/child) up to specified depth. Params: `issueId`, `depth` (optional, default 2, max 3) |
 
 All tools are **read-only**. No data in Redmine is modified.
 
