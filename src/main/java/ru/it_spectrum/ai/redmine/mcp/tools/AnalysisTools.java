@@ -23,9 +23,10 @@ public class AnalysisTools {
         this.errors = errors;
     }
 
-    @McpTool(description = "Get an aggregated summary of a Redmine project: issue counts by status, " +
-            "tracker, priority, and assignee; overdue count; estimated vs spent hours. " +
-            "Optionally filter by version/milestone. One call replaces dozens of listIssues calls.")
+    @McpTool(description = "Get an aggregated summary of a Redmine project. " +
+            "Returns total open/closed counts, plus breakdowns by status, tracker, priority, and assignee " +
+            "for analyzed open issues; overdue count; estimated vs spent hours. " +
+            "Optionally filter by version/milestone. Analysis scans up to 500 open issues and reports truncation.")
     public String getProjectSummary(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId
@@ -39,7 +40,8 @@ public class AnalysisTools {
 
     @McpTool(description = "Get workload analysis for a user: open issues grouped by project and priority, " +
             "overdue count, estimated vs spent hours, and top issues by priority. " +
-            "Defaults to the current authenticated user if no userId is provided.")
+            "Defaults to the current authenticated user if no userId is provided. " +
+            "Analysis scans up to 500 open issues and reports truncation.")
     public String getUserWorkload(
             @McpToolParam(description = "User ID (optional, defaults to current user)", required = false) Integer userId,
             @McpToolParam(description = "Project identifier to limit scope (optional)", required = false) String projectId
@@ -54,8 +56,9 @@ public class AnalysisTools {
         return json.write(result.get());
     }
 
-    @McpTool(description = "Get a changelog for a specific version/milestone: all issues grouped by tracker, " +
-            "with status and summary. Shows both open and closed issues for the version.")
+    @McpTool(description = "Get a changelog for a specific version/milestone: issues grouped by tracker, " +
+            "with status and summary. Shows both open and closed issues for the version. " +
+            "Analysis scans up to 500 issues and reports truncation.")
     public String getVersionChangelog(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Version/milestone ID") int versionId
@@ -67,9 +70,10 @@ public class AnalysisTools {
         return json.write(result);
     }
 
-    @McpTool(description = "Trace the full chain of blocking dependencies for an issue. " +
+    @McpTool(description = "Trace the blocking dependency chain for an issue. " +
             "Shows what blocks this issue (must be resolved first) and what this issue blocks. " +
-            "Follows blocks/blocked_by relations recursively to reveal the critical path.")
+            "Follows blocks/blocked_by relations recursively to reveal the critical path, " +
+            "bounded by depth 10 and 30 fetched issues.")
     public String getBlockerChain(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
@@ -102,7 +106,7 @@ public class AnalysisTools {
 
     @McpTool(description = "Assess release risks for a version/milestone: identifies open blockers, " +
             "overdue issues, high-priority unresolved issues, and unassigned tasks. " +
-            "Provides a risk score summary.")
+            "Provides a risk score summary. Analysis scans up to 500 open issues and reports truncation.")
     public String getReleaseRisks(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Version/milestone ID") int versionId
@@ -116,7 +120,8 @@ public class AnalysisTools {
 
     @McpTool(description = "Compare two versions/milestones: shows issues unique to each version, " +
             "shared issues, and status completion percentages. " +
-            "Useful for understanding scope changes between releases.")
+            "Useful for understanding scope changes between releases. " +
+            "Analysis scans up to 500 issues per version and reports truncation.")
     public String compareVersions(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "First version/milestone ID") int versionId1,

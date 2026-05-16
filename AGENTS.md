@@ -110,15 +110,15 @@ The current implementation exposes **31 read-only MCP tools** across user, proje
 | `listPriorities` | List all available issue priorities (ID + name). Useful for filtering in listIssues |
 | `listIssueCategories` | List issue categories for a project (ID + name). Params: `projectId` |
 | `listQueries` | List saved queries (custom filters) available in Redmine. Params: `limit`, `offset` |
-| `listTimeEntryActivities` | List all time entry activity types (ID + name). Useful when logging time |
-| `getProjectSummary` | Aggregated project stats: issue counts by status/tracker/priority/assignee, overdue count, hours. Params: `projectId`, `versionId` (optional) |
-| `getUserWorkload` | User workload analysis: open issues by project and priority, overdue, top issues. Params: `userId` (optional), `projectId` (optional) |
-| `getVersionChangelog` | All issues for a version grouped by tracker with open/closed stats. Params: `projectId`, `versionId` |
-| `getBlockerChain` | Recursive traversal of blocks/blocked_by relations to show full dependency chain. Params: `issueId` |
+| `listTimeEntryActivities` | List all time entry activity types (ID + name). Useful for interpreting existing time entries |
+| `getProjectSummary` | Aggregated project stats: total open/closed counts; breakdowns for analyzed open issues by status/tracker/priority/assignee; overdue count; hours. Scans up to 500 open issues and reports truncation. Params: `projectId`, `versionId` (optional) |
+| `getUserWorkload` | User workload analysis: open issues by project and priority, overdue, top issues. Scans up to 500 open issues and reports truncation. Params: `userId` (optional), `projectId` (optional) |
+| `getVersionChangelog` | Issues for a version grouped by tracker with open/closed stats. Scans up to 500 issues and reports truncation. Params: `projectId`, `versionId` |
+| `getBlockerChain` | Recursive traversal of blocks/blocked_by relations to show the dependency chain, bounded by depth 10 and 30 fetched issues. Params: `issueId` |
 | `getStaleIssues` | Open issues not updated for N days, sorted by staleness. Params: `projectId`, `daysSinceUpdate` (default 30), `limit` |
-| `getReleaseRisks` | Risk assessment: open blockers, overdue, high-priority, unassigned issues for a version. Params: `projectId`, `versionId` |
-| `compareVersions` | Diff between two versions: unique issues, shared issues, completion percentages. Params: `projectId`, `versionId1`, `versionId2` |
-| `getIssueFullContext` | Full task context in one call: description, interpreted history with status durations, unified surrounding issues list with roles (`parent`, `sibling`, `child`, `related`), document attachments extracted inline, recent notes, and truncation flags. Replaces 10+ separate calls. Params: `issueId` |
+| `getReleaseRisks` | Risk assessment: open blockers, overdue, high-priority, unassigned issues for a version. Scans up to 500 open issues and reports truncation. Params: `projectId`, `versionId` |
+| `compareVersions` | Diff between two versions: unique issues, shared issues, completion percentages. Scans up to 500 issues per version and reports truncation. Params: `projectId`, `versionId1`, `versionId2` |
+| `getIssueFullContext` | Full task context in one call: description, interpreted history with status durations, unified surrounding issues list with roles (`parent`, `sibling`, `child`, `related`), supported text/document attachments extracted inline (text, PDF, DOCX, XLSX, PPTX, ZIP), recent notes, and truncation flags. Params: `issueId` |
 
 All tools are **read-only**. No data in Redmine is modified.
 

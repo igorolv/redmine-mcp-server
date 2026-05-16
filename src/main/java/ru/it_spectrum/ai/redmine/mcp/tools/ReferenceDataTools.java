@@ -63,7 +63,7 @@ public class ReferenceDataTools {
     }
 
     @McpTool(description = "List all available time entry activity types in Redmine. " +
-            "Returns activity IDs and names. Use these IDs when logging time entries.")
+            "Returns activity IDs and names for interpreting existing time entries.")
     public String listTimeEntryActivities() {
         log.info("Tool call: listTimeEntryActivities");
         long start = System.nanoTime();

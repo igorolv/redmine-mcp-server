@@ -155,11 +155,11 @@ public class IssueTools {
     }
 
     @McpTool(description = "Get full context needed to understand and implement a Redmine issue. " +
-            "One call replaces 10+ separate tool calls. Returns: the issue with description, " +
+            "Returns: the issue with description, " +
             "interpreted history timeline with status durations, " +
             "nearby context issues with explicit roles (parent, sibling, child, related), " +
-            "document attachments extracted inline (PDF/DOCX/XLSX), recent discussion notes, " +
-            "and truncation flags. Ideal first call when investigating or implementing a task.")
+            "supported text/document attachments extracted inline (text, PDF, DOCX, XLSX, PPTX, ZIP), " +
+            "recent discussion notes, and truncation flags. Ideal first call when investigating a task.")
     public String getIssueFullContext(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
