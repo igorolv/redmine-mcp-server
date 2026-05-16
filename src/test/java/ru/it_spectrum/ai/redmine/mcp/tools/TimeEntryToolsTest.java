@@ -47,7 +47,7 @@ class TimeEntryToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listTimeEntries(null, null, null, null, null, null, null));
 
-        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("\"totalCount\":2");
         assertThat(result).contains("2025-03-01");
         assertThat(result).contains("\"hours\":2.5");
         assertThat(result).contains("John");
@@ -71,7 +71,7 @@ class TimeEntryToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listTimeEntries("backend", 200, 42, "2025-03-01", "2025-03-31", 10, 0));
 
-        assertThat(result).contains("\"total_count\":1");
+        assertThat(result).contains("\"totalCount\":1");
         assertThat(result).contains("\"hours\":4.0");
         assertThat(result).contains("John");
         assertThat(result).contains("Development");
@@ -96,8 +96,8 @@ class TimeEntryToolsTest {
         var result = ToolJsonTestSupport.stringify(tools.getMyTimeEntries(null, null, null, null, null, null));
 
         assertThat(result).contains("\"user\"");
-        assertThat(result).contains("\"firstname\":\"John\"");
-        assertThat(result).contains("\"lastname\":\"Doe\"");
+        assertThat(result).contains("\"login\":\"jdoe\"");
+        assertThat(result).contains("\"name\":\"John Doe\"");
         assertThat(result).contains("\"hours\":3.0");
         assertThat(result).contains("\"id\":101");
     }

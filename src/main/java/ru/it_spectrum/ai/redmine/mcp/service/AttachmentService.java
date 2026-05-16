@@ -2,10 +2,10 @@ package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.it_spectrum.ai.redmine.mcp.api.Attachment;
+import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentContextPart;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentResult;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 
@@ -65,17 +65,17 @@ public class AttachmentService {
         return Optional.ofNullable(textExtractor.extractText(attachment, localFile));
     }
 
-    public AttachmentResult getAttachment(int issueId, int attachmentId) {
+    public AttachmentContent getAttachment(int issueId, int attachmentId) {
         var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
         var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
         boolean image = isImage(attachment);
         String extractionType = image ? "image" : detectExtractionType(attachment);
-        List<AttachmentContextPart> parts = List.of();
+        List<AttachmentContent.Part> parts = List.of();
         String note = null;
 
         if (isTextExtractable(attachment)) {
             parts = textExtractor.extractTextParts(attachment, localFile).stream()
-                    .map(this::toContextPart)
+                    .map(this::toContentPart)
                     .toList();
         } else if (image) {
             note = "Image file. Text context not available; use localPath/fileUri to access the original file.";
@@ -83,11 +83,11 @@ public class AttachmentService {
             note = "Binary file. Text context not available; use localPath/fileUri to access the original file.";
         }
 
-        boolean textExtracted = parts.stream().anyMatch(AttachmentContextPart::textExtracted);
-        boolean truncated = parts.stream().anyMatch(AttachmentContextPart::truncated);
+        boolean textExtracted = parts.stream().anyMatch(AttachmentContent.Part::textExtracted);
+        boolean truncated = parts.stream().anyMatch(AttachmentContent.Part::truncated);
 
-        return new AttachmentResult(
-                attachment,
+        return new AttachmentContent(
+                Attachment.from(attachment),
                 localFile.toString(),
                 localFile.toUri().toString(),
                 localSize(localFile),
@@ -107,7 +107,7 @@ public class AttachmentService {
                 + "\n\n... (truncated, total length: %d chars)".formatted(text.length());
     }
 
-    private AttachmentContextPart toContextPart(DocumentTextExtractor.ExtractedTextPart part) {
+    private AttachmentContent.Part toContentPart(DocumentTextExtractor.ExtractedTextPart part) {
         String content = part.content();
         boolean truncated = false;
         if (content != null) {
@@ -115,7 +115,7 @@ public class AttachmentService {
             content = truncatePreview(content);
         }
 
-        return new AttachmentContextPart(
+        return new AttachmentContent.Part(
                 part.name(),
                 part.extractionType(),
                 part.textExtracted(),

@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentResult;
+import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
@@ -32,14 +32,14 @@ public class AttachmentTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public AttachmentResult getAttachment(
+    public AttachmentContent getAttachment(
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
         return getAttachmentInternal(issueId, attachmentId);
     }
 
-    private AttachmentResult getAttachmentInternal(int issueId, int attachmentId) {
+    private AttachmentContent getAttachmentInternal(int issueId, int attachmentId) {
         log.info("Tool call: getAttachment (attachmentId={}, issueId={})", attachmentId, issueId);
         long start = System.nanoTime();
         try {

@@ -5,8 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry;
-import ru.it_spectrum.ai.redmine.mcp.model.MyTimeEntriesResult;
+import ru.it_spectrum.ai.redmine.mcp.api.MyTimeEntries;
+import ru.it_spectrum.ai.redmine.mcp.api.TimeEntryPage;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
 import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryService;
 
@@ -28,7 +28,7 @@ public class TimeEntryTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineTimeEntry.Page listTimeEntries(
+    public TimeEntryPage listTimeEntries(
             @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
             @McpToolParam(description = "Issue ID to filter by (optional)", required = false) Integer issueId,
             @McpToolParam(description = "User ID to filter by (optional)", required = false) Integer userId,
@@ -56,7 +56,7 @@ public class TimeEntryTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public MyTimeEntriesResult getMyTimeEntries(
+    public MyTimeEntries getMyTimeEntries(
             @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
             @McpToolParam(description = "Issue ID to filter by (optional)", required = false) Integer issueId,
             @McpToolParam(description = "From date, YYYY-MM-DD (optional)", required = false) String from,

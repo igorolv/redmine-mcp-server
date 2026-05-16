@@ -1,9 +1,9 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.api.SearchResult;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchType;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -40,8 +40,9 @@ public class SearchService {
         this.client = client;
     }
 
-    public RedmineSearchResult searchAll(String query, String projectId, String types, int offset, int limit) {
-        return client.search(query, projectId, parseTypes(types), true, offset, limit);
+    public SearchResult searchAll(String query, String projectId, String types, int offset, int limit) {
+        return SearchResult.from(
+                client.search(query, projectId, parseTypes(types), true, offset, limit));
     }
 
     Set<SearchType> parseTypes(String types) {

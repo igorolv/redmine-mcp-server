@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
+import ru.it_spectrum.ai.redmine.mcp.api.SearchResult;
 import ru.it_spectrum.ai.redmine.mcp.service.SearchService;
 
 @Service
@@ -25,7 +25,7 @@ public class SearchTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineSearchResult searchAll(
+    public SearchResult searchAll(
             @McpToolParam(description = "Search query text") String query,
             @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
             @McpToolParam(description = "Comma-separated content types to include: issues, wiki_pages, news, documents, changesets, messages, projects (optional)", required = false) String types,

@@ -44,7 +44,7 @@ class SearchToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.searchAll("auth", null, null, null, null));
 
-        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("\"totalCount\":2");
         assertThat(result).contains("\"type\":\"issue\"");
         assertThat(result).contains("\"id\":101");
         assertThat(result).contains("Login bug");
@@ -65,7 +65,7 @@ class SearchToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.searchAll("auth", "backend", "issues,wiki-pages", 5, 10));
 
-        assertThat(result).contains("\"total_count\":1");
+        assertThat(result).contains("\"totalCount\":1");
         assertThat(result).contains("\"type\":\"wiki-page\"");
         assertThat(result).contains("Auth Guide");
     }
