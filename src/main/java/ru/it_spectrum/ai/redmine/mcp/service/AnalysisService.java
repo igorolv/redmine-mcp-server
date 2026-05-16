@@ -138,7 +138,7 @@ public class AnalysisService {
                 .toList();
 
         var priorityOrder = client.getIssuePriorities().stream()
-                .collect(Collectors.toMap(p -> p.name(), p -> p.id()));
+                .collect(Collectors.toMap(IdName::name, p -> p.id()));
         var sorted = issues.stream()
                 .sorted(Comparator.<RedmineIssueSummary, Integer>comparing(
                                 i -> priorityOrder.getOrDefault(name(i.priority()), 0))

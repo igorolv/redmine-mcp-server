@@ -87,8 +87,6 @@ public class IssueSnapshotService {
             Files.write(partial, data);
             moveIntoPlace(partial, target);
             return target;
-        } catch (AttachmentServiceException e) {
-            throw e;
         } catch (IOException e) {
             throw new AttachmentDownloadFailedException(attachment.id(), e);
         }

@@ -55,10 +55,6 @@ public class IssueService {
         return Optional.ofNullable(client.getIssue(issueId));
     }
 
-    public RedmineIssue findOrThrow(int issueId) {
-        return find(issueId).orElseThrow(() -> new IssueNotFoundException(issueId));
-    }
-
     // --- Listing / search ---
 
     public RedmineIssueSummary.Page list(String projectId, String statusId, Integer trackerId,

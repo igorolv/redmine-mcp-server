@@ -111,18 +111,22 @@ public record RedmineIssue(
         }
 
         private static void appendValues(List<String> target, Object rawValue) {
-            if (rawValue == null) {
-                return;
-            }
-            if (rawValue instanceof String text) {
-                target.add(text);
-                return;
-            }
-            if (rawValue instanceof Iterable<?> iterable) {
-                for (var item : iterable) {
-                    appendValues(target, item);
+            switch (rawValue) {
+                case null -> {
+                    return;
                 }
-                return;
+                case String text -> {
+                    target.add(text);
+                    return;
+                }
+                case Iterable<?> iterable -> {
+                    for (var item : iterable) {
+                        appendValues(target, item);
+                    }
+                    return;
+                }
+                default -> {
+                }
             }
             if (rawValue.getClass().isArray()) {
                 int length = Array.getLength(rawValue);

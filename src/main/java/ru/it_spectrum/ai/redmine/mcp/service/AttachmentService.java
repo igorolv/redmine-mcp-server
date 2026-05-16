@@ -39,10 +39,6 @@ public class AttachmentService {
         return Optional.ofNullable(client.getAttachment(attachmentId));
     }
 
-    public RedmineAttachment findOrThrow(int attachmentId) {
-        return find(attachmentId).orElseThrow(() -> new AttachmentNotFoundException(attachmentId));
-    }
-
     public boolean isTextExtractable(RedmineAttachment attachment) {
         return textExtractor.isTextExtractable(attachment.filename(), attachment.contentType());
     }
@@ -101,12 +97,6 @@ public class AttachmentService {
                 parts,
                 note
         );
-    }
-
-    public String formatSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return "%.1f KB".formatted(bytes / 1024.0);
-        return "%.1f MB".formatted(bytes / (1024.0 * 1024));
     }
 
     // --- Internal ---

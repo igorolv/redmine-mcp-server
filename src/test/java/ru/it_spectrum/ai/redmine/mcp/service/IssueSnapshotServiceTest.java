@@ -87,7 +87,7 @@ class IssueSnapshotServiceTest {
     }
 
     @Test
-    void shouldSanitizeAttachmentFilename() throws Exception {
+    void shouldSanitizeAttachmentFilename() {
         byte[] content = "snapshot document".getBytes();
         var attachment = attachment(12345, "dir\\bad:name?.docx", content.length);
         var service = service();

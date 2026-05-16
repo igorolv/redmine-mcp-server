@@ -49,14 +49,6 @@ class AttachmentServiceTest {
         assertThat(service.find(99)).isEmpty();
     }
 
-    @Test
-    void findOrThrowShouldThrowAttachmentNotFound() {
-        when(client.getAttachment(99)).thenReturn(null);
-        assertThatThrownBy(() -> service.findOrThrow(99))
-                .isInstanceOf(AttachmentNotFoundException.class)
-                .satisfies(e -> assertThat(((AttachmentNotFoundException) e).attachmentId()).isEqualTo(99));
-    }
-
     // --- isImage ---
 
     @Test
@@ -83,7 +75,7 @@ class AttachmentServiceTest {
     // --- getAttachment ---
 
     @Test
-    void getAttachmentShouldReturnOriginalPath() throws Exception {
+    void getAttachmentShouldReturnOriginalPath() {
         byte[] data = "original".getBytes();
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));

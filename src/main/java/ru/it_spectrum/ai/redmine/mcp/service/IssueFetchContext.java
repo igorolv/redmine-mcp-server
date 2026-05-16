@@ -3,6 +3,7 @@ package ru.it_spectrum.ai.redmine.mcp.service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
 
 import java.util.HashMap;
 import java.util.List;
@@ -52,7 +53,7 @@ public class IssueFetchContext {
     public Map<Integer, String> versions(String projectId) {
         return versionsByProject.computeIfAbsent(projectId, id ->
                 client.getProjectVersions(id).stream()
-                        .collect(Collectors.toMap(v -> v.id(), v -> v.name(), (a, b) -> a)));
+                        .collect(Collectors.toMap(RedmineVersion::id, RedmineVersion::name, (a, b) -> a)));
     }
 
     private static Map<Integer, String> toIdNameMap(List<IdName> items) {

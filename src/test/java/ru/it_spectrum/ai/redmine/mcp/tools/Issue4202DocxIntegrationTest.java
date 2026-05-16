@@ -42,7 +42,6 @@ class Issue4202DocxIntegrationTest {
         String content = readAttachmentContext(attachment);
         var contentJson = ToolJsonTestSupport.parse(content);
         String contentBody = contentJson.get("parts").get(0).get("content").asText();
-        String directText = contentBody;
 
         assertThat(content)
                 .as("Attachment #%d (%s) should be readable".formatted(attachment.id(), attachment.filename()))
@@ -53,10 +52,10 @@ class Issue4202DocxIntegrationTest {
 
         assertThat(contentJson.get("extractionType").asText()).isEqualTo("docx");
         assertThat(contentBody).isNotBlank();
-        assertThat(directText).contains(contentBody.substring(0, Math.min(200, contentBody.length())));
+        assertThat(contentBody).contains(contentBody.substring(0, Math.min(200, contentBody.length())));
 
         System.out.println("Direct extractor preview:");
-        System.out.println(snippet(directText, 2_000));
+        System.out.println(snippet(contentBody, 2_000));
         System.out.println();
         System.out.println("AttachmentTools.getAttachment preview:");
         System.out.println(snippet(content, 2_000));

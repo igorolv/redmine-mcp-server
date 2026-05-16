@@ -43,14 +43,6 @@ class IssueServiceTest {
         assertThat(service.find(99)).isEmpty();
     }
 
-    @Test
-    void findOrThrowShouldThrowWhenIssueMissing() {
-        when(client.getIssue(99)).thenReturn(null);
-        assertThatThrownBy(() -> service.findOrThrow(99))
-                .isInstanceOf(IssueNotFoundException.class)
-                .satisfies(e -> assertThat(((IssueNotFoundException) e).issueId()).isEqualTo(99));
-    }
-
     // --- list / searchIssues ---
 
     @Test
