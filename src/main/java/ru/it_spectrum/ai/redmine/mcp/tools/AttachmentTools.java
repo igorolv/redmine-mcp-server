@@ -12,6 +12,7 @@ import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResponse;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ImageProcessingFailedException;
+import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.NotAnImageAttachmentException;
 
 import io.modelcontextprotocol.spec.McpSchema;
@@ -53,34 +54,51 @@ public class AttachmentTools {
             "PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives with supported files. " +
             "For images use getImageAttachment instead. " +
             "For other binary files returns only metadata. " +
-            "Use listAttachments first to get the attachment ID.")
+            "Use listAttachments first to get the attachment ID and pass the same issue ID.")
     public String getAttachmentContent(
+            @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
-        log.info("Tool call: getAttachmentContent (attachmentId={})", attachmentId);
+        return getAttachmentContentInternal(issueId, attachmentId);
+    }
+
+    private String getAttachmentContentInternal(int issueId, int attachmentId) {
+        log.info("Tool call: getAttachmentContent (attachmentId={}, issueId={})", attachmentId, issueId);
         long start = System.nanoTime();
         try {
-            var result = attachmentService.readContent(attachmentId);
+            var result = attachmentService.readContent(issueId, attachmentId);
             ToolLogger.completed(log, "getAttachmentContent", start);
             return json.write(result);
         } catch (AttachmentNotFoundException e) {
             ToolLogger.failed(log, "getAttachmentContent", start, e.getMessage());
             return errors.notFound("attachment", "#" + attachmentId);
+        } catch (IssueNotFoundException e) {
+            ToolLogger.failed(log, "getAttachmentContent", start, e.getMessage());
+            return errors.notFound("issue", "#" + issueId);
+        } catch (AttachmentDownloadFailedException e) {
+            ToolLogger.failed(log, "getAttachmentContent", start, e.getMessage());
+            return errors.unavailable("attachment #" + attachmentId);
         }
     }
 
     @McpTool(description = "Download an image attachment from Redmine and return it for visual analysis. " +
             "Supports PNG, JPEG, GIF, BMP, WebP. Automatically resizes large images to save tokens. " +
-            "Use listAttachments first to get the attachment ID.")
+            "Use listAttachments first to get the attachment ID and pass the same issue ID.")
     public McpSchema.CallToolResult getImageAttachment(
+            @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId,
             @McpToolParam(description = "Maximum image width in pixels for resizing (default 1024). " +
                     "Height is scaled proportionally.", required = false) Integer maxWidth
     ) {
-        log.info("Tool call: getImageAttachment (attachmentId={}, maxWidth={})", attachmentId, maxWidth);
+        return getImageAttachmentInternal(issueId, attachmentId, maxWidth);
+    }
+
+    private McpSchema.CallToolResult getImageAttachmentInternal(int issueId, int attachmentId, Integer maxWidth) {
+        log.info("Tool call: getImageAttachment (attachmentId={}, maxWidth={}, issueId={})",
+                attachmentId, maxWidth, issueId);
         long start = System.nanoTime();
         try {
-            var rendered = attachmentService.renderImage(attachmentId, maxWidth);
+            var rendered = attachmentService.renderImage(issueId, attachmentId, maxWidth);
             String base64 = Base64.getEncoder().encodeToString(rendered.data());
             String metadata = "Attachment: %s (%s, %s)".formatted(
                     rendered.filename(), rendered.contentType(), attachmentService.formatSize(rendered.size()));
@@ -93,6 +111,9 @@ public class AttachmentTools {
         } catch (AttachmentNotFoundException e) {
             ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
             return errorResult("Attachment #%d not found".formatted(e.attachmentId()));
+        } catch (IssueNotFoundException e) {
+            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
+            return errorResult("Issue #%d not found".formatted(e.issueId()));
         } catch (NotAnImageAttachmentException e) {
             ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
             return errorResult("Attachment #%d (%s) is not an image. Use getAttachmentContent for text/document files."

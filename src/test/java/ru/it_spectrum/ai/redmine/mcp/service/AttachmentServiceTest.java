@@ -1,8 +1,10 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
@@ -10,15 +12,18 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -31,11 +36,15 @@ class AttachmentServiceTest {
     @Mock
     private DocumentTextExtractor extractor;
 
+    @TempDir
+    private Path dataDir;
+
     private AttachmentService service;
 
     @BeforeEach
     void setUp() {
-        service = new AttachmentService(client, extractor);
+        var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
+        service = new AttachmentService(client, extractor, snapshot);
     }
 
     // --- find / listForIssue ---
@@ -104,11 +113,11 @@ class AttachmentServiceTest {
     @Test
     void renderImageShouldReturnRendered() throws Exception {
         var att = attachment(20, "photo.png", "image/png");
-        when(client.getAttachment(20)).thenReturn(att);
+        when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(extractor.getFileExtension("photo.png")).thenReturn("png");
         when(client.downloadAttachment(att.contentUrl())).thenReturn(pngBytes(200, 100));
 
-        var result = service.renderImage(20, null);
+        var result = service.renderImage(1, 20, null);
 
         assertThat(result.attachmentId()).isEqualTo(20);
         assertThat(result.data()).isNotEmpty();
@@ -118,28 +127,28 @@ class AttachmentServiceTest {
     @Test
     void renderImageShouldResizeAndSwitchMimeToPng() throws Exception {
         var att = attachment(20, "wide.jpg", "image/jpeg");
-        when(client.getAttachment(20)).thenReturn(att);
+        when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(extractor.getFileExtension("wide.jpg")).thenReturn("jpg");
         when(client.downloadAttachment(att.contentUrl())).thenReturn(pngBytes(3_000, 2_000));
 
-        var result = service.renderImage(20, 800);
+        var result = service.renderImage(1, 20, 800);
 
         assertThat(result.mimeType()).isEqualTo("image/png");
     }
 
     @Test
     void renderImageShouldThrowAttachmentNotFound() {
-        when(client.getAttachment(99)).thenReturn(null);
-        assertThatThrownBy(() -> service.renderImage(99, null))
+        when(client.getIssue(1)).thenReturn(issue(1, List.of()));
+        assertThatThrownBy(() -> service.renderImage(1, 99, null))
                 .isInstanceOf(AttachmentNotFoundException.class);
     }
 
     @Test
     void renderImageShouldThrowForNonImage() {
         var att = attachment(20, "doc.pdf", "application/pdf");
-        when(client.getAttachment(20)).thenReturn(att);
+        when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(extractor.getFileExtension("doc.pdf")).thenReturn("pdf");
-        assertThatThrownBy(() -> service.renderImage(20, null))
+        assertThatThrownBy(() -> service.renderImage(1, 20, null))
                 .isInstanceOf(NotAnImageAttachmentException.class)
                 .satisfies(e -> assertThat(((NotAnImageAttachmentException) e).filename()).isEqualTo("doc.pdf"));
     }
@@ -147,10 +156,10 @@ class AttachmentServiceTest {
     @Test
     void renderImageShouldThrowWhenDownloadFails() {
         var att = attachment(20, "photo.png", "image/png");
-        when(client.getAttachment(20)).thenReturn(att);
+        when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(extractor.getFileExtension("photo.png")).thenReturn("png");
         when(client.downloadAttachment(att.contentUrl())).thenReturn(null);
-        assertThatThrownBy(() -> service.renderImage(20, null))
+        assertThatThrownBy(() -> service.renderImage(1, 20, null))
                 .isInstanceOf(AttachmentDownloadFailedException.class);
     }
 
@@ -173,7 +182,9 @@ class AttachmentServiceTest {
         var att = attachment(50, "spec.txt", "text/plain");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(extractor.isTextExtractable("spec.txt", "text/plain")).thenReturn(true);
-        when(extractor.extractText(att))
+        when(client.downloadAttachment(att.contentUrl()))
+                .thenReturn("OAuth and JWT are configured. Refer to OAuth docs.".getBytes());
+        when(extractor.extractText(any(RedmineAttachment.class), any(Path.class)))
                 .thenReturn("OAuth and JWT are configured. Refer to OAuth docs.");
 
         var request = new AttachmentSearchRequest("oauth", 1, null, 10);
@@ -247,3 +258,6 @@ class AttachmentServiceTest {
         return baos.toByteArray();
     }
 }
+
+
+

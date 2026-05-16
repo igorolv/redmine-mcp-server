@@ -46,11 +46,13 @@ public class ContextService {
         if (issue == null) {
             return Optional.empty();
         }
+        attachmentService.snapshotIssue(issue);
 
         int fetchCount = 1;
         RedmineIssue parent = null;
         if (issue.parent() != null) {
             parent = client.getIssue(issue.parent().id());
+            attachmentService.snapshotIssue(parent);
             fetchCount++;
         }
 
@@ -461,7 +463,7 @@ public class ContextService {
             if (IMAGE_EXTENSIONS.contains(ext)) continue;
             if (!attachmentService.isTextExtractable(att)) continue;
 
-            String text = attachmentService.extractText(att).orElse(null);
+            String text = attachmentService.extractText(sourceIssueId, att).orElse(null);
             if (text == null || text.isBlank()) continue;
 
             int allowedLength = Math.min(MAX_DOC_TEXT_LENGTH, MAX_TOTAL_DOC_TEXT - totalDocText);

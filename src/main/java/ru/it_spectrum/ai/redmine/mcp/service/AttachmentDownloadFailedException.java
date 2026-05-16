@@ -5,4 +5,8 @@ public class AttachmentDownloadFailedException extends AttachmentServiceExceptio
     public AttachmentDownloadFailedException(int attachmentId) {
         super(attachmentId, "Failed to download attachment #%d".formatted(attachmentId));
     }
+
+    public AttachmentDownloadFailedException(int attachmentId, Throwable cause) {
+        super(attachmentId, "Failed to download attachment #%d: %s".formatted(attachmentId, cause.getMessage()), cause);
+    }
 }

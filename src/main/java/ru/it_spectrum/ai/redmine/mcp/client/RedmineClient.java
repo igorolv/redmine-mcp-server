@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 
 @Component
 public class RedmineClient {
+    private static final String FULL_ISSUE_PATH =
+            "/issues/%d.json?include=attachments,journals,relations,children,changesets";
 
     private final RestClient restClient;
 
@@ -62,11 +64,19 @@ public class RedmineClient {
      */
     public RedmineIssue getIssue(int issueId) {
         var response = restClient.get()
-                .uri("/issues/{id}.json?include=attachments,journals,relations,children,changesets", issueId)
+                .uri(fullIssuePath(issueId))
                 .retrieve()
                 .body(RedmineIssue.Single.class);
 
         return response != null ? response.issue() : null;
+    }
+
+    public static String fullIssueSource(int issueId) {
+        return "GET " + fullIssuePath(issueId);
+    }
+
+    private static String fullIssuePath(int issueId) {
+        return FULL_ISSUE_PATH.formatted(issueId);
     }
 
     /**

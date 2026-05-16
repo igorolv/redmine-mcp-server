@@ -1,8 +1,10 @@
 package ru.it_spectrum.ai.redmine.mcp.tools;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
@@ -10,12 +12,15 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
+import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 
 import io.modelcontextprotocol.spec.McpSchema;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -31,12 +36,16 @@ class AttachmentToolsTest {
     @Mock
     private RedmineClient client;
 
+    @TempDir
+    private Path dataDir;
+
     private AttachmentTools tools;
 
     @BeforeEach
     void setUp() {
+        var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
         var service = new AttachmentService(client,
-                new DocumentTextExtractor(client));
+                new DocumentTextExtractor(), snapshot);
         tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
@@ -95,10 +104,10 @@ class AttachmentToolsTest {
         byte[] imageData = generatePng(100, 80);
         var attachment = attachment(20, "photo.png", "image/png", imageData.length);
 
-        when(client.getAttachment(20)).thenReturn(attachment);
+        when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(imageData);
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(20, null);
+        McpSchema.CallToolResult result = tools.getImageAttachment(100, 20, null);
 
         assertThat(result.isError()).isFalse();
         assertThat(result.content()).hasSize(2);
@@ -112,10 +121,10 @@ class AttachmentToolsTest {
         byte[] imageData = generatePng(2048, 1536);
         var attachment = attachment(21, "big.png", "image/png", imageData.length);
 
-        when(client.getAttachment(21)).thenReturn(attachment);
+        when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(imageData);
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(21, 512);
+        McpSchema.CallToolResult result = tools.getImageAttachment(100, 512, 21);
 
         assertThat(result.isError()).isFalse();
         assertThat(result.content().get(1)).isInstanceOf(McpSchema.ImageContent.class);
@@ -126,9 +135,9 @@ class AttachmentToolsTest {
     @Test
     void shouldRejectNonImageAttachment() {
         var attachment = attachment(22, "document.pdf", "application/pdf", 10_000);
-        when(client.getAttachment(22)).thenReturn(attachment);
+        when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(22, null);
+        McpSchema.CallToolResult result = tools.getImageAttachment(100, 22, null);
 
         assertThat(result.isError()).isTrue();
         assertThat(((McpSchema.TextContent) result.content().getFirst()).text())
@@ -137,9 +146,9 @@ class AttachmentToolsTest {
 
     @Test
     void shouldHandleImageAttachmentNotFound() {
-        when(client.getAttachment(999)).thenReturn(null);
+        when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of()));
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(999, null);
+        McpSchema.CallToolResult result = tools.getImageAttachment(100, 999, null);
 
         assertThat(result.isError()).isTrue();
         assertThat(((McpSchema.TextContent) result.content().getFirst()).text())
@@ -149,10 +158,10 @@ class AttachmentToolsTest {
     @Test
     void shouldHandleImageDownloadFailure() {
         var attachment = attachment(23, "fail.png", "image/png", 5_000);
-        when(client.getAttachment(23)).thenReturn(attachment);
+        when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(null);
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(23, null);
+        McpSchema.CallToolResult result = tools.getImageAttachment(100, 23, null);
 
         assertThat(result.isError()).isTrue();
         assertThat(((McpSchema.TextContent) result.content().getFirst()).text())
@@ -337,3 +346,6 @@ class AttachmentToolsTest {
         );
     }
 }
+
+
+

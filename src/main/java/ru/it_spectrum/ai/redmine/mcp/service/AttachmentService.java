@@ -1,6 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
@@ -16,6 +17,8 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -34,10 +37,14 @@ public class AttachmentService {
 
     private final RedmineClient client;
     private final DocumentTextExtractor textExtractor;
+    private final IssueSnapshotService issueSnapshot;
 
-    public AttachmentService(RedmineClient client, DocumentTextExtractor textExtractor) {
+    @Autowired
+    public AttachmentService(RedmineClient client, DocumentTextExtractor textExtractor,
+                             IssueSnapshotService issueSnapshot) {
         this.client = client;
         this.textExtractor = textExtractor;
+        this.issueSnapshot = issueSnapshot;
     }
 
     public Optional<RedmineAttachment> find(int attachmentId) {
@@ -49,6 +56,7 @@ public class AttachmentService {
         if (issue == null) {
             return Optional.empty();
         }
+        snapshotIssue(issue);
         var attachments = issue.attachments();
         return Optional.of(attachments != null ? attachments : List.of());
     }
@@ -75,14 +83,18 @@ public class AttachmentService {
         return IMAGE_EXTENSIONS.contains(ext) || contentType.startsWith("image/");
     }
 
-    public Optional<String> extractText(RedmineAttachment attachment) {
-        return Optional.ofNullable(textExtractor.extractText(attachment));
+    public Optional<String> extractText(int issueId, RedmineAttachment attachment) {
+        if (!isTextExtractable(attachment)) {
+            return Optional.empty();
+        }
+        var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
+        return Optional.ofNullable(textExtractor.extractText(attachment, localFile));
     }
 
-    public AttachmentContentResult readContent(int attachmentId) {
-        var attachment = findOrThrow(attachmentId);
+    public AttachmentContentResult readContent(int issueId, int attachmentId) {
+        var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
 
-        var maybeText = extractText(attachment);
+        var maybeText = extractText(issueId, attachment);
         String content = null;
         boolean truncated = false;
         String note = null;
@@ -106,14 +118,14 @@ public class AttachmentService {
         );
     }
 
-    public ImageRenderResult renderImage(int attachmentId, Integer maxWidth) {
-        var attachment = findOrThrow(attachmentId);
+    public ImageRenderResult renderImage(int issueId, int attachmentId, Integer maxWidth) {
+        var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
 
         if (!isImage(attachment)) {
             throw new NotAnImageAttachmentException(attachmentId, attachment.filename());
         }
 
-        byte[] imageData = client.downloadAttachment(attachment.contentUrl());
+        byte[] imageData = loadAttachmentBytes(attachment, issueId);
         if (imageData == null) {
             throw new AttachmentDownloadFailedException(attachmentId);
         }
@@ -175,7 +187,7 @@ public class AttachmentService {
                 }
                 scannedAttachments++;
                 processedAttachments++;
-                String text = textExtractor.extractText(att);
+                String text = extractText(issue.id(), att).orElse(null);
                 if (text == null) {
                     continue;
                 }
@@ -234,6 +246,7 @@ public class AttachmentService {
     private List<RedmineIssue> loadIssuesForSearch(AttachmentSearchRequest request) {
         if (request.issueId() != null) {
             var issue = client.getIssue(request.issueId());
+            snapshotIssue(issue);
             return issue != null ? List.of(issue) : List.of();
         }
 
@@ -244,10 +257,43 @@ public class AttachmentService {
         for (var issue : issues) {
             var full = client.getIssue(issue.id());
             if (full != null) {
+                snapshotIssue(full);
                 fullIssues.add(full);
             }
         }
         return fullIssues;
+    }
+
+    public void snapshotIssue(RedmineIssue issue) {
+        if (issue == null) {
+            return;
+        }
+        issueSnapshot.snapshotIssue(issue, RedmineClient.fullIssueSource(issue.id()));
+    }
+
+    private byte[] loadAttachmentBytes(RedmineAttachment attachment, int issueId) {
+        var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
+        try {
+            return Files.readAllBytes(localFile);
+        } catch (IOException e) {
+            throw new AttachmentDownloadFailedException(attachment.id(), e);
+        }
+    }
+
+    private RedmineAttachment findIssueAttachmentOrThrow(int issueId, int attachmentId) {
+        var issue = client.getIssue(issueId);
+        if (issue == null) {
+            throw new IssueNotFoundException(issueId);
+        }
+        snapshotIssue(issue);
+        if (issue.attachments() != null) {
+            for (var attachment : issue.attachments()) {
+                if (attachment.id() == attachmentId) {
+                    return attachment;
+                }
+            }
+        }
+        throw new AttachmentNotFoundException(attachmentId);
     }
 
     private byte[] resizeImageIfNeeded(byte[] imageData, int maxWidth) throws Exception {

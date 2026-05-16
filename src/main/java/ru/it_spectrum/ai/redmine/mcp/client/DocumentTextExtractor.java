@@ -20,6 +20,8 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Set;
@@ -37,16 +39,10 @@ public class DocumentTextExtractor {
     private static final int MAX_ARCHIVE_ENTRY_BYTES = 10 * 1024 * 1024;
     private static final int MAX_ARCHIVE_TOTAL_BYTES = 50 * 1024 * 1024;
 
-    private final RedmineClient client;
-
-    public DocumentTextExtractor(RedmineClient client) {
-        this.client = client;
-    }
-
     /**
-     * Extract text from an attachment. Returns null if not extractable or on failure.
+     * Extract text from an already downloaded attachment file.
      */
-    public String extractText(RedmineAttachment attachment) {
+    public String extractText(RedmineAttachment attachment, Path localFile) {
         String ext = getFileExtension(attachment.filename());
         String contentType = attachment.contentType() != null ? attachment.contentType() : "";
 
@@ -56,16 +52,13 @@ public class DocumentTextExtractor {
             return null;
         }
 
-        byte[] content = client.downloadAttachment(attachment.contentUrl());
-        if (content == null) {
+        try {
+            return extractFromBytes(attachment.filename(), contentType, Files.readAllBytes(localFile));
+        } catch (IOException e) {
+            log.warn("Failed to read materialized attachment #{} ({}): {}",
+                    attachment.id(), localFile, e.getMessage());
             return null;
         }
-
-        String text = extractFromBytes(attachment.filename(), contentType, content);
-        if (text == null) {
-            return null;
-        }
-        return text;
     }
 
     /**

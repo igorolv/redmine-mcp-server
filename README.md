@@ -186,6 +186,13 @@ REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
 Логи пишутся в `${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/logs/redmine-mcp-server.log`.
 Файл ротируется по дате и размеру: `10MB`, хранение `30` дней, общий лимит `512MB`.
 
+При загрузке issue сервер сохраняет снимок на диск в
+`${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/issues/<issue-id>/`: `issue.json`,
+`snapshot.json` с метаданными снимка, `attachments.json` и каталог `extracted/<attachment-id>/`
+для производных файлов. Вложения материализуются в `attachments/` с именами вида
+`<attachment-id>__<filename>` и могут переиспользоваться между снимками, если локальный файл
+уже существует и его размер совпадает с metadata Redmine.
+
 ## Подключение к AI-клиенту
 
 Добавить в конфигурацию клиента:
@@ -300,7 +307,7 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 ├── src/main/java/ru/it_spectrum/ai/redmine/mcp/
 │   ├── RedmineMcpServerApplication.java   — точка входа Spring Boot
 │   ├── config/
-│   │   ├── RedmineProperties.java         — url + apiKey из env
+│   │   ├── RedmineClientProperties.java   — url + apiKey из env
 │   │   └── RedmineConfig.java             — RestClient с автодобавлением http://
 │   ├── client/
 │   │   ├── RedmineClient.java             — обёртка над Redmine REST API

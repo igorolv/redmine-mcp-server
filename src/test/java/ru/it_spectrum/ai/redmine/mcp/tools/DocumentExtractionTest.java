@@ -1,5 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.tools;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -12,15 +13,21 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
+import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -31,15 +38,21 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class DocumentExtractionTest {
 
+    private static final int ISSUE_ID = 100;
+
     @Mock
     private RedmineClient client;
+
+    @TempDir
+    private Path dataDir;
 
     private AttachmentTools tools;
 
     @BeforeEach
     void setUp() {
+        var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
         var service = new AttachmentService(client,
-                new DocumentTextExtractor(client));
+                new DocumentTextExtractor(), snapshot);
         tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
@@ -50,10 +63,10 @@ class DocumentExtractionTest {
         byte[] pdfBytes = generatePdf("Hello from PDF document");
         var attachment = attachment(1, "report.pdf", "application/pdf", pdfBytes.length);
 
-        when(client.getAttachment(1)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pdfBytes);
 
-        String result = tools.getAttachmentContent(1);
+        String result = tools.getAttachmentContent(ISSUE_ID, 1);
 
         assertThat(result).contains("report.pdf");
         assertThat(result).contains("\"textExtracted\":true");
@@ -65,10 +78,10 @@ class DocumentExtractionTest {
         byte[] pdfBytes = generatePdf("Extension-detected PDF");
         var attachment = attachment(2, "file.pdf", "application/octet-stream", pdfBytes.length);
 
-        when(client.getAttachment(2)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pdfBytes);
 
-        String result = tools.getAttachmentContent(2);
+        String result = tools.getAttachmentContent(ISSUE_ID, 2);
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("Extension-detected PDF");
@@ -82,10 +95,10 @@ class DocumentExtractionTest {
         var attachment = attachment(3, "document.docx",
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docxBytes.length);
 
-        when(client.getAttachment(3)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
 
-        String result = tools.getAttachmentContent(3);
+        String result = tools.getAttachmentContent(ISSUE_ID, 3);
 
         assertThat(result).contains("document.docx");
         assertThat(result).contains("\"textExtracted\":true");
@@ -100,10 +113,10 @@ class DocumentExtractionTest {
         var attachment = attachment(4, "table.docx",
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docxBytes.length);
 
-        when(client.getAttachment(4)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
 
-        String result = tools.getAttachmentContent(4);
+        String result = tools.getAttachmentContent(ISSUE_ID, 4);
 
         assertThat(result).contains("[Table]");
         assertThat(result).contains("Name | Age");
@@ -120,10 +133,10 @@ class DocumentExtractionTest {
         var attachment = attachment(5, "data.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsxBytes.length);
 
-        when(client.getAttachment(5)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xlsxBytes);
 
-        String result = tools.getAttachmentContent(5);
+        String result = tools.getAttachmentContent(ISSUE_ID, 5);
 
         assertThat(result).contains("data.xlsx");
         assertThat(result).contains("\"textExtracted\":true");
@@ -138,10 +151,10 @@ class DocumentExtractionTest {
         var attachment = attachment(6, "multi.xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsxBytes.length);
 
-        when(client.getAttachment(6)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xlsxBytes);
 
-        String result = tools.getAttachmentContent(6);
+        String result = tools.getAttachmentContent(ISSUE_ID, 6);
 
         assertThat(result).contains("Sheet: Sales");
         assertThat(result).contains("Sheet: Expenses");
@@ -157,10 +170,10 @@ class DocumentExtractionTest {
         var attachment = attachment(7, "presentation.pptx",
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation", pptxBytes.length);
 
-        when(client.getAttachment(7)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pptxBytes);
 
-        String result = tools.getAttachmentContent(7);
+        String result = tools.getAttachmentContent(ISSUE_ID, 7);
 
         assertThat(result).contains("presentation.pptx");
         assertThat(result).contains("\"textExtracted\":true");
@@ -176,10 +189,10 @@ class DocumentExtractionTest {
         byte[] textBytes = "log line 1\nlog line 2\n".getBytes();
         var attachment = attachment(8, "app.log", "text/plain", textBytes.length);
 
-        when(client.getAttachment(8)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(textBytes);
 
-        String result = tools.getAttachmentContent(8);
+        String result = tools.getAttachmentContent(ISSUE_ID, 8);
 
         assertThat(result).contains("app.log");
         assertThat(result).contains("\"textExtracted\":true");
@@ -192,10 +205,10 @@ class DocumentExtractionTest {
         byte[] jsonBytes = "{\"key\": \"value\"}".getBytes();
         var attachment = attachment(9, "config.json", "application/json", jsonBytes.length);
 
-        when(client.getAttachment(9)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(jsonBytes);
 
-        String result = tools.getAttachmentContent(9);
+        String result = tools.getAttachmentContent(ISSUE_ID, 9);
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(ToolJsonTestSupport.parse(result).get("content").asText()).contains("\"key\": \"value\"");
@@ -210,10 +223,10 @@ class DocumentExtractionTest {
                 """.getBytes();
         var attachment = attachment(16, "schema.xsd", "application/octet-stream", xsdBytes.length);
 
-        when(client.getAttachment(16)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xsdBytes);
 
-        String result = tools.getAttachmentContent(16);
+        String result = tools.getAttachmentContent(ISSUE_ID, 16);
 
         assertThat(result).contains("schema.xsd");
         assertThat(result).contains("\"textExtracted\":true");
@@ -236,10 +249,10 @@ class DocumentExtractionTest {
         ));
         var attachment = attachment(17, "bundle.zip", "application/octet-stream", zipBytes.length);
 
-        when(client.getAttachment(17)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(zipBytes);
 
-        String result = tools.getAttachmentContent(17);
+        String result = tools.getAttachmentContent(ISSUE_ID, 17);
 
         assertThat(result).contains("bundle.zip");
         assertThat(result).contains("\"textExtracted\":true");
@@ -263,9 +276,9 @@ class DocumentExtractionTest {
     void shouldReturnMetadataForBinaryFile() {
         var attachment = attachment(10, "photo.png", "image/png", 50_000);
 
-        when(client.getAttachment(10)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
 
-        String result = tools.getAttachmentContent(10);
+        String result = tools.getAttachmentContent(ISSUE_ID, 10);
 
         assertThat(result).contains("photo.png");
         assertThat(result).contains("Image file");
@@ -281,10 +294,10 @@ class DocumentExtractionTest {
         byte[] textBytes = longText.getBytes();
         var attachment = attachment(11, "huge.txt", "text/plain", textBytes.length);
 
-        when(client.getAttachment(11)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(textBytes);
 
-        String result = tools.getAttachmentContent(11);
+        String result = tools.getAttachmentContent(ISSUE_ID, 11);
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("\"truncated\":true");
@@ -297,9 +310,9 @@ class DocumentExtractionTest {
 
     @Test
     void shouldHandleAttachmentNotFound() {
-        when(client.getAttachment(999)).thenReturn(null);
+        when(client.getIssue(ISSUE_ID)).thenReturn(issueWithAttachments(ISSUE_ID, java.util.List.of()));
 
-        String result = tools.getAttachmentContent(999);
+        String result = tools.getAttachmentContent(ISSUE_ID, 999);
 
         assertThat(result).contains("not found");
     }
@@ -311,10 +324,10 @@ class DocumentExtractionTest {
         byte[] garbage = "this is not a valid pdf".getBytes();
         var attachment = attachment(12, "corrupt.pdf", "application/pdf", garbage.length);
 
-        when(client.getAttachment(12)).thenReturn(attachment);
+        stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(garbage);
 
-        String result = tools.getAttachmentContent(12);
+        String result = tools.getAttachmentContent(ISSUE_ID, 12);
 
         assertThat(result).contains("corrupt.pdf");
         assertThat(result).contains("\"textExtracted\":true");
@@ -445,4 +458,30 @@ class DocumentExtractionTest {
         );
     }
 
+    private void stubIssueAttachment(RedmineAttachment attachment) {
+        when(client.getIssue(ISSUE_ID)).thenReturn(issueWithAttachments(ISSUE_ID, List.of(attachment)));
+    }
+
+    private static RedmineIssue issueWithAttachments(int id, List<RedmineAttachment> attachments) {
+        return new RedmineIssue(
+                id,
+                new IdName(1, "test-project"),
+                new IdName(1, "Bug"),
+                new IdName(1, "Open"),
+                new IdName(2, "Normal"),
+                new IdName(1, "Author"),
+                null,
+                null, null, null,
+                "Test issue", null,
+                null, null, 0,
+                null, null, false,
+                "2025-01-01", "2025-01-02",
+                null, attachments, null, null, null
+        );
+    }
+
 }
+
+
+
+

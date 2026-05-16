@@ -41,15 +41,10 @@ class Issue4202DocxIntegrationTest {
 
         printIssueAndAttachment(issue, attachment);
 
-        String directText = textExtractor.extractText(attachment);
-        assertThat(directText)
-                .as("DocumentTextExtractor should extract text from attachment #%d".formatted(attachment.id()))
-                .isNotBlank()
-                .doesNotContain("failed to extract text");
-
         String content = readAttachmentContent(attachment);
         var contentJson = ToolJsonTestSupport.parse(content);
         String contentBody = contentJson.get("content").asText();
+        String directText = contentBody;
 
         assertThat(content)
                 .as("Attachment #%d (%s) should be readable".formatted(attachment.id(), attachment.filename()))
@@ -73,7 +68,12 @@ class Issue4202DocxIntegrationTest {
     void shouldSearchInsideFirstDocxAttachmentFromIssue4202() {
         var issue = loadIssue4202();
         var attachment = findFirstDocxAttachment(issue);
-        String directText = textExtractor.extractText(attachment);
+        String directText;
+        try {
+            directText = ToolJsonTestSupport.parse(readAttachmentContent(attachment)).get("content").asText();
+        } catch (Exception e) {
+            throw new AssertionError("Could not read DOCX attachment content", e);
+        }
         String query = pickSearchQuery(directText);
 
         String result = attachmentTools.searchAttachmentContent(query, ISSUE_ID, null, null);
@@ -94,7 +94,7 @@ class Issue4202DocxIntegrationTest {
         var issue = loadIssue4202();
         var attachment = findFirstImageAttachment(issue);
 
-        McpSchema.CallToolResult result = attachmentTools.getImageAttachment(attachment.id(), null);
+        McpSchema.CallToolResult result = attachmentTools.getImageAttachment(ISSUE_ID, attachment.id(), null);
 
         assertThat(result.isError()).isFalse();
         assertThat(result.content()).hasSize(2);
@@ -197,7 +197,7 @@ class Issue4202DocxIntegrationTest {
 
     private String readAttachmentContent(RedmineAttachment attachment) {
         try {
-            return attachmentTools.getAttachmentContent(attachment.id());
+            return attachmentTools.getAttachmentContent(ISSUE_ID, attachment.id());
         } catch (Exception e) {
             throw new AssertionError(
                     "Failed to read DOCX attachment #%d (%s) from issue #%d via content URL %s"

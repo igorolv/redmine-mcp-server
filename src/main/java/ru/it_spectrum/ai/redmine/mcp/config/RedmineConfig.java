@@ -6,11 +6,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties(RedmineProperties.class)
+@EnableConfigurationProperties({RedmineClientProperties.class, RedmineMcpProperties.class})
 public class RedmineConfig {
 
     @Bean
-    public RestClient redmineRestClient(RedmineProperties properties) {
+    public RestClient redmineRestClient(RedmineClientProperties properties) {
         String url = properties.url();
         if (url != null && !url.isBlank() && !url.startsWith("http://") && !url.startsWith("https://")) {
             url = "http://" + url;
