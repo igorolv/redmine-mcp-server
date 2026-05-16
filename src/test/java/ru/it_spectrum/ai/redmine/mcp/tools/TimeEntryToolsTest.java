@@ -14,6 +14,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryService;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,8 +27,7 @@ class TimeEntryToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new TimeEntryTools(new TimeEntryService(client),
-                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new TimeEntryTools(new TimeEntryService(client));
     }
 
     // --- listTimeEntries ---
@@ -45,7 +45,7 @@ class TimeEntryToolsTest {
         when(client.getTimeEntries(null, null, null, null, null, 0, 25))
                 .thenReturn(new RedmineTimeEntry.Page(entries, 2, 0, 25));
 
-        String result = tools.listTimeEntries(null, null, null, null, null, null, null);
+        var result = ToolJsonTestSupport.stringify(tools.listTimeEntries(null, null, null, null, null, null, null));
 
         assertThat(result).contains("\"total_count\":2");
         assertThat(result).contains("2025-03-01");
@@ -69,7 +69,7 @@ class TimeEntryToolsTest {
         when(client.getTimeEntries("backend", 200, 42, "2025-03-01", "2025-03-31", 0, 10))
                 .thenReturn(new RedmineTimeEntry.Page(entries, 1, 0, 10));
 
-        String result = tools.listTimeEntries("backend", 200, 42, "2025-03-01", "2025-03-31", 10, 0);
+        var result = ToolJsonTestSupport.stringify(tools.listTimeEntries("backend", 200, 42, "2025-03-01", "2025-03-31", 10, 0));
 
         assertThat(result).contains("\"total_count\":1");
         assertThat(result).contains("\"hours\":4.0");
@@ -93,7 +93,7 @@ class TimeEntryToolsTest {
         when(client.getTimeEntries(null, null, 42, null, null, 0, 25))
                 .thenReturn(new RedmineTimeEntry.Page(entries, 1, 0, 25));
 
-        String result = tools.getMyTimeEntries(null, null, null, null, null, null);
+        var result = ToolJsonTestSupport.stringify(tools.getMyTimeEntries(null, null, null, null, null, null));
 
         assertThat(result).contains("\"user\"");
         assertThat(result).contains("\"firstname\":\"John\"");
@@ -106,9 +106,7 @@ class TimeEntryToolsTest {
     void shouldHandleCurrentUserNotAvailableForTimeEntries() {
         when(client.getCurrentUser()).thenReturn(null);
 
-        String result = tools.getMyTimeEntries(null, null, null, null, null, null);
-
-        assertThat(result).contains("\"kind\":\"unavailable\"");
-        assertThat(result).contains("current user unavailable");
+        assertThatThrownBy(() -> tools.getMyTimeEntries(null, null, null, null, null, null))
+                .hasMessageContaining("current user unavailable");
     }
 }

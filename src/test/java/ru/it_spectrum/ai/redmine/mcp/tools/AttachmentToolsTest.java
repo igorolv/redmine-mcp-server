@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,7 +40,7 @@ class AttachmentToolsTest {
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
         var service = new AttachmentService(client,
                 new DocumentTextExtractor(), snapshot);
-        tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new AttachmentTools(service);
     }
 
     // --- getAttachment ---
@@ -52,7 +53,7 @@ class AttachmentToolsTest {
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(data);
 
-        String result = tools.getAttachment(100, 20);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(100, 20));
 
         var json = ToolJsonTestSupport.parse(result);
         assertThat(json.get("attachment").get("filename").asText()).isEqualTo("photo.png");
@@ -71,7 +72,7 @@ class AttachmentToolsTest {
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(data);
 
-        String result = tools.getAttachment(100, 21);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(100, 21));
 
         assertThat(result).contains("big.png");
         assertThat(result).contains("\"parts\":[]");
@@ -84,9 +85,8 @@ class AttachmentToolsTest {
     void shouldHandleAttachmentNotFound() {
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of()));
 
-        String result = tools.getAttachment(100, 999);
-
-        assertThat(result).contains("not found");
+        assertThatThrownBy(() -> tools.getAttachment(100, 999))
+                .hasMessageContaining("not found");
     }
 
     @Test
@@ -95,9 +95,8 @@ class AttachmentToolsTest {
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(null);
 
-        String result = tools.getAttachment(100, 23);
-
-        assertThat(result).contains("unavailable");
+        assertThatThrownBy(() -> tools.getAttachment(100, 23))
+                .hasMessageContaining("Failed to download attachment");
     }
 
     // --- helpers ---

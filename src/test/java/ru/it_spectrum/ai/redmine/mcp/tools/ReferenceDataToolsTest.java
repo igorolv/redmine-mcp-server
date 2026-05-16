@@ -25,7 +25,7 @@ class ReferenceDataToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new ReferenceDataTools(new ReferenceDataService(client), ToolJsonTestSupport.json());
+        tools = new ReferenceDataTools(new ReferenceDataService(client));
     }
 
     // --- listStatuses ---
@@ -38,7 +38,7 @@ class ReferenceDataToolsTest {
                 new IdName(5, "Closed")
         ));
 
-        String result = tools.listStatuses();
+        var result = ToolJsonTestSupport.stringify(tools.listStatuses());
 
         assertThat(result).contains("\"id\":1");
         assertThat(result).contains("\"name\":\"New\"");
@@ -50,7 +50,7 @@ class ReferenceDataToolsTest {
     void shouldReturnMessageWhenNoStatusesFound() {
         when(client.getIssueStatuses()).thenReturn(List.of());
 
-        String result = tools.listStatuses();
+        var result = ToolJsonTestSupport.stringify(tools.listStatuses());
 
         assertThat(result).isEqualTo("[]");
     }
@@ -65,7 +65,7 @@ class ReferenceDataToolsTest {
                 new IdName(3, "Support")
         ));
 
-        String result = tools.listTrackers();
+        var result = ToolJsonTestSupport.stringify(tools.listTrackers());
 
         assertThat(result).contains("\"name\":\"Bug\"");
         assertThat(result).contains("\"name\":\"Feature\"");
@@ -76,7 +76,7 @@ class ReferenceDataToolsTest {
     void shouldReturnMessageWhenNoTrackersFound() {
         when(client.getTrackers()).thenReturn(List.of());
 
-        String result = tools.listTrackers();
+        var result = ToolJsonTestSupport.stringify(tools.listTrackers());
 
         assertThat(result).isEqualTo("[]");
     }
@@ -92,7 +92,7 @@ class ReferenceDataToolsTest {
                 new IdName(4, "Urgent")
         ));
 
-        String result = tools.listPriorities();
+        var result = ToolJsonTestSupport.stringify(tools.listPriorities());
 
         assertThat(result).contains("\"name\":\"Low\"");
         assertThat(result).contains("\"name\":\"Normal\"");
@@ -104,7 +104,7 @@ class ReferenceDataToolsTest {
     void shouldReturnMessageWhenNoPrioritiesFound() {
         when(client.getIssuePriorities()).thenReturn(List.of());
 
-        String result = tools.listPriorities();
+        var result = ToolJsonTestSupport.stringify(tools.listPriorities());
 
         assertThat(result).isEqualTo("[]");
     }
@@ -119,7 +119,7 @@ class ReferenceDataToolsTest {
                 new IdName(3, "DevOps")
         ));
 
-        String result = tools.listIssueCategories("my-project");
+        var result = ToolJsonTestSupport.stringify(tools.listIssueCategories("my-project"));
 
         assertThat(result).contains("\"name\":\"Backend\"");
         assertThat(result).contains("\"name\":\"Frontend\"");
@@ -130,7 +130,7 @@ class ReferenceDataToolsTest {
     void shouldReturnMessageWhenNoCategoriesFound() {
         when(client.getIssueCategories("empty-project")).thenReturn(List.of());
 
-        String result = tools.listIssueCategories("empty-project");
+        var result = ToolJsonTestSupport.stringify(tools.listIssueCategories("empty-project"));
 
         assertThat(result).isEqualTo("[]");
     }
@@ -145,7 +145,7 @@ class ReferenceDataToolsTest {
                 new IdName(10, "Testing")
         ));
 
-        String result = tools.listTimeEntryActivities();
+        var result = ToolJsonTestSupport.stringify(tools.listTimeEntryActivities());
 
         assertThat(result).contains("\"name\":\"Design\"");
         assertThat(result).contains("\"name\":\"Development\"");
@@ -156,7 +156,7 @@ class ReferenceDataToolsTest {
     void shouldReturnMessageWhenNoActivitiesFound() {
         when(client.getTimeEntryActivities()).thenReturn(List.of());
 
-        String result = tools.listTimeEntryActivities();
+        var result = ToolJsonTestSupport.stringify(tools.listTimeEntryActivities());
 
         assertThat(result).isEqualTo("[]");
     }
@@ -171,7 +171,7 @@ class ReferenceDataToolsTest {
                 new RedmineQuery(3, "Overdue tasks", false, 10)
         ), 3, 0, 25));
 
-        String result = tools.listQueries(null, null);
+        var result = ToolJsonTestSupport.stringify(tools.listQueries(null, null));
 
         assertThat(result).contains("\"total_count\":3");
         assertThat(result).contains("\"name\":\"My open bugs\"");
@@ -186,7 +186,7 @@ class ReferenceDataToolsTest {
     void shouldReturnMessageWhenNoQueriesFound() {
         when(client.getQueries(0, 25)).thenReturn(new RedmineQuery.Page(List.of(), 0, 0, 25));
 
-        String result = tools.listQueries(null, null);
+        var result = ToolJsonTestSupport.stringify(tools.listQueries(null, null));
 
         assertThat(result).contains("\"queries\":[]");
         assertThat(result).contains("\"total_count\":0");

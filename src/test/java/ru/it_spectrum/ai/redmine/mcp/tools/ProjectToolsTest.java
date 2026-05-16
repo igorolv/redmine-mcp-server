@@ -15,6 +15,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.ProjectService;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,8 +28,7 @@ class ProjectToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new ProjectTools(new ProjectService(client),
-                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new ProjectTools(new ProjectService(client));
     }
 
     // --- listProjects ---
@@ -43,7 +43,7 @@ class ProjectToolsTest {
         );
         when(client.getProjects(0, 25)).thenReturn(new RedmineProject.Page(projects, 2, 0, 25));
 
-        String result = tools.listProjects(null, null);
+        var result = ToolJsonTestSupport.stringify(tools.listProjects(null, null));
 
         assertThat(result).contains("\"total_count\":2");
         assertThat(result).contains("Backend");
@@ -61,7 +61,7 @@ class ProjectToolsTest {
         );
         when(client.getProjects(10, 5)).thenReturn(new RedmineProject.Page(projects, 15, 10, 5));
 
-        String result = tools.listProjects(5, 10);
+        var result = ToolJsonTestSupport.stringify(tools.listProjects(5, 10));
 
         assertThat(result).contains("\"total_count\":15");
         assertThat(result).contains("Mobile");
@@ -79,7 +79,7 @@ class ProjectToolsTest {
                 List.of(new RedmineProject.NameOnly("issue_tracking"), new RedmineProject.NameOnly("wiki")));
         when(client.getProject("backend")).thenReturn(project);
 
-        String result = tools.getProject("backend");
+        var result = ToolJsonTestSupport.stringify(tools.getProject("backend"));
 
         assertThat(result).contains("\"name\":\"Backend\"");
         assertThat(result).contains("\"identifier\":\"backend\"");
@@ -97,10 +97,8 @@ class ProjectToolsTest {
     void shouldHandleProjectNotFound() {
         when(client.getProject("nonexistent")).thenReturn(null);
 
-        String result = tools.getProject("nonexistent");
-
-        assertThat(result).contains("\"kind\":\"not_found\"");
-        assertThat(result).contains("project nonexistent not found");
+        assertThatThrownBy(() -> tools.getProject("nonexistent"))
+                .hasMessageContaining("project nonexistent not found");
     }
 
     // --- listProjectMembers ---
@@ -116,7 +114,7 @@ class ProjectToolsTest {
         when(client.getProjectMembers("backend", 0, 100))
                 .thenReturn(new RedmineMembership.Page(memberships, 2, 0, 100));
 
-        String result = tools.listProjectMembers("backend", null, null);
+        var result = ToolJsonTestSupport.stringify(tools.listProjectMembers("backend", null, null));
 
         assertThat(result).contains("\"total_count\":2");
         assertThat(result).contains("Alice");
@@ -137,7 +135,7 @@ class ProjectToolsTest {
         );
         when(client.getProjectVersions("backend")).thenReturn(versions);
 
-        String result = tools.listVersions("backend");
+        var result = ToolJsonTestSupport.stringify(tools.listVersions("backend"));
 
         assertThat(result).contains("\"name\":\"v1.0\"");
         assertThat(result).contains("\"status\":\"closed\"");
@@ -151,7 +149,7 @@ class ProjectToolsTest {
     void shouldHandleNoVersions() {
         when(client.getProjectVersions("empty")).thenReturn(List.of());
 
-        String result = tools.listVersions("empty");
+        var result = ToolJsonTestSupport.stringify(tools.listVersions("empty"));
 
         assertThat(result).isEqualTo("[]");
     }

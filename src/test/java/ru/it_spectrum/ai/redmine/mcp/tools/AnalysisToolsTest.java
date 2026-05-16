@@ -20,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
@@ -34,8 +35,7 @@ class AnalysisToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new AnalysisTools(new AnalysisService(client),
-                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new AnalysisTools(new AnalysisService(client));
     }
 
     // ── getProjectSummary ──────────────────────────────────────────────
@@ -54,7 +54,7 @@ class AnalysisToolsTest {
                 isNull(), isNull(), isNull(), isNull(), eq(0), eq(1)))
                 .thenReturn(new RedmineIssueSummary.Page(List.of(), 5, 0, 1));
 
-        String result = tools.getProjectSummary("proj", null);
+        var result = ToolJsonTestSupport.stringify(tools.getProjectSummary("proj", null));
 
         assertThat(result).contains("\"projectId\":\"proj\"");
         assertThat(result).contains("\"open\":3");
@@ -82,7 +82,7 @@ class AnalysisToolsTest {
                 isNull(), isNull(), isNull(), isNull(), eq(0), eq(1)))
                 .thenReturn(new RedmineIssueSummary.Page(List.of(), 0, 0, 1));
 
-        String result = tools.getProjectSummary("proj", null);
+        var result = ToolJsonTestSupport.stringify(tools.getProjectSummary("proj", null));
 
         assertThat(result).contains("\"overdue\":1");
         assertThat(result).contains("\"assignee\":\"Alice\"");
@@ -106,7 +106,7 @@ class AnalysisToolsTest {
         when(client.getIssuePriorities()).thenReturn(List.of(
                 new IdName(1, "Low"), new IdName(2, "Normal"), new IdName(3, "High")));
 
-        String result = tools.getUserWorkload(null, null);
+        var result = ToolJsonTestSupport.stringify(tools.getUserWorkload(null, null));
 
         assertThat(result).contains("\"userName\":\"Alice Smith\"");
         assertThat(result).contains("\"totalOpenIssues\":2");
@@ -121,10 +121,8 @@ class AnalysisToolsTest {
     void shouldHandleCurrentUserNotAvailableForWorkload() {
         when(client.getCurrentUser()).thenReturn(null);
 
-        String result = tools.getUserWorkload(null, null);
-
-        assertThat(result).contains("\"kind\":\"unavailable\"");
-        assertThat(result).contains("current user unavailable");
+        assertThatThrownBy(() -> tools.getUserWorkload(null, null))
+                .hasMessageContaining("current user unavailable");
     }
 
     // ── getVersionChangelog ────────────────────────────────────────────
@@ -144,7 +142,7 @@ class AnalysisToolsTest {
                 isNull(), eq(10), isNull(), isNull(), eq(0), eq(100)))
                 .thenReturn(new RedmineIssueSummary.Page(issues, 3, 0, 100));
 
-        String result = tools.getVersionChangelog("proj", 10);
+        var result = ToolJsonTestSupport.stringify(tools.getVersionChangelog("proj", 10));
 
         assertThat(result).contains("\"projectId\":\"proj\"");
         assertThat(result).contains("\"versionId\":10");
@@ -183,7 +181,7 @@ class AnalysisToolsTest {
         when(client.getIssue(200)).thenReturn(issue200);
         when(client.getIssue(300)).thenReturn(issue300);
 
-        String result = tools.getBlockerChain(100);
+        var result = ToolJsonTestSupport.stringify(tools.getBlockerChain(100));
 
         assertThat(result).contains("\"root\"");
         assertThat(result).contains("\"id\":100");
@@ -201,7 +199,7 @@ class AnalysisToolsTest {
         var issue = issueWithRelations(100, "Standalone", "Open", List.of());
         when(client.getIssue(100)).thenReturn(issue);
 
-        String result = tools.getBlockerChain(100);
+        var result = ToolJsonTestSupport.stringify(tools.getBlockerChain(100));
 
         assertThat(result).contains("\"blockedBy\":[]");
         assertThat(result).contains("\"blocks\":[]");
@@ -211,10 +209,8 @@ class AnalysisToolsTest {
     void shouldHandleIssueNotFoundInBlockerChain() {
         when(client.getIssue(999)).thenReturn(null);
 
-        String result = tools.getBlockerChain(999);
-
-        assertThat(result).contains("\"kind\":\"not_found\"");
-        assertThat(result).contains("issue #999 not found");
+        assertThatThrownBy(() -> tools.getBlockerChain(999))
+                .hasMessageContaining("issue #999 not found");
     }
 
     // ── getStaleIssues ─────────────────────────────────────────────────
@@ -234,7 +230,7 @@ class AnalysisToolsTest {
                 isNull(), isNull(), eq("updated_on:asc"), isNull(), eq(0), eq(25)))
                 .thenReturn(new RedmineIssueSummary.Page(issues, 2, 0, 25));
 
-        String result = tools.getStaleIssues("proj", 30, null);
+        var result = ToolJsonTestSupport.stringify(tools.getStaleIssues("proj", 30, null));
 
         assertThat(result).contains("\"projectId\":\"proj\"");
         assertThat(result).contains("\"id\":1");
@@ -254,7 +250,7 @@ class AnalysisToolsTest {
                 isNull(), isNull(), eq("updated_on:asc"), isNull(), eq(0), eq(25)))
                 .thenReturn(new RedmineIssueSummary.Page(issues, 1, 0, 25));
 
-        String result = tools.getStaleIssues("proj", 30, null);
+        var result = ToolJsonTestSupport.stringify(tools.getStaleIssues("proj", 30, null));
 
         assertThat(result).contains("\"issues\":[]");
     }
@@ -303,7 +299,7 @@ class AnalysisToolsTest {
         when(client.getIssuePriorities()).thenReturn(List.of(
                 new IdName(1, "Low"), new IdName(2, "Normal"), new IdName(3, "High")));
 
-        String result = tools.getReleaseRisks("proj", 10);
+        var result = ToolJsonTestSupport.stringify(tools.getReleaseRisks("proj", 10));
 
         assertThat(result).contains("\"versionId\":10");
         assertThat(result).contains("\"name\":\"v2.0\"");
@@ -325,7 +321,7 @@ class AnalysisToolsTest {
                 .thenReturn(new RedmineIssueSummary.Page(List.of(), 0, 0, 100));
         when(client.getIssuePriorities()).thenReturn(List.of(new IdName(2, "Normal")));
 
-        String result = tools.getReleaseRisks("proj", 10);
+        var result = ToolJsonTestSupport.stringify(tools.getReleaseRisks("proj", 10));
 
         assertThat(result).contains("\"categories\":[]");
         assertThat(result).contains("\"items\":0");
@@ -357,7 +353,7 @@ class AnalysisToolsTest {
                 isNull(), eq(20), isNull(), isNull(), eq(0), eq(100)))
                 .thenReturn(new RedmineIssueSummary.Page(v2Issues, 2, 0, 100));
 
-        String result = tools.compareVersions("proj", 10, 20);
+        var result = ToolJsonTestSupport.stringify(tools.compareVersions("proj", 10, 20));
 
         assertThat(result).contains("\"projectId\":\"proj\"");
         assertThat(result).contains("\"name\":\"v1.0\"");

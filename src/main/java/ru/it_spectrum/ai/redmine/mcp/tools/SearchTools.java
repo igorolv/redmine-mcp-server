@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.service.SearchService;
 
 @Service
@@ -13,18 +14,18 @@ public class SearchTools {
     private static final Logger log = LoggerFactory.getLogger(SearchTools.class);
 
     private final SearchService searchService;
-    private final JsonResponses json;
-    private final ToolErrors errors;
 
-    public SearchTools(SearchService searchService, JsonResponses json, ToolErrors errors) {
+    public SearchTools(SearchService searchService) {
         this.searchService = searchService;
-        this.json = json;
-        this.errors = errors;
     }
 
-    @McpTool(description = "Search across Redmine content. Returns generic search hits with title, type, URL, " +
-            "description excerpt, and datetime. Use searchIssues for issue summaries and searchWikiPages for wiki-only results.")
-    public String searchAll(
+    @McpTool(
+            description = "Search across Redmine content. Returns generic search hits with title, type, URL, " +
+            "description excerpt, and datetime. Use searchIssues for issue summaries and searchWikiPages for wiki-only results.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public RedmineSearchResult searchAll(
             @McpToolParam(description = "Search query text") String query,
             @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
             @McpToolParam(description = "Comma-separated content types to include: issues, wiki_pages, news, documents, changesets, messages, projects (optional)", required = false) String types,
@@ -40,10 +41,10 @@ public class SearchTools {
         try {
             var result = searchService.searchAll(query, projectId, types, actualOffset, actualLimit);
             ToolLogger.completed(log, "searchAll", start);
-            return json.write(result);
+            return result;
         } catch (IllegalArgumentException e) {
             ToolLogger.failed(log, "searchAll", start, e.getMessage());
-            return errors.argument(e.getMessage());
+            throw e;
         }
     }
 }

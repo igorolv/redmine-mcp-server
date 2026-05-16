@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentResult;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
@@ -16,44 +17,44 @@ public class AttachmentTools {
     private static final Logger log = LoggerFactory.getLogger(AttachmentTools.class);
 
     private final AttachmentService attachmentService;
-    private final JsonResponses json;
-    private final ToolErrors errors;
 
-    public AttachmentTools(AttachmentService attachmentService, JsonResponses json, ToolErrors errors) {
+    public AttachmentTools(AttachmentService attachmentService) {
         this.attachmentService = attachmentService;
-        this.json = json;
-        this.errors = errors;
     }
 
-    @McpTool(description = "Get an attachment from Redmine. Always downloads the original file into the local " +
+    @McpTool(
+            description = "Get an attachment from Redmine. Always downloads the original file into the local " +
             "issue snapshot directory and returns localPath/fileUri. Also extracts text context into parts[] " +
             "when supported: text files, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives. " +
             "ZIP archives can produce one part per archive entry. Images and other binary files return " +
             "metadata, localPath/fileUri, and a note without text parts. " +
-            "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.")
-    public String getAttachment(
+            "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public AttachmentResult getAttachment(
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
         return getAttachmentInternal(issueId, attachmentId);
     }
 
-    private String getAttachmentInternal(int issueId, int attachmentId) {
+    private AttachmentResult getAttachmentInternal(int issueId, int attachmentId) {
         log.info("Tool call: getAttachment (attachmentId={}, issueId={})", attachmentId, issueId);
         long start = System.nanoTime();
         try {
             var result = attachmentService.getAttachment(issueId, attachmentId);
             ToolLogger.completed(log, "getAttachment", start);
-            return json.write(result);
+            return result;
         } catch (AttachmentNotFoundException e) {
             ToolLogger.failed(log, "getAttachment", start, e.getMessage());
-            return errors.notFound("attachment", "#" + attachmentId);
+            throw e;
         } catch (IssueNotFoundException e) {
             ToolLogger.failed(log, "getAttachment", start, e.getMessage());
-            return errors.notFound("issue", "#" + issueId);
+            throw e;
         } catch (AttachmentDownloadFailedException e) {
             ToolLogger.failed(log, "getAttachment", start, e.getMessage());
-            return errors.unavailable("attachment #" + attachmentId);
+            throw e;
         }
     }
 

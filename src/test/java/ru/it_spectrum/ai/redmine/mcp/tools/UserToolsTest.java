@@ -14,6 +14,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.UserService;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,7 +27,7 @@ class UserToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new UserTools(new UserService(client), ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new UserTools(new UserService(client));
     }
 
     @Test
@@ -40,7 +41,7 @@ class UserToolsTest {
                 List.of(new IdName(5, "Developers")), memberships);
         when(client.getCurrentUser()).thenReturn(user);
 
-        String result = tools.getCurrentUser();
+        var result = ToolJsonTestSupport.stringify(tools.getCurrentUser());
 
         assertThat(result).contains("\"id\":42");
         assertThat(result).contains("\"login\":\"jdoe\"");
@@ -59,7 +60,7 @@ class UserToolsTest {
                 null, null, null, null, "2025-01-01T00:00:00Z", null, null);
         when(client.getCurrentUser()).thenReturn(user);
 
-        String result = tools.getCurrentUser();
+        var result = ToolJsonTestSupport.stringify(tools.getCurrentUser());
 
         assertThat(result).contains("\"firstname\":\"Solo\"");
         assertThat(result).contains("\"lastname\":\"Dev\"");
@@ -71,9 +72,7 @@ class UserToolsTest {
     void shouldHandleUserNotAvailable() {
         when(client.getCurrentUser()).thenReturn(null);
 
-        String result = tools.getCurrentUser();
-
-        assertThat(result).contains("\"kind\":\"unavailable\"");
-        assertThat(result).contains("current user unavailable");
+        assertThatThrownBy(() -> tools.getCurrentUser())
+                .hasMessageContaining("current user unavailable");
     }
 }

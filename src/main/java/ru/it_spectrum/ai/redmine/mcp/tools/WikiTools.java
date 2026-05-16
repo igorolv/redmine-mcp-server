@@ -5,8 +5,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPage;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
+
+import java.util.List;
 
 @Service
 public class WikiTools {
@@ -14,18 +18,18 @@ public class WikiTools {
     private static final Logger log = LoggerFactory.getLogger(WikiTools.class);
 
     private final WikiService wikiService;
-    private final JsonResponses json;
-    private final ToolErrors errors;
 
-    public WikiTools(WikiService wikiService, JsonResponses json, ToolErrors errors) {
+    public WikiTools(WikiService wikiService) {
         this.wikiService = wikiService;
-        this.json = json;
-        this.errors = errors;
     }
 
-    @McpTool(description = "Get a wiki page from a Redmine project. " +
-            "Returns the page title, content (in Textile/Markdown markup), author, and attachments.")
-    public String getWikiPage(
+    @McpTool(
+            description = "Get a wiki page from a Redmine project. " +
+            "Returns the page title, content (in Textile/Markdown markup), author, and attachments.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public RedmineWikiPage getWikiPage(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
             @McpToolParam(description = "Wiki page title (use 'Wiki' for the start page)") String pageTitle
     ) {
@@ -34,29 +38,37 @@ public class WikiTools {
         try {
             var result = wikiService.getPageOrThrow(projectId, pageTitle);
             ToolLogger.completed(log, "getWikiPage", start);
-            return json.write(result);
+            return result;
         } catch (ResourceNotFoundException e) {
             ToolLogger.failed(log, "getWikiPage", start, e.getMessage());
-            return errors.notFound(e.resource(), e.id());
+            throw e;
         }
     }
 
-    @McpTool(description = "List all wiki pages in a Redmine project. " +
-            "Returns page titles and dates. Use getWikiPage to read a specific page's content.")
-    public String listWikiPages(
+    @McpTool(
+            description = "List all wiki pages in a Redmine project. " +
+            "Returns page titles and dates. Use getWikiPage to read a specific page's content.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public List<RedmineWikiPage> listWikiPages(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
         log.info("Tool call: listWikiPages (projectId={})", projectId);
         long start = System.nanoTime();
         var result = wikiService.listPages(projectId);
         ToolLogger.completed(log, "listWikiPages", start);
-        return json.write(result);
+        return result;
     }
 
-    @McpTool(description = "Search Redmine wiki pages using full-text search. " +
+    @McpTool(
+            description = "Search Redmine wiki pages using full-text search. " +
             "Returns wiki search hits with title, URL, description excerpt, and datetime. " +
-            "Use getWikiPage to read a specific page's full content.")
-    public String searchWikiPages(
+            "Use getWikiPage to read a specific page's full content.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public RedmineSearchResult searchWikiPages(
             @McpToolParam(description = "Search query text") String query,
             @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
@@ -70,6 +82,6 @@ public class WikiTools {
 
         var result = wikiService.searchPages(query, projectId, actualOffset, actualLimit);
         ToolLogger.completed(log, "searchWikiPages", start);
-        return json.write(result);
+        return result;
     }
 }

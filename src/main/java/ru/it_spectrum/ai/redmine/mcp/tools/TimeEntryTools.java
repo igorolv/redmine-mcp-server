@@ -5,6 +5,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry;
+import ru.it_spectrum.ai.redmine.mcp.model.MyTimeEntriesResult;
+import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
 import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryService;
 
 @Service
@@ -13,19 +16,19 @@ public class TimeEntryTools {
     private static final Logger log = LoggerFactory.getLogger(TimeEntryTools.class);
 
     private final TimeEntryService timeEntryService;
-    private final JsonResponses json;
-    private final ToolErrors errors;
 
-    public TimeEntryTools(TimeEntryService timeEntryService, JsonResponses json, ToolErrors errors) {
+    public TimeEntryTools(TimeEntryService timeEntryService) {
         this.timeEntryService = timeEntryService;
-        this.json = json;
-        this.errors = errors;
     }
 
-    @McpTool(description = "List time entries (time tracking / logged hours) in Redmine. " +
+    @McpTool(
+            description = "List time entries (time tracking / logged hours) in Redmine. " +
             "Filter by project, issue, user, or date range. " +
-            "Returns hours, activity type, user, date, and comments.")
-    public String listTimeEntries(
+            "Returns hours, activity type, user, date, and comments.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public RedmineTimeEntry.Page listTimeEntries(
             @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
             @McpToolParam(description = "Issue ID to filter by (optional)", required = false) Integer issueId,
             @McpToolParam(description = "User ID to filter by (optional)", required = false) Integer userId,
@@ -42,14 +45,18 @@ public class TimeEntryTools {
 
         var result = timeEntryService.list(projectId, issueId, userId, from, to, actualOffset, actualLimit);
         ToolLogger.completed(log, "listTimeEntries", start);
-        return json.write(result);
+        return result;
     }
 
-    @McpTool(description = "List time entries for the currently authenticated user. " +
+    @McpTool(
+            description = "List time entries for the currently authenticated user. " +
             "Convenient shortcut — no need to call getCurrentUser first. " +
             "Filter by project, issue, or date range. " +
-            "Returns hours, activity type, date, and comments.")
-    public String getMyTimeEntries(
+            "Returns hours, activity type, date, and comments.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public MyTimeEntriesResult getMyTimeEntries(
             @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
             @McpToolParam(description = "Issue ID to filter by (optional)", required = false) Integer issueId,
             @McpToolParam(description = "From date, YYYY-MM-DD (optional)", required = false) String from,
@@ -64,11 +71,13 @@ public class TimeEntryTools {
         int actualOffset = offset != null ? offset : 0;
 
         var result = timeEntryService.getMyTimeEntries(projectId, issueId, from, to, actualOffset, actualLimit);
-        ToolLogger.completed(log, "getMyTimeEntries", start);
         if (result.isEmpty()) {
-            return errors.unavailable("current user");
+            var e = new ResourceUnavailableException("current user");
+            ToolLogger.failed(log, "getMyTimeEntries", start, e.getMessage());
+            throw e;
         }
-        return json.write(result.get());
+        ToolLogger.completed(log, "getMyTimeEntries", start);
+        return result.get();
     }
 
 }

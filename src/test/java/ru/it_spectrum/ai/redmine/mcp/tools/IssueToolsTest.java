@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,8 +34,7 @@ class IssueToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new IssueTools(new IssueService(client), contextService,
-                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new IssueTools(new IssueService(client), contextService);
     }
 
     // --- getMyIssues ---
@@ -52,7 +52,7 @@ class IssueToolsTest {
         when(client.listIssues(null, null, null, 42, null, null, null, 0, 25))
                 .thenReturn(new RedmineIssueSummary.Page(issues, 2, 0, 25));
 
-        String result = tools.getMyIssues(null, null, null, null, null);
+        var result = ToolJsonTestSupport.stringify(tools.getMyIssues(null, null, null, null, null));
 
         assertThat(result).contains("\"user\"");
         assertThat(result).contains("\"firstname\":\"John\"");
@@ -74,7 +74,7 @@ class IssueToolsTest {
         when(client.listIssues("backend", "open", null, 42, null, null, "updated_on:desc", 0, 10))
                 .thenReturn(new RedmineIssueSummary.Page(issues, 1, 0, 10));
 
-        String result = tools.getMyIssues("backend", "open", "updated_on:desc", 10, 0);
+        var result = ToolJsonTestSupport.stringify(tools.getMyIssues("backend", "open", "updated_on:desc", 10, 0));
 
         assertThat(result).contains("\"firstname\":\"John\"");
         assertThat(result).contains("\"total_count\":1");
@@ -90,7 +90,7 @@ class IssueToolsTest {
         when(client.listIssues(null, null, null, 42, null, null, null, 0, 25))
                 .thenReturn(new RedmineIssueSummary.Page(List.of(), 0, 0, 25));
 
-        String result = tools.getMyIssues(null, null, null, null, null);
+        var result = ToolJsonTestSupport.stringify(tools.getMyIssues(null, null, null, null, null));
 
         assertThat(result).contains("\"total_count\":0");
     }
@@ -99,10 +99,8 @@ class IssueToolsTest {
     void shouldHandleCurrentUserNotAvailable() {
         when(client.getCurrentUser()).thenReturn(null);
 
-        String result = tools.getMyIssues(null, null, null, null, null);
-
-        assertThat(result).contains("\"kind\":\"unavailable\"");
-        assertThat(result).contains("current user unavailable");
+        assertThatThrownBy(() -> tools.getMyIssues(null, null, null, null, null))
+                .hasMessageContaining("current user unavailable");
     }
 
     // --- listIssues with queryId ---
@@ -113,7 +111,7 @@ class IssueToolsTest {
         when(client.listIssues(null, null, null, null, null, null, null, 7, Map.of(), 0, 25))
                 .thenReturn(new RedmineIssueSummary.Page(issues, 1, 0, 25));
 
-        String result = tools.listIssues(null, null, null, null, null, null, 7, null, null, null);
+        var result = ToolJsonTestSupport.stringify(tools.listIssues(null, null, null, null, null, null, 7, null, null, null));
 
         assertThat(result).contains("\"id\":301");
         assertThat(result).contains("Filtered issue");
@@ -126,8 +124,8 @@ class IssueToolsTest {
                 Map.of("cf_10", "rtk", "cf_3", "502167"), 0, 25))
                 .thenReturn(new RedmineIssueSummary.Page(issues, 1, 0, 25));
 
-        String result = tools.listIssues(null, null, null, null, null, null,
-                null, "cf_10=rtk&cf_3=502167", null, null, null);
+        var result = ToolJsonTestSupport.stringify(tools.listIssues(null, null, null, null, null, null,
+                null, "cf_10=rtk&cf_3=502167", null, null, null));
 
         assertThat(result).contains("\"id\":302");
         assertThat(result).contains("RTK issue");
@@ -135,11 +133,9 @@ class IssueToolsTest {
 
     @Test
     void shouldRejectInvalidCustomFieldFilters() {
-        String result = tools.listIssues(null, null, null, null, null, null,
-                null, "applications=rtk", null, null, null);
-
-        assertThat(result).contains("\"kind\":\"argument\"");
-        assertThat(result).contains("Invalid custom field key");
+        assertThatThrownBy(() -> tools.listIssues(null, null, null, null, null, null,
+                null, "applications=rtk", null, null, null))
+                .hasMessageContaining("Invalid custom field key");
     }
 
     // --- getIssue ---
@@ -167,7 +163,7 @@ class IssueToolsTest {
         );
         when(client.getIssue(100)).thenReturn(issue);
 
-        String result = tools.getIssue(100);
+        var result = ToolJsonTestSupport.stringify(tools.getIssue(100));
 
         assertThat(result).contains("\"id\":100");
         assertThat(result).contains("Parent issue");
@@ -204,7 +200,7 @@ class IssueToolsTest {
         );
         when(client.getIssue(4183)).thenReturn(issue);
 
-        String result = tools.getIssue(4183);
+        var result = ToolJsonTestSupport.stringify(tools.getIssue(4183));
 
         assertThat(result).contains("\"changesets\"");
         assertThat(result).contains("be561082833c6d4fbeba95228a253298a1cfa874");
@@ -237,7 +233,7 @@ class IssueToolsTest {
         );
         when(client.getIssue(101)).thenReturn(issue);
 
-        String result = tools.getIssue(101);
+        var result = ToolJsonTestSupport.stringify(tools.getIssue(101));
 
         assertThat(result).contains("# в системе заказчика");
         assertThat(result).contains("502167");
@@ -252,7 +248,7 @@ class IssueToolsTest {
         var issue = issue(200, "No children issue", "Open", "my-project");
         when(client.getIssue(200)).thenReturn(issue);
 
-        String result = tools.getIssue(200);
+        var result = ToolJsonTestSupport.stringify(tools.getIssue(200));
 
         assertThat(result).contains("\"id\":200");
         assertThat(result).contains("No children issue");
@@ -262,10 +258,8 @@ class IssueToolsTest {
     void shouldHandleIssueNotFound() {
         when(client.getIssue(999)).thenReturn(null);
 
-        String result = tools.getIssue(999);
-
-        assertThat(result).contains("\"kind\":\"not_found\"");
-        assertThat(result).contains("issue #999 not found");
+        assertThatThrownBy(() -> tools.getIssue(999))
+                .hasMessageContaining("Issue #999 not found");
     }
 
     // --- searchIssues ---
@@ -276,7 +270,7 @@ class IssueToolsTest {
         when(client.searchIssues("login", null, 0, 25))
                 .thenReturn(new SearchWithIssueSummaries(issues, 1, 0, 25));
 
-        String result = tools.searchIssues("login", null, null, null);
+        var result = ToolJsonTestSupport.stringify(tools.searchIssues("login", null, null, null));
 
         assertThat(result).contains("\"totalCount\":1");
         assertThat(result).contains("\"id\":101");
@@ -289,7 +283,7 @@ class IssueToolsTest {
         when(client.searchIssues("deploy", "infra", 0, 10))
                 .thenReturn(new SearchWithIssueSummaries(issues, 1, 0, 10));
 
-        String result = tools.searchIssues("deploy", "infra", 10, 0);
+        var result = ToolJsonTestSupport.stringify(tools.searchIssues("deploy", "infra", 10, 0));
 
         assertThat(result).contains("\"id\":201");
         assertThat(result).contains("Deploy failure");
@@ -315,7 +309,7 @@ class IssueToolsTest {
         when(client.getIssue(100)).thenReturn(rootIssue);
         when(client.getIssue(400)).thenReturn(childIssue);
 
-        String result = tools.getIssueTree(300, null);
+        var result = ToolJsonTestSupport.stringify(tools.getIssueTree(300, null));
 
         assertThat(result).contains("\"root\"");
         assertThat(result).contains("\"id\":300");
@@ -343,7 +337,7 @@ class IssueToolsTest {
         when(client.getIssue(2)).thenReturn(l1);
         // depth=1: should NOT fetch issue #3
 
-        String result = tools.getIssueTree(1, 1);
+        var result = ToolJsonTestSupport.stringify(tools.getIssueTree(1, 1));
 
         assertThat(result).contains("\"id\":1");
         assertThat(result).contains("Root");
@@ -359,10 +353,8 @@ class IssueToolsTest {
     void shouldHandleIssueNotFoundInTree() {
         when(client.getIssue(999)).thenReturn(null);
 
-        String result = tools.getIssueTree(999, null);
-
-        assertThat(result).contains("\"kind\":\"not_found\"");
-        assertThat(result).contains("issue #999 not found");
+        assertThatThrownBy(() -> tools.getIssueTree(999, null))
+                .hasMessageContaining("Issue #999 not found");
     }
 
     @Test
@@ -374,7 +366,7 @@ class IssueToolsTest {
         var issue = treeIssue(100, "Main task", "Open", "proj", null, List.of(), relations);
         when(client.getIssue(100)).thenReturn(issue);
 
-        String result = tools.getIssueTree(100, null);
+        var result = ToolJsonTestSupport.stringify(tools.getIssueTree(100, null));
 
         assertThat(result).contains("\"relations\"");
         assertThat(result).contains("\"issue_id\":100");

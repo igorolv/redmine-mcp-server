@@ -33,6 +33,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,7 +54,7 @@ class DocumentExtractionTest {
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
         var service = new AttachmentService(client,
                 new DocumentTextExtractor(), snapshot);
-        tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new AttachmentTools(service);
     }
 
     // --- PDF ---
@@ -66,7 +67,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pdfBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 1);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 1));
 
         assertThat(result).contains("report.pdf");
         assertThat(result).contains("\"textExtracted\":true");
@@ -81,7 +82,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pdfBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 2);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 2));
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("Extension-detected PDF");
@@ -98,7 +99,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 3);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 3));
 
         assertThat(result).contains("document.docx");
         assertThat(result).contains("\"textExtracted\":true");
@@ -116,7 +117,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 4);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 4));
 
         assertThat(result).contains("[Table]");
         assertThat(result).contains("Name | Age");
@@ -136,7 +137,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xlsxBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 5);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 5));
 
         assertThat(result).contains("data.xlsx");
         assertThat(result).contains("\"textExtracted\":true");
@@ -154,7 +155,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xlsxBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 6);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 6));
 
         assertThat(result).contains("Sheet: Sales");
         assertThat(result).contains("Sheet: Expenses");
@@ -173,7 +174,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pptxBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 7);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 7));
 
         assertThat(result).contains("presentation.pptx");
         assertThat(result).contains("\"textExtracted\":true");
@@ -192,7 +193,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(textBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 8);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 8));
 
         assertThat(result).contains("app.log");
         assertThat(result).contains("\"textExtracted\":true");
@@ -208,7 +209,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(jsonBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 9);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 9));
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(ToolJsonTestSupport.parse(result).get("parts").get(0).get("content").asText())
@@ -227,7 +228,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xsdBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 16);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 16));
 
         assertThat(result).contains("schema.xsd");
         assertThat(result).contains("\"textExtracted\":true");
@@ -253,7 +254,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(zipBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 17);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 17));
 
         assertThat(result).contains("bundle.zip");
         assertThat(result).contains("\"textExtracted\":true");
@@ -278,7 +279,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(imageBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 10);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 10));
 
         assertThat(result).contains("photo.png");
         assertThat(result).contains("Image file");
@@ -297,7 +298,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(textBytes);
 
-        String result = tools.getAttachment(ISSUE_ID, 11);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 11));
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("\"truncated\":true");
@@ -312,9 +313,8 @@ class DocumentExtractionTest {
     void shouldHandleAttachmentNotFound() {
         when(client.getIssue(ISSUE_ID)).thenReturn(issueWithAttachments(ISSUE_ID, java.util.List.of()));
 
-        String result = tools.getAttachment(ISSUE_ID, 999);
-
-        assertThat(result).contains("not found");
+        assertThatThrownBy(() -> tools.getAttachment(ISSUE_ID, 999))
+                .hasMessageContaining("not found");
     }
 
     // --- Corrupt document ---
@@ -327,7 +327,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(garbage);
 
-        String result = tools.getAttachment(ISSUE_ID, 12);
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 12));
 
         assertThat(result).contains("corrupt.pdf");
         assertThat(result).contains("\"textExtracted\":true");

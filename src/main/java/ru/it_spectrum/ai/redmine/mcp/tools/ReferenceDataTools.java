@@ -5,7 +5,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineQuery;
 import ru.it_spectrum.ai.redmine.mcp.service.ReferenceDataService;
+
+import java.util.List;
 
 @Service
 public class ReferenceDataTools {
@@ -13,69 +17,91 @@ public class ReferenceDataTools {
     private static final Logger log = LoggerFactory.getLogger(ReferenceDataTools.class);
 
     private final ReferenceDataService referenceDataService;
-    private final JsonResponses json;
 
-    public ReferenceDataTools(ReferenceDataService referenceDataService, JsonResponses json) {
+    public ReferenceDataTools(ReferenceDataService referenceDataService) {
         this.referenceDataService = referenceDataService;
-        this.json = json;
     }
 
-    @McpTool(description = "List all available issue statuses in Redmine. " +
-            "Returns status IDs and names. Use these IDs for filtering in listIssues.")
-    public String listStatuses() {
+    @McpTool(
+            description = "List all available issue statuses in Redmine. " +
+            "Returns status IDs and names. Use these IDs for filtering in listIssues.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public List<IdName> listStatuses() {
         log.info("Tool call: listStatuses");
         long start = System.nanoTime();
         var result = referenceDataService.listStatuses();
         ToolLogger.completed(log, "listStatuses", start);
-        return json.write(result);
+        return result;
     }
 
-    @McpTool(description = "List all available trackers in Redmine. " +
-            "Returns tracker IDs and names. Use these IDs for filtering in listIssues.")
-    public String listTrackers() {
+    @McpTool(
+            description = "List all available trackers in Redmine. " +
+            "Returns tracker IDs and names. Use these IDs for filtering in listIssues.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public List<IdName> listTrackers() {
         log.info("Tool call: listTrackers");
         long start = System.nanoTime();
         var result = referenceDataService.listTrackers();
         ToolLogger.completed(log, "listTrackers", start);
-        return json.write(result);
+        return result;
     }
 
-    @McpTool(description = "List all available issue priorities in Redmine. " +
-            "Returns priority IDs and names. Use these IDs for filtering in listIssues.")
-    public String listPriorities() {
+    @McpTool(
+            description = "List all available issue priorities in Redmine. " +
+            "Returns priority IDs and names. Use these IDs for filtering in listIssues.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public List<IdName> listPriorities() {
         log.info("Tool call: listPriorities");
         long start = System.nanoTime();
         var result = referenceDataService.listPriorities();
         ToolLogger.completed(log, "listPriorities", start);
-        return json.write(result);
+        return result;
     }
 
-    @McpTool(description = "List issue categories for a specific Redmine project. " +
-            "Returns category IDs and names. Categories are project-specific.")
-    public String listIssueCategories(
+    @McpTool(
+            description = "List issue categories for a specific Redmine project. " +
+            "Returns category IDs and names. Categories are project-specific.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public List<IdName> listIssueCategories(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
         log.info("Tool call: listIssueCategories (projectId={})", projectId);
         long start = System.nanoTime();
         var result = referenceDataService.listIssueCategories(projectId);
         ToolLogger.completed(log, "listIssueCategories", start);
-        return json.write(result);
+        return result;
     }
 
-    @McpTool(description = "List all available time entry activity types in Redmine. " +
-            "Returns activity IDs and names for interpreting existing time entries.")
-    public String listTimeEntryActivities() {
+    @McpTool(
+            description = "List all available time entry activity types in Redmine. " +
+            "Returns activity IDs and names for interpreting existing time entries.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public List<IdName> listTimeEntryActivities() {
         log.info("Tool call: listTimeEntryActivities");
         long start = System.nanoTime();
         var result = referenceDataService.listTimeEntryActivities();
         ToolLogger.completed(log, "listTimeEntryActivities", start);
-        return json.write(result);
+        return result;
     }
 
-    @McpTool(description = "List saved queries (custom filters) available in Redmine. " +
+    @McpTool(
+            description = "List saved queries (custom filters) available in Redmine. " +
             "Returns query IDs and names. Use the query ID with listIssues(queryId) " +
-            "to apply a saved filter — especially useful for queries that use custom fields.")
-    public String listQueries(
+            "to apply a saved filter — especially useful for queries that use custom fields.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public RedmineQuery.Page listQueries(
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
@@ -86,6 +112,6 @@ public class ReferenceDataTools {
 
         var result = referenceDataService.listQueries(actualOffset, actualLimit);
         ToolLogger.completed(log, "listQueries", start);
-        return json.write(result);
+        return result;
     }
 }

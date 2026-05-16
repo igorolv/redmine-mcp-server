@@ -6,21 +6,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 final class ToolJsonTestSupport {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final JsonResponses JSON = new JsonResponses(MAPPER);
-    private static final ToolErrors ERRORS = new ToolErrors(JSON);
 
     private ToolJsonTestSupport() {
     }
 
-    static JsonResponses json() {
-        return JSON;
+    static JsonNode parse(Object value) throws Exception {
+        if (value instanceof String json) {
+            return MAPPER.readTree(json);
+        }
+        return MAPPER.valueToTree(value);
     }
 
-    static ToolErrors errors() {
-        return ERRORS;
-    }
-
-    static JsonNode parse(String value) throws Exception {
-        return MAPPER.readTree(value);
+    static String stringify(Object value) {
+        try {
+            if (value instanceof String json) {
+                return json;
+            }
+            return MAPPER.writeValueAsString(value);
+        } catch (Exception e) {
+            throw new AssertionError("Invalid JSON", e);
+        }
     }
 }

@@ -39,7 +39,7 @@ class Issue4202DocxIntegrationTest {
 
         printIssueAndAttachment(issue, attachment);
 
-        String content = readAttachmentContext(attachment);
+        var content = ToolJsonTestSupport.stringify(readAttachmentContext(attachment));
         var contentJson = ToolJsonTestSupport.parse(content);
         String contentBody = contentJson.get("parts").get(0).get("content").asText();
 
@@ -58,7 +58,7 @@ class Issue4202DocxIntegrationTest {
         System.out.println(snippet(contentBody, 2_000));
         System.out.println();
         System.out.println("AttachmentTools.getAttachment preview:");
-        System.out.println(snippet(content, 2_000));
+        System.out.println(snippet(ToolJsonTestSupport.stringify(content), 2_000));
     }
 
     @Test
@@ -66,7 +66,7 @@ class Issue4202DocxIntegrationTest {
         var issue = loadIssue4202();
         var attachment = findFirstImageAttachment(issue);
 
-        String result = attachmentTools.getAttachment(ISSUE_ID, attachment.id());
+        var result = ToolJsonTestSupport.stringify(attachmentTools.getAttachment(ISSUE_ID, attachment.id()));
         var json = ToolJsonTestSupport.parse(result);
 
         assertThat(json.get("attachment").get("filename").asText()).isEqualTo(attachment.filename());
@@ -156,7 +156,7 @@ class Issue4202DocxIntegrationTest {
         return attachment;
     }
 
-    private String readAttachmentContext(RedmineAttachment attachment) {
+    private Object readAttachmentContext(RedmineAttachment attachment) {
         try {
             return attachmentTools.getAttachment(ISSUE_ID, attachment.id());
         } catch (Exception e) {

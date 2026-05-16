@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -27,7 +28,7 @@ class SearchToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new SearchTools(new SearchService(client), ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new SearchTools(new SearchService(client));
     }
 
     @Test
@@ -41,7 +42,7 @@ class SearchToolsTest {
         when(client.search("auth", null, Set.of(), true, 0, 25))
                 .thenReturn(new RedmineSearchResult(results, 2, 0, 25));
 
-        String result = tools.searchAll("auth", null, null, null, null);
+        var result = ToolJsonTestSupport.stringify(tools.searchAll("auth", null, null, null, null));
 
         assertThat(result).contains("\"total_count\":2");
         assertThat(result).contains("\"type\":\"issue\"");
@@ -62,7 +63,7 @@ class SearchToolsTest {
         when(client.search("auth", "backend", Set.of(SearchType.ISSUES, SearchType.WIKI_PAGES), true, 10, 5))
                 .thenReturn(new RedmineSearchResult(results, 1, 10, 5));
 
-        String result = tools.searchAll("auth", "backend", "issues,wiki-pages", 5, 10);
+        var result = ToolJsonTestSupport.stringify(tools.searchAll("auth", "backend", "issues,wiki-pages", 5, 10));
 
         assertThat(result).contains("\"total_count\":1");
         assertThat(result).contains("\"type\":\"wiki-page\"");
@@ -71,10 +72,8 @@ class SearchToolsTest {
 
     @Test
     void shouldRejectInvalidSearchType() {
-        String result = tools.searchAll("auth", null, "invalid", null, null);
-
-        assertThat(result).contains("\"kind\":\"argument\"");
-        assertThat(result).contains("Invalid search type");
+        assertThatThrownBy(() -> tools.searchAll("auth", null, "invalid", null, null))
+                .hasMessageContaining("Invalid search type");
         verifyNoInteractions(client);
     }
 }

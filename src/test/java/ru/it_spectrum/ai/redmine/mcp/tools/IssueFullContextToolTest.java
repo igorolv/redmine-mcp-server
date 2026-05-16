@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,8 +42,7 @@ class IssueFullContextToolTest {
         var service = new AttachmentService(client,
                 new DocumentTextExtractor(), snapshot);
         var issueService = new IssueService(client);
-        tools = new IssueTools(issueService, new ContextService(client, service, issueService),
-                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new IssueTools(issueService, new ContextService(client, service, issueService));
     }
 
     // ── getIssueFullContext ──────────────────────────────────────────
@@ -80,7 +80,7 @@ class IssueFullContextToolTest {
             when(client.getIssue(124)).thenReturn(siblingCharts);
             when(client.getIssue(95)).thenReturn(related);
 
-            String result = tools.getIssueFullContext(123);
+            var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(123));
 
             assertThat(result).contains("\"issue\"");
             assertThat(result).contains("\"history\"");
@@ -118,7 +118,7 @@ class IssueFullContextToolTest {
 
             when(client.getIssue(123)).thenReturn(issue);
 
-            String result = tools.getIssueFullContext(123);
+            var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(123));
 
             assertThat(result).contains("custom_fields");
             assertThat(result).contains("# в системе заказчика");
@@ -151,7 +151,7 @@ class IssueFullContextToolTest {
             when(client.getIssueStatuses()).thenReturn(List.of(
                     new IdName(1, "New"), new IdName(2, "In Progress")));
 
-            String result = tools.getIssueFullContext(123);
+            var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(123));
 
             assertThat(result).contains("\"history\"");
             assertThat(result).contains("\"kind\":\"CREATED\"");
@@ -170,7 +170,8 @@ class IssueFullContextToolTest {
         @Test
         void shouldHandleIssueNotFound() {
             when(client.getIssue(999)).thenReturn(null);
-            assertThat(tools.getIssueFullContext(999)).contains("not found");
+            assertThatThrownBy(() -> tools.getIssueFullContext(999))
+                    .hasMessageContaining("not found");
         }
 
         @Test
@@ -181,7 +182,7 @@ class IssueFullContextToolTest {
 
             when(client.getIssue(10)).thenReturn(issue);
 
-            String result = tools.getIssueFullContext(10);
+            var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(10));
 
             assertThat(result).contains("\"id\":10");
             assertThat(result).contains("Standalone task");
@@ -204,7 +205,7 @@ class IssueFullContextToolTest {
             when(client.getIssue(123)).thenReturn(issue);
             when(client.getIssue(201)).thenReturn(contextIssue);
 
-            String result = tools.getIssueFullContext(123);
+            var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(123));
 
             var root = new ObjectMapper().readTree(result);
             var contextIssues = root.get("contextIssues");

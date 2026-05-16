@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,7 +30,7 @@ class WikiToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new WikiTools(new WikiService(client), ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new WikiTools(new WikiService(client));
     }
 
     // --- getWikiPage ---
@@ -45,7 +46,7 @@ class WikiToolsTest {
                 3, new IdName(1, "Admin"), null, null, "2025-02-01", attachments);
         when(client.getWikiPage("backend", "Getting_Started")).thenReturn(page);
 
-        String result = tools.getWikiPage("backend", "Getting_Started");
+        var result = ToolJsonTestSupport.stringify(tools.getWikiPage("backend", "Getting_Started"));
 
         assertThat(result).contains("\"title\":\"Getting Started\"");
         assertThat(result).contains("Admin");
@@ -60,10 +61,8 @@ class WikiToolsTest {
     void shouldHandleWikiPageNotFound() {
         when(client.getWikiPage("backend", "Nonexistent")).thenReturn(null);
 
-        String result = tools.getWikiPage("backend", "Nonexistent");
-
-        assertThat(result).contains("\"kind\":\"not_found\"");
-        assertThat(result).contains("wiki page Nonexistent not found");
+        assertThatThrownBy(() -> tools.getWikiPage("backend", "Nonexistent"))
+                .hasMessageContaining("wiki page Nonexistent not found");
     }
 
     // --- listWikiPages ---
@@ -76,7 +75,7 @@ class WikiToolsTest {
         );
         when(client.getWikiIndex("backend")).thenReturn(pages);
 
-        String result = tools.listWikiPages("backend");
+        var result = ToolJsonTestSupport.stringify(tools.listWikiPages("backend"));
 
         assertThat(result).contains("\"title\":\"Wiki\"");
         assertThat(result).contains("2025-01-01");
@@ -88,7 +87,7 @@ class WikiToolsTest {
     void shouldHandleNoWikiPages() {
         when(client.getWikiIndex("empty")).thenReturn(List.of());
 
-        String result = tools.listWikiPages("empty");
+        var result = ToolJsonTestSupport.stringify(tools.listWikiPages("empty"));
 
         assertThat(result).isEqualTo("[]");
     }
@@ -104,7 +103,7 @@ class WikiToolsTest {
         when(client.search("auth", "backend", Set.of(SearchType.WIKI_PAGES), false, 0, 10))
                 .thenReturn(new RedmineSearchResult(results, 1, 0, 10));
 
-        String result = tools.searchWikiPages("auth", "backend", 10, 0);
+        var result = ToolJsonTestSupport.stringify(tools.searchWikiPages("auth", "backend", 10, 0));
 
         assertThat(result).contains("\"total_count\":1");
         assertThat(result).contains("\"type\":\"wiki-page\"");
