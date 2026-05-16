@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ContextToolsTest {
+class IssueFullContextToolTest {
 
     @Mock
     private RedmineClient client;
@@ -33,14 +33,15 @@ class ContextToolsTest {
     @TempDir
     private Path dataDir;
 
-    private ContextTools tools;
+    private IssueTools tools;
 
     @BeforeEach
     void setUp() {
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
         var service = new AttachmentService(client,
                 new DocumentTextExtractor(), snapshot);
-        tools = new ContextTools(new ContextService(client, service, new IssueService(client)),
+        var issueService = new IssueService(client);
+        tools = new IssueTools(issueService, new ContextService(client, service, issueService),
                 ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 

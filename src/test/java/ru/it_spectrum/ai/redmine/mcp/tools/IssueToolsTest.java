@@ -11,6 +11,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 
 import java.util.List;
@@ -25,11 +26,15 @@ class IssueToolsTest {
     @Mock
     private RedmineClient client;
 
+    @Mock
+    private ContextService contextService;
+
     private IssueTools tools;
 
     @BeforeEach
     void setUp() {
-        tools = new IssueTools(new IssueService(client), ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
+        tools = new IssueTools(new IssueService(client), contextService,
+                ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
     // --- getMyIssues ---

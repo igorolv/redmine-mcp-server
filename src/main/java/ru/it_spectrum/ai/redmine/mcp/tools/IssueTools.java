@@ -6,6 +6,7 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
+import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 
@@ -17,11 +18,13 @@ public class IssueTools {
     private static final Logger log = LoggerFactory.getLogger(IssueTools.class);
 
     private final IssueService issueService;
+    private final ContextService contextService;
     private final JsonResponses json;
     private final ToolErrors errors;
 
-    public IssueTools(IssueService issueService, JsonResponses json, ToolErrors errors) {
+    public IssueTools(IssueService issueService, ContextService contextService, JsonResponses json, ToolErrors errors) {
         this.issueService = issueService;
+        this.contextService = contextService;
         this.json = json;
         this.errors = errors;
     }
@@ -149,6 +152,25 @@ public class IssueTools {
             return errors.notFound("issue", "#" + issueId);
         }
         return json.write(maybeIssue.get());
+    }
+
+    @McpTool(description = "Get full context needed to understand and implement a Redmine issue. " +
+            "One call replaces 10+ separate tool calls. Returns: the issue with description, " +
+            "interpreted history timeline with status durations, " +
+            "nearby context issues with explicit roles (parent, sibling, child, related), " +
+            "document attachments extracted inline (PDF/DOCX/XLSX), recent discussion notes, " +
+            "and truncation flags. Ideal first call when investigating or implementing a task.")
+    public String getIssueFullContext(
+            @McpToolParam(description = "Issue ID number") int issueId
+    ) {
+        log.info("Tool call: getIssueFullContext (issueId={})", issueId);
+        long start = System.nanoTime();
+        var result = contextService.getIssueFullContext(issueId);
+        ToolLogger.completed(log, "getIssueFullContext", start);
+        if (result.isEmpty()) {
+            return errors.notFound("issue", "#" + issueId);
+        }
+        return json.write(result.get());
     }
 
 }
