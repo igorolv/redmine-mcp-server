@@ -228,7 +228,7 @@ public class IssueService {
             return null;
         }
         fetchCount[0]++;
-        return ctx.getIssueForTree(issueId);
+        return ctx.getIssue(issueId);
     }
 
     private IssueTreeView.TreeNode nodeFromIssue(RedmineIssue issue) {

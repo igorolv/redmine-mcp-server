@@ -52,7 +52,7 @@ public class ContextService {
         if (parent != null && parent.children() != null && parent.children().size() > 1) {
             for (var child : parent.children()) {
                 if (child.id() != issueId && siblings.size() < MAX_SIBLINGS) {
-                    var sibling = client.getIssueForTree(child.id());
+                    var sibling = client.getIssue(child.id());
                     fetchCount++;
                     if (sibling != null) siblings.add(sibling);
                 }
@@ -67,7 +67,7 @@ public class ContextService {
                 if (relCount >= MAX_RELATED) break;
                 int relatedId = rel.issueId() == issueId ? rel.issueToId() : rel.issueId();
                 String relType = formatRelationType(rel, issueId);
-                var related = client.getIssueForTree(relatedId);
+                var related = client.getIssue(relatedId);
                 fetchCount++;
                 relCount++;
                 if (related != null) {

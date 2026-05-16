@@ -66,17 +66,17 @@ class ContextToolsTest {
                     .journals(List.of(journal(1, "Alice", "Check the date format spec")))
                     .build();
 
-            var related = issueForTree(95, "Date API endpoint",
+            var related = contextIssue(95, "Date API endpoint",
                     new IdName(3, "Closed"), new IdName(3, "Charlie"),
                     "REST endpoint for date-based filtering");
 
-            var siblingCharts = issueForTree(124, "Add charts",
+            var siblingCharts = contextIssue(124, "Add charts",
                     new IdName(1, "New"), null, null);
 
             when(client.getIssue(123)).thenReturn(issue);
             when(client.getIssue(100)).thenReturn(parent);
-            when(client.getIssueForTree(124)).thenReturn(siblingCharts);
-            when(client.getIssueForTree(95)).thenReturn(related);
+            when(client.getIssue(124)).thenReturn(siblingCharts);
+            when(client.getIssue(95)).thenReturn(related);
 
             String result = tools.getIssueFullContext(123);
 
@@ -187,9 +187,8 @@ class ContextToolsTest {
         }
     }
 
-    /** Lightweight issue (returned by getIssueForTree) */
-    private static RedmineIssue issueForTree(int id, String subject,
-                                              IdName status, IdName assignedTo, String description) {
+    private static RedmineIssue contextIssue(int id, String subject,
+                                             IdName status, IdName assignedTo, String description) {
         return new RedmineIssue(id,
                 new IdName(1, "project"), new IdName(2, "Task"),
                 status, new IdName(2, "Normal"),

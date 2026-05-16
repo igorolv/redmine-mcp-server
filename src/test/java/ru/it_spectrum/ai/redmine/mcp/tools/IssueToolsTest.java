@@ -331,10 +331,10 @@ class IssueToolsTest {
         var childIssue = treeIssue(400, "Child task", "New", "proj",
                 new IdName(300, "Current task"), List.of(), null);
 
-        when(client.getIssueForTree(300)).thenReturn(currentIssue);
-        when(client.getIssueForTree(200)).thenReturn(parentIssue);
-        when(client.getIssueForTree(100)).thenReturn(rootIssue);
-        when(client.getIssueForTree(400)).thenReturn(childIssue);
+        when(client.getIssue(300)).thenReturn(currentIssue);
+        when(client.getIssue(200)).thenReturn(parentIssue);
+        when(client.getIssue(100)).thenReturn(rootIssue);
+        when(client.getIssue(400)).thenReturn(childIssue);
 
         String result = tools.getIssueTree(300, null);
 
@@ -360,8 +360,8 @@ class IssueToolsTest {
         var l2 = treeIssue(3, "L2", "Open", "proj",
                 new IdName(2, "L1"), List.of(new RedmineIssue.Child(4, new IdName(1, "Task"), "L3")), null);
 
-        when(client.getIssueForTree(1)).thenReturn(currentIssue);
-        when(client.getIssueForTree(2)).thenReturn(l1);
+        when(client.getIssue(1)).thenReturn(currentIssue);
+        when(client.getIssue(2)).thenReturn(l1);
         // depth=1: should NOT fetch issue #3
 
         String result = tools.getIssueTree(1, 1);
@@ -378,7 +378,7 @@ class IssueToolsTest {
 
     @Test
     void shouldHandleIssueNotFoundInTree() {
-        when(client.getIssueForTree(999)).thenReturn(null);
+        when(client.getIssue(999)).thenReturn(null);
 
         String result = tools.getIssueTree(999, null);
 
@@ -393,7 +393,7 @@ class IssueToolsTest {
                 new RedmineIssue.Relation(2, 300, 100, "relates", null)
         );
         var issue = treeIssue(100, "Main task", "Open", "proj", null, List.of(), relations);
-        when(client.getIssueForTree(100)).thenReturn(issue);
+        when(client.getIssue(100)).thenReturn(issue);
 
         String result = tools.getIssueTree(100, null);
 

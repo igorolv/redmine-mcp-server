@@ -178,9 +178,9 @@ class AnalysisToolsTest {
                 new RedmineIssue.Relation(2, 100, 300, "blocks", null)
         ));
 
-        when(client.getIssueForTree(100)).thenReturn(issue100);
-        when(client.getIssueForTree(200)).thenReturn(issue200);
-        when(client.getIssueForTree(300)).thenReturn(issue300);
+        when(client.getIssue(100)).thenReturn(issue100);
+        when(client.getIssue(200)).thenReturn(issue200);
+        when(client.getIssue(300)).thenReturn(issue300);
 
         String result = tools.getBlockerChain(100);
 
@@ -198,7 +198,7 @@ class AnalysisToolsTest {
     @Test
     void shouldHandleNoBlockingRelations() {
         var issue = issueWithRelations(100, "Standalone", "Open", List.of());
-        when(client.getIssueForTree(100)).thenReturn(issue);
+        when(client.getIssue(100)).thenReturn(issue);
 
         String result = tools.getBlockerChain(100);
 
@@ -208,7 +208,7 @@ class AnalysisToolsTest {
 
     @Test
     void shouldHandleIssueNotFoundInBlockerChain() {
-        when(client.getIssueForTree(999)).thenReturn(null);
+        when(client.getIssue(999)).thenReturn(null);
 
         String result = tools.getBlockerChain(999);
 

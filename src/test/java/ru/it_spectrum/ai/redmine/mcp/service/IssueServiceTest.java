@@ -110,7 +110,7 @@ class IssueServiceTest {
 
     @Test
     void getTreeShouldThrowWhenRootMissing() {
-        when(client.getIssueForTree(99)).thenReturn(null);
+        when(client.getIssue(99)).thenReturn(null);
         assertThatThrownBy(() -> service.getTree(99, null))
                 .isInstanceOf(IssueNotFoundException.class);
     }
@@ -120,9 +120,9 @@ class IssueServiceTest {
         var grandParent = treeIssue(1, "Root", null, List.of(child(2, "Mid")));
         var parent = treeIssue(2, "Mid", new IdName(1, "Root"), List.of(child(3, "Leaf")));
         var leaf = treeIssue(3, "Leaf", new IdName(2, "Mid"), List.of());
-        when(client.getIssueForTree(3)).thenReturn(leaf);
-        when(client.getIssueForTree(2)).thenReturn(parent);
-        when(client.getIssueForTree(1)).thenReturn(grandParent);
+        when(client.getIssue(3)).thenReturn(leaf);
+        when(client.getIssue(2)).thenReturn(parent);
+        when(client.getIssue(1)).thenReturn(grandParent);
 
         var view = service.getTree(3, 2);
 
@@ -137,8 +137,8 @@ class IssueServiceTest {
     void getTreeShouldRespectDepthLimitWithStubChildren() {
         var root = treeIssue(1, "Root", null, List.of(child(2, "L1")));
         var l1 = treeIssue(2, "L1", new IdName(1, "Root"), List.of(child(3, "L2")));
-        when(client.getIssueForTree(1)).thenReturn(root);
-        when(client.getIssueForTree(2)).thenReturn(l1);
+        when(client.getIssue(1)).thenReturn(root);
+        when(client.getIssue(2)).thenReturn(l1);
 
         var view = service.getTree(1, 1);
 
@@ -149,20 +149,20 @@ class IssueServiceTest {
         var l2Stub = l1Node.children().get(0);
         assertThat(l2Stub.id()).isEqualTo(3);
         assertThat(l2Stub.stub()).isTrue();
-        verify(client, times(0)).getIssueForTree(3);
+        verify(client, times(0)).getIssue(3);
     }
 
     @Test
     void getTreeShouldMemoizeFetchesWhenSharingContext() {
         var root = treeIssue(1, "Root", null, List.of());
-        when(client.getIssueForTree(1)).thenReturn(root);
+        when(client.getIssue(1)).thenReturn(root);
 
         var ctx = new IssueFetchContext(client);
         service.getTree(1, 0, ctx);
         service.getTree(1, 0, ctx);
 
-        // Second call uses the cached issue from ctx.treeIssues
-        verify(client, times(1)).getIssueForTree(1);
+        // Second call uses the cached issue from ctx.
+        verify(client, times(1)).getIssue(1);
     }
 
     // --- getHistory ---

@@ -13,7 +13,7 @@ public class IssueFetchContext {
 
     private final RedmineClient client;
 
-    private final Map<Integer, RedmineIssue> treeIssues = new HashMap<>();
+    private final Map<Integer, RedmineIssue> issuesById = new HashMap<>();
     private final Map<String, Map<Integer, String>> versionsByProject = new HashMap<>();
 
     private Map<Integer, String> statuses;
@@ -24,8 +24,8 @@ public class IssueFetchContext {
         this.client = client;
     }
 
-    public RedmineIssue getIssueForTree(int issueId) {
-        return treeIssues.computeIfAbsent(issueId, client::getIssueForTree);
+    public RedmineIssue getIssue(int issueId) {
+        return issuesById.computeIfAbsent(issueId, client::getIssue);
     }
 
     public Map<Integer, String> statuses() {

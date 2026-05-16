@@ -80,19 +80,6 @@ public class RedmineClient {
     }
 
     /**
-     * Get a single issue with only relations and children (no journals/attachments).
-     * Used for tree traversal to avoid fetching heavy data for every node.
-     */
-    public RedmineIssue getIssueForTree(int issueId) {
-        var response = restClient.get()
-                .uri("/issues/{id}.json?include=relations,children", issueId)
-                .retrieve()
-                .body(RedmineIssue.Single.class);
-
-        return response != null ? response.issue() : null;
-    }
-
-    /**
      * Get attachment metadata.
      */
     public RedmineAttachment getAttachment(int attachmentId) {

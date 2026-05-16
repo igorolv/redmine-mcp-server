@@ -342,7 +342,7 @@ public class AnalysisService {
             return null;
         }
         fetchCount[0]++;
-        return client.getIssueForTree(issueId);
+        return client.getIssue(issueId);
     }
 
     private void collectBlockers(RedmineIssue issue, boolean upstream,
