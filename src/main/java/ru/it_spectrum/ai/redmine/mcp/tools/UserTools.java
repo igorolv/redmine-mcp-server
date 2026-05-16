@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.api.User;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
 import ru.it_spectrum.ai.redmine.mcp.service.UserService;
 
@@ -20,13 +20,12 @@ public class UserTools {
     }
 
     @McpTool(
-            description = "Get information about the currently authenticated Redmine user. " +
-            "Returns user ID, login, name, email, groups, and project memberships. " +
+            description = "Get the currently authenticated Redmine user (id, login, display name, email). " +
             "Useful to find your own user ID for filtering (e.g. assigned_to_id in listIssues).",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineUser getCurrentUser() {
+    public User getCurrentUser() {
         log.info("Tool call: getCurrentUser");
         long start = System.nanoTime();
         var user = userService.getCurrentUser();

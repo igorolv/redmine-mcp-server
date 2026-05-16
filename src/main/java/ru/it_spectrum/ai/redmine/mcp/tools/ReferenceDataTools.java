@@ -5,8 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineQuery;
+import ru.it_spectrum.ai.redmine.mcp.api.QueryPage;
+import ru.it_spectrum.ai.redmine.mcp.api.Ref;
 import ru.it_spectrum.ai.redmine.mcp.service.ReferenceDataService;
 
 import java.util.List;
@@ -28,7 +28,7 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<IdName> listStatuses() {
+    public List<Ref> listStatuses() {
         log.info("Tool call: listStatuses");
         long start = System.nanoTime();
         var result = referenceDataService.listStatuses();
@@ -42,7 +42,7 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<IdName> listTrackers() {
+    public List<Ref> listTrackers() {
         log.info("Tool call: listTrackers");
         long start = System.nanoTime();
         var result = referenceDataService.listTrackers();
@@ -56,7 +56,7 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<IdName> listPriorities() {
+    public List<Ref> listPriorities() {
         log.info("Tool call: listPriorities");
         long start = System.nanoTime();
         var result = referenceDataService.listPriorities();
@@ -70,7 +70,7 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<IdName> listIssueCategories(
+    public List<Ref> listIssueCategories(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
         log.info("Tool call: listIssueCategories (projectId={})", projectId);
@@ -86,7 +86,7 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<IdName> listTimeEntryActivities() {
+    public List<Ref> listTimeEntryActivities() {
         log.info("Tool call: listTimeEntryActivities");
         long start = System.nanoTime();
         var result = referenceDataService.listTimeEntryActivities();
@@ -101,7 +101,7 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineQuery.Page listQueries(
+    public QueryPage listQueries(
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {

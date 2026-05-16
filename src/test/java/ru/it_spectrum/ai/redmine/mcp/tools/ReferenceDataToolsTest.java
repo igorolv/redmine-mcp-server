@@ -173,13 +173,13 @@ class ReferenceDataToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listQueries(null, null));
 
-        assertThat(result).contains("\"total_count\":3");
+        assertThat(result).contains("\"totalCount\":3");
         assertThat(result).contains("\"name\":\"My open bugs\"");
-        assertThat(result).contains("\"project_id\":5");
+        assertThat(result).contains("\"projectId\":5");
         assertThat(result).contains("\"name\":\"Sprint backlog\"");
-        assertThat(result).contains("\"is_public\":true");
+        assertThat(result).contains("\"isPublic\":true");
         assertThat(result).contains("\"name\":\"Overdue tasks\"");
-        assertThat(result).contains("\"project_id\":10");
+        assertThat(result).contains("\"projectId\":10");
     }
 
     @Test
@@ -189,6 +189,6 @@ class ReferenceDataToolsTest {
         var result = ToolJsonTestSupport.stringify(tools.listQueries(null, null));
 
         assertThat(result).contains("\"queries\":[]");
-        assertThat(result).contains("\"total_count\":0");
+        assertThat(result).contains("\"totalCount\":0");
     }
 }

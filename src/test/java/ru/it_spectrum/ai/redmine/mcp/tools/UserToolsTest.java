@@ -45,13 +45,11 @@ class UserToolsTest {
 
         assertThat(result).contains("\"id\":42");
         assertThat(result).contains("\"login\":\"jdoe\"");
-        assertThat(result).contains("\"firstname\":\"John\"");
-        assertThat(result).contains("\"lastname\":\"Doe\"");
+        assertThat(result).contains("\"name\":\"John Doe\"");
         assertThat(result).contains("jdoe@example.com");
-        assertThat(result).contains("Developers");
-        assertThat(result).contains("backend");
-        assertThat(result).contains("Developer");
-        assertThat(result).contains("Manager");
+        // Trimmed api.User no longer exposes groups or memberships to LLMs.
+        assertThat(result).doesNotContain("Developers");
+        assertThat(result).doesNotContain("memberships");
     }
 
     @Test
@@ -62,10 +60,9 @@ class UserToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.getCurrentUser());
 
-        assertThat(result).contains("\"firstname\":\"Solo\"");
-        assertThat(result).contains("\"lastname\":\"Dev\"");
-        assertThat(result).doesNotContain("Groups:");
-        assertThat(result).doesNotContain("Project memberships:");
+        assertThat(result).contains("\"name\":\"Solo Dev\"");
+        assertThat(result).doesNotContain("groups");
+        assertThat(result).doesNotContain("memberships");
     }
 
     @Test

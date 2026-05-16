@@ -1,8 +1,8 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.api.User;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
 
 import java.util.Optional;
 
@@ -14,7 +14,7 @@ public class UserService {
         this.client = client;
     }
 
-    public Optional<RedmineUser> getCurrentUser() {
-        return Optional.ofNullable(client.getCurrentUser());
+    public Optional<User> getCurrentUser() {
+        return Optional.ofNullable(client.getCurrentUser()).map(User::from);
     }
 }

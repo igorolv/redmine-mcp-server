@@ -1,9 +1,10 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.api.QueryPage;
+import ru.it_spectrum.ai.redmine.mcp.api.Ref;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineQuery;
 
 import java.util.List;
 
@@ -15,27 +16,34 @@ public class ReferenceDataService {
         this.client = client;
     }
 
-    public List<IdName> listStatuses() {
-        return client.getIssueStatuses();
+    public List<Ref> listStatuses() {
+        return toRefs(client.getIssueStatuses());
     }
 
-    public List<IdName> listTrackers() {
-        return client.getTrackers();
+    public List<Ref> listTrackers() {
+        return toRefs(client.getTrackers());
     }
 
-    public List<IdName> listPriorities() {
-        return client.getIssuePriorities();
+    public List<Ref> listPriorities() {
+        return toRefs(client.getIssuePriorities());
     }
 
-    public List<IdName> listIssueCategories(String projectId) {
-        return client.getIssueCategories(projectId);
+    public List<Ref> listIssueCategories(String projectId) {
+        return toRefs(client.getIssueCategories(projectId));
     }
 
-    public List<IdName> listTimeEntryActivities() {
-        return client.getTimeEntryActivities();
+    public List<Ref> listTimeEntryActivities() {
+        return toRefs(client.getTimeEntryActivities());
     }
 
-    public RedmineQuery.Page listQueries(int offset, int limit) {
-        return client.getQueries(offset, limit);
+    public QueryPage listQueries(int offset, int limit) {
+        return QueryPage.from(client.getQueries(offset, limit));
+    }
+
+    private static List<Ref> toRefs(List<IdName> source) {
+        if (source == null) {
+            return List.of();
+        }
+        return source.stream().map(Ref::from).toList();
     }
 }
