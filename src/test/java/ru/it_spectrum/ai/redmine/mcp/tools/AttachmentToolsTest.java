@@ -124,7 +124,7 @@ class AttachmentToolsTest {
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(imageData);
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(100, 512, 21);
+        McpSchema.CallToolResult result = tools.getImageAttachment(100, 21, 512);
 
         assertThat(result.isError()).isFalse();
         assertThat(result.content().get(1)).isInstanceOf(McpSchema.ImageContent.class);
