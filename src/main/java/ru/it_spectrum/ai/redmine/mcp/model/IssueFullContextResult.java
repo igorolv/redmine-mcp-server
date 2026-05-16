@@ -6,6 +6,7 @@ import java.util.List;
 
 public record IssueFullContextResult(
         RedmineIssue issue,
+        IssueHistoryView history,
         List<ContextIssue> contextIssues,
         List<DocumentExcerpt> documents,
         List<RedmineIssue.Journal> recentNotes,

@@ -1,7 +1,7 @@
 # Redmine MCP Server — Setup Guide for AI Agents
 
 This is a local MCP server that provides read-only access to a corporate Redmine instance.
-It exposes 31 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, reference data, project analytics, and task context.
+It exposes 30 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, reference data, project analytics, and task context.
 
 Step-by-step setup guides: [Claude Code](CLAUDE_CODE_SETUP.md) | [Qwen Code](QWEN_CODE_SETUP.md)
 
@@ -84,7 +84,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 
 ## Available tools
 
-The current implementation exposes **31 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, analytics, and task-context domains.
+The current implementation exposes **30 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, analytics, and task-context domains.
 
 | Tool | Description |
 |---|---|
@@ -99,7 +99,6 @@ The current implementation exposes **31 read-only MCP tools** across user, proje
 | `getIssue` | Get full issue details (description, notes, relations, custom fields, attachments, associated changesets/revisions). Params: `issueId` |
 | `getMyIssues` | List issues assigned to the current user. Params: `projectId`, `statusId`, `sort`, `limit`, `offset` (all optional) |
 | `getIssueTree` | Build full dependency tree: parent chain up, subtasks down, relations. Params: `issueId`, `depth` (optional, default 2, max 5) |
-| `getIssueHistory` | Full change history with timeline of status/assignment/priority changes and status durations. Params: `issueId` |
 | `getAttachment` | Download the original attachment into the local issue snapshot directory, return `localPath`/`fileUri`, and include extracted text context in `parts[]` when supported. Supports text files, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives. ZIP archives can produce one part per archive entry. Params: `issueId`, `attachmentId` |
 | `getWikiPage` | Get wiki page content and attachments. Params: `projectId`, `pageTitle` |
 | `listWikiPages` | List all wiki pages in a project. Params: `projectId` |
@@ -118,7 +117,7 @@ The current implementation exposes **31 read-only MCP tools** across user, proje
 | `getStaleIssues` | Open issues not updated for N days, sorted by staleness. Params: `projectId`, `daysSinceUpdate` (default 30), `limit` |
 | `getReleaseRisks` | Risk assessment: open blockers, overdue, high-priority, unassigned issues for a version. Params: `projectId`, `versionId` |
 | `compareVersions` | Diff between two versions: unique issues, shared issues, completion percentages. Params: `projectId`, `versionId1`, `versionId2` |
-| `getIssueFullContext` | Full task context in one call: description, unified surrounding issues list with roles (`parent`, `sibling`, `child`, `related`), document attachments extracted inline, recent notes, and truncation flags. Replaces 10+ separate calls. Params: `issueId` |
+| `getIssueFullContext` | Full task context in one call: description, interpreted history with status durations, unified surrounding issues list with roles (`parent`, `sibling`, `child`, `related`), document attachments extracted inline, recent notes, and truncation flags. Replaces 10+ separate calls. Params: `issueId` |
 
 All tools are **read-only**. No data in Redmine is modified.
 

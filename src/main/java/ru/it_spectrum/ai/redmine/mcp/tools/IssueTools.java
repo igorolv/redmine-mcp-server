@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
 import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
@@ -148,26 +147,6 @@ public class IssueTools {
             ToolLogger.completed(log, "getIssueTree", start);
         } catch (IssueNotFoundException e) {
             ToolLogger.failed(log, "getIssueTree", start, e.getMessage());
-            return errors.notFound("issue", "#" + e.issueId());
-        }
-        return json.write(view);
-    }
-
-    @McpTool(description = "Get the full change history of a Redmine issue. " +
-            "Parses journal entries to show a timeline of status transitions, assignment changes, " +
-            "priority changes, and other field modifications with human-readable names. " +
-            "Also computes time spent in each status.")
-    public String getIssueHistory(
-            @McpToolParam(description = "Issue ID number") int issueId
-    ) {
-        log.info("Tool call: getIssueHistory (issueId={})", issueId);
-        long start = System.nanoTime();
-        IssueHistoryView view;
-        try {
-            view = issueService.getHistory(issueId);
-            ToolLogger.completed(log, "getIssueHistory", start);
-        } catch (IssueNotFoundException e) {
-            ToolLogger.failed(log, "getIssueHistory", start, e.getMessage());
             return errors.notFound("issue", "#" + e.issueId());
         }
         return json.write(view);

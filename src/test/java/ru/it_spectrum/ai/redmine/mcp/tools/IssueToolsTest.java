@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -404,127 +403,6 @@ class IssueToolsTest {
         assertThat(result).contains("\"relation_type\":\"blocks\"");
         assertThat(result).contains("\"issue_id\":300");
         assertThat(result).contains("\"relation_type\":\"relates\"");
-    }
-
-    // --- getIssueHistory ---
-
-    @Test
-    void shouldShowHistoryWithStatusChanges() {
-        var details1 = List.of(
-                new RedmineIssue.Detail("attr", "status_id", "1", "2")
-        );
-        var details2 = List.of(
-                new RedmineIssue.Detail("attr", "assigned_to_id", "42", "43")
-        );
-        var journals = List.of(
-                new RedmineIssue.Journal(1, new IdName(42, "John"), "Starting work",
-                        "2025-01-12T14:30:00Z", details1),
-                new RedmineIssue.Journal(2, new IdName(43, "Jane"), null,
-                        "2025-01-15T09:00:00Z", details2)
-        );
-        var issue = new RedmineIssue(
-                100, new IdName(1, "my-project"), new IdName(1, "Bug"),
-                new IdName(2, "In Progress"), new IdName(2, "Normal"),
-                new IdName(42, "John"), new IdName(43, "Jane"),
-                null, null, null,
-                "Test issue", null,
-                null, null, 0, null, null, false,
-                "2025-01-10T10:00:00Z", "2025-01-15T09:00:00Z",
-                null, null, journals, null, null
-        );
-
-        when(client.getIssue(100)).thenReturn(issue);
-        when(client.getIssueStatuses()).thenReturn(List.of(
-                new IdName(1, "New"), new IdName(2, "In Progress"), new IdName(3, "Closed")));
-        lenient().when(client.getIssuePriorities()).thenReturn(List.of(
-                new IdName(2, "Normal"), new IdName(3, "High")));
-        lenient().when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
-        lenient().when(client.getProjectVersions("1")).thenReturn(List.of());
-
-        String result = tools.getIssueHistory(100);
-
-        assertThat(result).contains("\"issue\"");
-        assertThat(result).contains("Test issue");
-        assertThat(result).contains("\"kind\":\"CREATED\"");
-        assertThat(result).contains("\"actor\":\"John\"");
-        assertThat(result).contains("\"fieldLabel\":\"Status\"");
-        assertThat(result).contains("\"oldValue\":\"New\"");
-        assertThat(result).contains("\"newValue\":\"In Progress\"");
-        assertThat(result).contains("Starting work");
-        assertThat(result).contains("\"fieldLabel\":\"Assigned to\"");
-        assertThat(result).contains("\"oldValue\":\"John\"");
-        assertThat(result).contains("\"newValue\":\"Jane\"");
-        assertThat(result).contains("\"statusDurations\"");
-        assertThat(result).contains("New");
-        assertThat(result).contains("In Progress");
-    }
-
-    @Test
-    void shouldHandleIssueNotFoundInHistory() {
-        when(client.getIssue(999)).thenReturn(null);
-
-        String result = tools.getIssueHistory(999);
-
-        assertThat(result).contains("\"kind\":\"not_found\"");
-        assertThat(result).contains("issue #999 not found");
-    }
-
-    @Test
-    void shouldHandleEmptyJournals() {
-        var issue = new RedmineIssue(
-                100, new IdName(1, "my-project"), new IdName(1, "Bug"),
-                new IdName(1, "New"), new IdName(2, "Normal"),
-                new IdName(42, "John"), null,
-                null, null, null,
-                "Simple issue", null,
-                null, null, 0, null, null, false,
-                "2025-01-10T10:00:00Z", "2025-01-10T10:00:00Z",
-                null, null, List.of(), null, null
-        );
-
-        when(client.getIssue(100)).thenReturn(issue);
-        lenient().when(client.getIssueStatuses()).thenReturn(List.of(new IdName(1, "New")));
-        lenient().when(client.getIssuePriorities()).thenReturn(List.of(new IdName(2, "Normal")));
-        lenient().when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
-        lenient().when(client.getProjectVersions("1")).thenReturn(List.of());
-
-        String result = tools.getIssueHistory(100);
-
-        assertThat(result).contains("Simple issue");
-        assertThat(result).contains("\"kind\":\"CREATED\"");
-        assertThat(result).contains("\"statusDurations\"");
-        assertThat(result).contains("New");
-    }
-
-    @Test
-    void shouldResolveCustomFieldNamesInHistory() {
-        var journals = List.of(
-                new RedmineIssue.Journal(1, new IdName(42, "John"), null,
-                        "2025-01-12T14:30:00Z",
-                        List.of(new RedmineIssue.Detail("cf", "10", null, "rtk")))
-        );
-        var issue = new RedmineIssue(
-                101, new IdName(1, "my-project"), new IdName(1, "Bug"),
-                new IdName(1, "New"), new IdName(2, "Normal"),
-                new IdName(42, "John"), null,
-                null, null, null,
-                "Custom field history", null,
-                null, null, 0, null, null, false,
-                "2025-01-10T10:00:00Z", "2025-01-12T14:30:00Z",
-                List.of(new RedmineIssue.CustomField(10, "applications", true, List.of("rtk"))),
-                null, journals, null, null
-        );
-
-        when(client.getIssue(101)).thenReturn(issue);
-        lenient().when(client.getIssueStatuses()).thenReturn(List.of(new IdName(1, "New")));
-        lenient().when(client.getIssuePriorities()).thenReturn(List.of(new IdName(2, "Normal")));
-        lenient().when(client.getTrackers()).thenReturn(List.of(new IdName(1, "Bug")));
-        lenient().when(client.getProjectVersions("1")).thenReturn(List.of());
-
-        String result = tools.getIssueHistory(101);
-
-        assertThat(result).contains("\"fieldLabel\":\"applications [cf_10]\"");
-        assertThat(result).contains("\"newValue\":\"rtk\"");
     }
 
     // --- helpers ---

@@ -24,6 +24,7 @@ public class ContextTools {
 
     @McpTool(description = "Get full context needed to understand and implement a Redmine issue. " +
             "One call replaces 10+ separate tool calls. Returns: the issue with description, " +
+            "interpreted history timeline with status durations, " +
             "nearby context issues with explicit roles (parent, sibling, child, related), " +
             "document attachments extracted inline (PDF/DOCX/XLSX), recent discussion notes, " +
             "and truncation flags. Ideal first call when investigating or implementing a task.")

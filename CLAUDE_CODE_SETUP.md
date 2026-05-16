@@ -125,7 +125,7 @@ claude mcp remove --scope user redmine
 
 ## Доступные инструменты
 
-Сервер предоставляет **31 read-only MCP tools**. Он не изменяет данные в Redmine.
+Сервер предоставляет **30 read-only MCP tools**. Он не изменяет данные в Redmine.
 
 Основные группы инструментов:
 
@@ -133,7 +133,7 @@ claude mcp remove --scope user redmine
 |---|---|
 | Пользователь | `getCurrentUser` |
 | Проекты | `listProjects`, `getProject`, `listProjectMembers`, `listVersions` |
-| Задачи | `listIssues`, `searchIssues`, `getIssue`, `getMyIssues`, `getIssueTree`, `getIssueHistory` |
+| Задачи | `listIssues`, `searchIssues`, `getIssue`, `getMyIssues`, `getIssueTree` |
 | Вложения | `getAttachment` |
 | Wiki | `listWikiPages`, `getWikiPage` |
 | Трудозатраты | `listTimeEntries`, `getMyTimeEntries` |

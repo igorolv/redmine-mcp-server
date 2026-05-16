@@ -30,10 +30,12 @@ public class ContextService {
 
     private final RedmineClient client;
     private final AttachmentService attachmentService;
+    private final IssueService issueService;
 
-    public ContextService(RedmineClient client, AttachmentService attachmentService) {
+    public ContextService(RedmineClient client, AttachmentService attachmentService, IssueService issueService) {
         this.client = client;
         this.attachmentService = attachmentService;
+        this.issueService = issueService;
     }
 
     public Optional<IssueFullContextResult> getIssueFullContext(int issueId) {
@@ -42,6 +44,8 @@ public class ContextService {
             return Optional.empty();
         }
         attachmentService.snapshotIssue(issue);
+        var fetchContext = new IssueFetchContext(client);
+        var history = issueService.buildHistory(issue, fetchContext);
 
         var contextIssues = new LinkedHashMap<Integer, ContextIssueBuilder>();
 
@@ -136,6 +140,7 @@ public class ContextService {
 
         return Optional.of(new IssueFullContextResult(
                 issue,
+                history,
                 contextIssues.values().stream()
                         .map(ContextIssueBuilder::build)
                         .toList(),

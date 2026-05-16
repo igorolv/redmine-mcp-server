@@ -166,27 +166,19 @@ class IssueServiceTest {
         verify(client, times(1)).getIssue(1);
     }
 
-    // --- getHistory ---
+    // --- buildHistory ---
 
     @Test
-    void getHistoryShouldThrowWhenIssueMissing() {
-        when(client.getIssue(99)).thenReturn(null);
-        assertThatThrownBy(() -> service.getHistory(99))
-                .isInstanceOf(IssueNotFoundException.class);
-    }
-
-    @Test
-    void getHistoryShouldBuildTimelineAndResolveStatusNames() {
+    void buildHistoryShouldBuildTimelineAndResolveStatusNames() {
         var details = List.of(new RedmineIssue.Detail("attr", "status_id", "1", "2"));
         var journals = List.of(new RedmineIssue.Journal(
                 1, new IdName(42, "John"), "Starting", "2025-01-12T14:30:00Z", details));
         var issue = issueWithJournals(100, "Test", new IdName(2, "In Progress"),
                 new IdName(42, "John"), journals);
-        when(client.getIssue(100)).thenReturn(issue);
         when(client.getIssueStatuses()).thenReturn(List.of(
                 new IdName(1, "New"), new IdName(2, "In Progress")));
 
-        var view = service.getHistory(100);
+        var view = service.buildHistory(issue);
 
         assertThat(view.timeline()).hasSize(2);
         var created = view.timeline().get(0);
@@ -208,12 +200,11 @@ class IssueServiceTest {
     }
 
     @Test
-    void getHistoryShouldNotLoadUnusedReferenceData() {
+    void buildHistoryShouldNotLoadUnusedReferenceData() {
         var issue = issueWithJournals(100, "Test", new IdName(1, "New"),
                 new IdName(42, "John"), List.of());
-        when(client.getIssue(100)).thenReturn(issue);
 
-        service.getHistory(100);
+        service.buildHistory(issue);
 
         verify(client, times(0)).getIssueStatuses();
         verify(client, times(0)).getIssuePriorities();

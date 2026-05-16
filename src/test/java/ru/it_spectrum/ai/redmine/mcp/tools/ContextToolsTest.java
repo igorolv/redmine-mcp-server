@@ -16,6 +16,7 @@ import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
+import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -39,7 +40,7 @@ class ContextToolsTest {
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
         var service = new AttachmentService(client,
                 new DocumentTextExtractor(), snapshot);
-        tools = new ContextTools(new ContextService(client, service),
+        tools = new ContextTools(new ContextService(client, service, new IssueService(client)),
                 ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
@@ -81,6 +82,8 @@ class ContextToolsTest {
             String result = tools.getIssueFullContext(123);
 
             assertThat(result).contains("\"issue\"");
+            assertThat(result).contains("\"history\"");
+            assertThat(result).contains("\"statusDurations\"");
             assertThat(result).contains("\"id\":123");
             assertThat(result).contains("Implement date filter");
             assertThat(result).contains("Bob");
@@ -122,6 +125,45 @@ class ContextToolsTest {
             assertThat(result).contains("applications");
             assertThat(result).contains("rtk");
             assertThat(result).contains("sskv");
+        }
+
+        @Test
+        void shouldIncludeInterpretedHistory() {
+            var details1 = List.of(
+                    new RedmineIssue.Detail("attr", "status_id", "1", "2")
+            );
+            var details2 = List.of(
+                    new RedmineIssue.Detail("attr", "assigned_to_id", "42", "43")
+            );
+            var issue = issueBuilder(123, "Investigate incident")
+                    .status(new IdName(2, "In Progress"))
+                    .assignedTo(new IdName(43, "Jane"))
+                    .journals(List.of(
+                            new RedmineIssue.Journal(1, new IdName(42, "John"), "Starting work",
+                                    "2025-01-12T14:30:00Z", details1),
+                            new RedmineIssue.Journal(2, new IdName(43, "Jane"), null,
+                                    "2025-01-15T09:00:00Z", details2)
+                    ))
+                    .build();
+
+            when(client.getIssue(123)).thenReturn(issue);
+            when(client.getIssueStatuses()).thenReturn(List.of(
+                    new IdName(1, "New"), new IdName(2, "In Progress")));
+
+            String result = tools.getIssueFullContext(123);
+
+            assertThat(result).contains("\"history\"");
+            assertThat(result).contains("\"kind\":\"CREATED\"");
+            assertThat(result).contains("\"kind\":\"UPDATED\"");
+            assertThat(result).contains("\"actor\":\"John\"");
+            assertThat(result).contains("\"fieldLabel\":\"Status\"");
+            assertThat(result).contains("\"oldValue\":\"New\"");
+            assertThat(result).contains("\"newValue\":\"In Progress\"");
+            assertThat(result).contains("Starting work");
+            assertThat(result).contains("\"fieldLabel\":\"Assigned to\"");
+            assertThat(result).contains("\"oldValue\":\"John\"");
+            assertThat(result).contains("\"newValue\":\"Jane\"");
+            assertThat(result).contains("\"statusDurations\"");
         }
 
         @Test

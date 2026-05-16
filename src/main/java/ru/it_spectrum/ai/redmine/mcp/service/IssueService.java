@@ -160,12 +160,11 @@ public class IssueService {
 
     // --- History ---
 
-    public IssueHistoryView getHistory(int issueId) {
-        return getHistory(issueId, new IssueFetchContext(client));
+    public IssueHistoryView buildHistory(RedmineIssue issue) {
+        return buildHistory(issue, new IssueFetchContext(client));
     }
 
-    public IssueHistoryView getHistory(int issueId, IssueFetchContext ctx) {
-        var issue = findOrThrow(issueId);
+    public IssueHistoryView buildHistory(RedmineIssue issue, IssueFetchContext ctx) {
         var timeline = new ArrayList<IssueHistoryView.TimelineEntry>();
         var statusSnapshots = new ArrayList<StatusSnapshot>();
 
@@ -218,7 +217,7 @@ public class IssueService {
         }
 
         var durations = computeStatusDurations(statusSnapshots);
-        return new IssueHistoryView(issue, List.copyOf(timeline), durations);
+        return new IssueHistoryView(List.copyOf(timeline), durations);
     }
 
     // --- Tree helpers ---
