@@ -134,7 +134,7 @@ claude mcp remove --scope user redmine
 | Пользователь | `getCurrentUser` |
 | Проекты | `listProjects`, `getProject`, `listProjectMembers`, `listVersions` |
 | Задачи | `listIssues`, `searchIssues`, `getIssue`, `getMyIssues`, `getIssueTree`, `getIssueHistory` |
-| Вложения | `getAttachmentContent`, `getImageAttachment` |
+| Вложения | `getAttachmentFile`, `getAttachmentContext` |
 | Wiki | `listWikiPages`, `getWikiPage` |
 | Трудозатраты | `listTimeEntries`, `getMyTimeEntries` |
 | Справочники | `listQueries`, `listStatuses`, `listTrackers`, `listPriorities`, `listIssueCategories`, `listTimeEntryActivities` |

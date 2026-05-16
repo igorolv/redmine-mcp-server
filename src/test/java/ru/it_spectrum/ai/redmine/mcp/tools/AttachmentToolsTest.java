@@ -16,13 +16,9 @@ import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 
-import io.modelcontextprotocol.spec.McpSchema;
-
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import javax.imageio.ImageIO;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -46,88 +42,62 @@ class AttachmentToolsTest {
         tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
-    // --- getImageAttachment ---
+    // --- getAttachmentFile ---
 
     @Test
-    void shouldReturnImage() throws Exception {
-        byte[] imageData = generatePng(100, 80);
-        var attachment = attachment(20, "photo.png", "image/png", imageData.length);
+    void shouldReturnMaterializedFilePath() throws Exception {
+        byte[] data = "original file bytes".getBytes();
+        var attachment = attachment(20, "photo.png", "image/png", data.length);
 
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
-        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(imageData);
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(data);
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(100, 20, null);
+        String result = tools.getAttachmentFile(100, 20);
 
-        assertThat(result.isError()).isFalse();
-        assertThat(result.content()).hasSize(2);
-        assertThat(result.content().getFirst()).isInstanceOf(McpSchema.TextContent.class);
-        assertThat(((McpSchema.TextContent) result.content().getFirst()).text()).contains("photo.png");
-        assertThat(result.content().get(1)).isInstanceOf(McpSchema.ImageContent.class);
+        var json = ToolJsonTestSupport.parse(result);
+        assertThat(json.get("attachment").get("filename").asText()).isEqualTo("photo.png");
+        Path localPath = Path.of(json.get("localPath").asText());
+        assertThat(localPath).exists();
+        assertThat(Files.readAllBytes(localPath)).isEqualTo(data);
+        assertThat(json.get("fileUri").asText()).startsWith("file:///");
+        assertThat(json.get("localSize").asLong()).isEqualTo(data.length);
     }
 
     @Test
-    void shouldResizeLargeImage() throws Exception {
-        byte[] imageData = generatePng(2048, 1536);
-        var attachment = attachment(21, "big.png", "image/png", imageData.length);
+    void shouldReturnImageContextAsMetadataOnly() {
+        var attachment = attachment(21, "big.png", "image/png", 5_000);
 
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
-        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(imageData);
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(100, 21, 512);
+        String result = tools.getAttachmentContext(100, 21);
 
-        assertThat(result.isError()).isFalse();
-        assertThat(result.content().get(1)).isInstanceOf(McpSchema.ImageContent.class);
-        var imageContent = (McpSchema.ImageContent) result.content().get(1);
-        assertThat(imageContent.mimeType()).isEqualTo("image/png");
+        assertThat(result).contains("big.png");
+        assertThat(result).contains("\"parts\":[]");
+        assertThat(result).contains("\"textExtracted\":false");
+        assertThat(result).contains("getAttachmentFile");
     }
 
     @Test
-    void shouldRejectNonImageAttachment() {
-        var attachment = attachment(22, "document.pdf", "application/pdf", 10_000);
-        when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
-
-        McpSchema.CallToolResult result = tools.getImageAttachment(100, 22, null);
-
-        assertThat(result.isError()).isTrue();
-        assertThat(((McpSchema.TextContent) result.content().getFirst()).text())
-                .contains("not an image");
-    }
-
-    @Test
-    void shouldHandleImageAttachmentNotFound() {
+    void shouldHandleAttachmentFileNotFound() {
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of()));
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(100, 999, null);
+        String result = tools.getAttachmentFile(100, 999);
 
-        assertThat(result.isError()).isTrue();
-        assertThat(((McpSchema.TextContent) result.content().getFirst()).text())
-                .contains("not found");
+        assertThat(result).contains("not found");
     }
 
     @Test
-    void shouldHandleImageDownloadFailure() {
+    void shouldHandleAttachmentFileDownloadFailure() {
         var attachment = attachment(23, "fail.png", "image/png", 5_000);
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(null);
 
-        McpSchema.CallToolResult result = tools.getImageAttachment(100, 23, null);
+        String result = tools.getAttachmentFile(100, 23);
 
-        assertThat(result.isError()).isTrue();
-        assertThat(((McpSchema.TextContent) result.content().getFirst()).text())
-                .contains("Failed to download");
+        assertThat(result).contains("unavailable");
     }
 
     // --- helpers ---
-
-    private static byte[] generatePng(int width, int height) throws Exception {
-        var image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        var g = image.createGraphics();
-        g.fillRect(0, 0, width, height);
-        g.dispose();
-        var baos = new ByteArrayOutputStream();
-        ImageIO.write(image, "png", baos);
-        return baos.toByteArray();
-    }
 
     private static RedmineAttachment attachment(int id, String filename, String contentType, long size) {
         return new RedmineAttachment(

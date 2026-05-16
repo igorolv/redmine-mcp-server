@@ -66,7 +66,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pdfBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 1);
+        String result = tools.getAttachmentContext(ISSUE_ID, 1);
 
         assertThat(result).contains("report.pdf");
         assertThat(result).contains("\"textExtracted\":true");
@@ -81,7 +81,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pdfBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 2);
+        String result = tools.getAttachmentContext(ISSUE_ID, 2);
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("Extension-detected PDF");
@@ -98,7 +98,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 3);
+        String result = tools.getAttachmentContext(ISSUE_ID, 3);
 
         assertThat(result).contains("document.docx");
         assertThat(result).contains("\"textExtracted\":true");
@@ -116,7 +116,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 4);
+        String result = tools.getAttachmentContext(ISSUE_ID, 4);
 
         assertThat(result).contains("[Table]");
         assertThat(result).contains("Name | Age");
@@ -136,7 +136,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xlsxBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 5);
+        String result = tools.getAttachmentContext(ISSUE_ID, 5);
 
         assertThat(result).contains("data.xlsx");
         assertThat(result).contains("\"textExtracted\":true");
@@ -154,7 +154,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xlsxBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 6);
+        String result = tools.getAttachmentContext(ISSUE_ID, 6);
 
         assertThat(result).contains("Sheet: Sales");
         assertThat(result).contains("Sheet: Expenses");
@@ -173,7 +173,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(pptxBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 7);
+        String result = tools.getAttachmentContext(ISSUE_ID, 7);
 
         assertThat(result).contains("presentation.pptx");
         assertThat(result).contains("\"textExtracted\":true");
@@ -192,7 +192,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(textBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 8);
+        String result = tools.getAttachmentContext(ISSUE_ID, 8);
 
         assertThat(result).contains("app.log");
         assertThat(result).contains("\"textExtracted\":true");
@@ -208,10 +208,11 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(jsonBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 9);
+        String result = tools.getAttachmentContext(ISSUE_ID, 9);
 
         assertThat(result).contains("\"textExtracted\":true");
-        assertThat(ToolJsonTestSupport.parse(result).get("content").asText()).contains("\"key\": \"value\"");
+        assertThat(ToolJsonTestSupport.parse(result).get("parts").get(0).get("content").asText())
+                .contains("\"key\": \"value\"");
     }
 
     @Test
@@ -226,11 +227,11 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(xsdBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 16);
+        String result = tools.getAttachmentContext(ISSUE_ID, 16);
 
         assertThat(result).contains("schema.xsd");
         assertThat(result).contains("\"textExtracted\":true");
-        assertThat(ToolJsonTestSupport.parse(result).get("content").asText())
+        assertThat(ToolJsonTestSupport.parse(result).get("parts").get(0).get("content").asText())
                 .contains("<xs:element name=\"order\" type=\"xs:string\"/>");
     }
 
@@ -252,22 +253,19 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(zipBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 17);
+        String result = tools.getAttachmentContext(ISSUE_ID, 17);
 
         assertThat(result).contains("bundle.zip");
         assertThat(result).contains("\"textExtracted\":true");
-        assertThat(result).contains("ZIP archive: bundle.zip");
-        assertThat(result).contains("config/service.yaml (extracted");
-        assertThat(result).contains("schema/order.xsd (extracted");
-        assertThat(result).contains("docs/decision.docx (extracted");
-        assertThat(result).contains("images/screenshot.png (skipped, not text-extractable");
-        assertThat(result).contains("--- config/service.yaml ---");
+        assertThat(result).contains("\"name\":\"config/service.yaml\"");
+        assertThat(result).contains("\"name\":\"schema/order.xsd\"");
+        assertThat(result).contains("\"name\":\"docs/decision.docx\"");
+        assertThat(result).contains("\"name\":\"images/screenshot.png\"");
+        assertThat(result).contains("skipped, not text-extractable");
         assertThat(result).contains("feature: archive extraction");
-        assertThat(result).contains("--- schema/order.xsd ---");
-        assertThat(ToolJsonTestSupport.parse(result).get("content").asText())
-                .contains("<xs:element name=\"orderId\" type=\"xs:string\"/>");
-        assertThat(result).contains("--- docs/decision.docx ---");
+        assertThat(result).contains("<xs:element name=\\\"orderId\\\" type=\\\"xs:string\\\"/>");
         assertThat(result).contains("Architecture decision from Word document");
+        assertThat(ToolJsonTestSupport.parse(result).get("parts")).hasSize(4);
     }
 
     // --- Binary files ---
@@ -278,11 +276,11 @@ class DocumentExtractionTest {
 
         stubIssueAttachment(attachment);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 10);
+        String result = tools.getAttachmentContext(ISSUE_ID, 10);
 
         assertThat(result).contains("photo.png");
         assertThat(result).contains("Image file");
-        assertThat(result).contains("getImageAttachment");
+        assertThat(result).contains("getAttachmentFile");
         assertThat(result).contains("\"textExtracted\":false");
     }
 
@@ -297,12 +295,12 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(textBytes);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 11);
+        String result = tools.getAttachmentContext(ISSUE_ID, 11);
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("\"truncated\":true");
         // Total output should be limited — the extracted text part must be <= 50000 + truncation message
-        String contentPart = ToolJsonTestSupport.parse(result).get("content").asText();
+        String contentPart = ToolJsonTestSupport.parse(result).get("parts").get(0).get("content").asText();
         assertThat(contentPart.length()).isLessThan(60_000);
     }
 
@@ -312,7 +310,7 @@ class DocumentExtractionTest {
     void shouldHandleAttachmentNotFound() {
         when(client.getIssue(ISSUE_ID)).thenReturn(issueWithAttachments(ISSUE_ID, java.util.List.of()));
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 999);
+        String result = tools.getAttachmentContext(ISSUE_ID, 999);
 
         assertThat(result).contains("not found");
     }
@@ -327,7 +325,7 @@ class DocumentExtractionTest {
         stubIssueAttachment(attachment);
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(garbage);
 
-        String result = tools.getAttachmentContent(ISSUE_ID, 12);
+        String result = tools.getAttachmentContext(ISSUE_ID, 12);
 
         assertThat(result).contains("corrupt.pdf");
         assertThat(result).contains("\"textExtracted\":true");

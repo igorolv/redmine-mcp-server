@@ -75,8 +75,8 @@ AI-клиент запускает сервер как дочерний проц
 
 | Tool | Описание |
 |---|---|
-| `getAttachmentContent` | Содержимое вложений: текстовые (txt, log, xml, json, csv и др.), PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx). ID вложений берите из `getIssue.attachments`. Для изображений — `getImageAttachment` |
-| `getImageAttachment` | Скачивание изображений (PNG, JPEG, GIF, BMP, WebP) с автоматическим ресайзом для визуального анализа AI |
+| `getAttachmentFile` | Скачивает оригинальный файл вложения в локальный snapshot-каталог и возвращает `localPath`/`fileUri`. ID вложений берите из `getIssue.attachments` |
+| `getAttachmentContext` | Текстовый контекст вложения: txt/log/xml/json/csv, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), ZIP. Возвращает `parts[]`; ZIP может дать отдельную часть на каждый entry |
 | `getWikiPage` | Содержимое wiki-страницы проекта |
 | `listWikiPages` | Список всех wiki-страниц проекта |
 
@@ -233,8 +233,8 @@ AI-клиент получает ровно те данные, которые з
 - сведения о проектах, версиях, участниках, справочниках и трудозатратах;
 - wiki-страницы;
 - метаданные вложений;
-- текст, извлечённый из вложений PDF, DOCX, XLSX, PPTX, ZIP и текстовых файлов;
-- изображения, запрошенные через `getImageAttachment`, в виде MCP image content.
+- локальные пути к оригинальным файлам вложений, материализованным через `getAttachmentFile`;
+- текст, извлечённый из вложений PDF, DOCX, XLSX, PPTX, ZIP и текстовых файлов через `getAttachmentContext`.
 
 Перед подключением к внешнему или облачному AI-клиенту проверьте внутренние правила компании: данные Redmine могут содержать коммерческую тайну, персональные данные, логи, ключи, дампы ошибок и содержимое документов.
 
@@ -244,7 +244,7 @@ AI-клиент получает ровно те данные, которые з
 
 | Область | Лимит |
 |---|---|
-| Вывод `getAttachmentContent` | до 50 000 символов, дальше текст обрезается |
+| Каждая текстовая часть `getAttachmentContext.parts[]` | до 50 000 символов, дальше текст обрезается |
 | ZIP-глубина | 1 уровень |
 | ZIP-файлы | до 100 записей |
 | ZIP-файл внутри архива | до 10 MB |
@@ -290,7 +290,7 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 - Ошибки Redmine (`401`, `403`, `404`, `5xx`) сейчас в основном обрабатываются на уровне Spring `RestClient`; для пользователя AI-клиента сообщение может быть менее дружелюбным, чем специализированная ошибка MCP tool.
 - Поиск зависит от настроек Redmine. Если `/search.json` отключён администратором, `searchAll` и `searchIssues` могут не возвращать ожидаемые результаты.
 - Извлечение текста из PDF работает только для PDF с текстовым слоем. Сканированные документы без OCR будут определены как PDF без извлекаемого текста.
-- Изображения возвращаются только через `getImageAttachment`; `getAttachmentContent` для изображений отдаёт метаданные и подсказку использовать image tool.
+- Изображения не перекодируются и не ресайзятся. Для них используйте `getAttachmentFile`, чтобы получить путь к оригинальному файлу; `getAttachmentContext` отдаёт только метаданные и подсказку.
 
 ## Структура проекта
 
@@ -302,7 +302,7 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   │   └── RedmineConfig.java             — RestClient с автодобавлением http://
 │   ├── client/
 │   │   ├── RedmineClient.java             — обёртка над Redmine REST API
-│   │   └── DocumentTextExtractor.java     — извлечение текста из PDF/DOCX/XLSX/PPTX
+│   │   └── DocumentTextExtractor.java     — извлечение текста из PDF/DOCX/XLSX/PPTX/ZIP
 │   ├── model/
 │   │   ├── IdName.java                    — пара id/name (проект, статус, и т.д.)
 │   │   ├── RedmineAttachment.java         — вложение
@@ -317,7 +317,7 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   │   └── RedmineWikiPage.java           — wiki-страница
 │   └── tools/
 │       ├── AnalysisTools.java             — 7 MCP-инструментов аналитики и анализа рисков
-│       ├── AttachmentTools.java           — 2 MCP-инструмента для вложений и изображений
+│       ├── AttachmentTools.java           — 2 MCP-инструмента для файлов и контекста вложений
 │       ├── ContextTools.java              — 1 MCP-инструмент для контекста задачи
 │       ├── IssueTools.java                — 7 MCP-инструментов для задач и поиска
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов

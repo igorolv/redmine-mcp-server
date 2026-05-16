@@ -14,9 +14,6 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -83,58 +80,70 @@ class AttachmentServiceTest {
         assertThat(service.isImage(att)).isFalse();
     }
 
-    // --- renderImage ---
+    // --- materializeFile / readContext ---
 
     @Test
-    void renderImageShouldReturnRendered() throws Exception {
+    void materializeFileShouldReturnOriginalPath() throws Exception {
+        byte[] data = "original".getBytes();
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
-        when(extractor.getFileExtension("photo.png")).thenReturn("png");
-        when(client.downloadAttachment(att.contentUrl())).thenReturn(pngBytes(200, 100));
+        when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
 
-        var result = service.renderImage(1, 20, null);
+        var result = service.materializeFile(1, 20);
 
-        assertThat(result.attachmentId()).isEqualTo(20);
-        assertThat(result.data()).isNotEmpty();
-        assertThat(result.mimeType()).startsWith("image/");
+        assertThat(result.attachment().id()).isEqualTo(20);
+        assertThat(Path.of(result.localPath())).exists();
+        assertThat(result.fileUri()).startsWith("file:///");
+        assertThat(result.localSize()).isEqualTo(data.length);
     }
 
     @Test
-    void renderImageShouldResizeAndSwitchMimeToPng() throws Exception {
-        var att = attachment(20, "wide.jpg", "image/jpeg");
+    void readContextShouldReturnExtractedParts() {
+        byte[] data = "hello".getBytes();
+        var att = attachment(20, "readme.txt", "text/plain");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
-        when(extractor.getFileExtension("wide.jpg")).thenReturn("jpg");
-        when(client.downloadAttachment(att.contentUrl())).thenReturn(pngBytes(3_000, 2_000));
+        when(extractor.isTextExtractable("readme.txt", "text/plain")).thenReturn(true);
+        when(extractor.detectExtractionType(att)).thenReturn("text");
+        when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
+        when(extractor.extractTextParts(att, Path.of(dataDir.toString(), "issues", "1", "attachments", "20__readme.txt")))
+                .thenReturn(List.of(new DocumentTextExtractor.ExtractedTextPart(
+                        null, "text", (long) data.length, "hello", null)));
 
-        var result = service.renderImage(1, 20, 800);
+        var result = service.readContext(1, 20);
 
-        assertThat(result.mimeType()).isEqualTo("image/png");
+        assertThat(result.textExtracted()).isTrue();
+        assertThat(result.parts()).hasSize(1);
+        assertThat(result.parts().getFirst().content()).isEqualTo("hello");
+        assertThat(result.localPath()).endsWith("20__readme.txt");
     }
 
     @Test
-    void renderImageShouldThrowAttachmentNotFound() {
+    void materializeFileShouldThrowAttachmentNotFound() {
         when(client.getIssue(1)).thenReturn(issue(1, List.of()));
-        assertThatThrownBy(() -> service.renderImage(1, 99, null))
+        assertThatThrownBy(() -> service.materializeFile(1, 99))
                 .isInstanceOf(AttachmentNotFoundException.class);
     }
 
     @Test
-    void renderImageShouldThrowForNonImage() {
-        var att = attachment(20, "doc.pdf", "application/pdf");
+    void readContextShouldReturnMetadataForImage() {
+        var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
-        when(extractor.getFileExtension("doc.pdf")).thenReturn("pdf");
-        assertThatThrownBy(() -> service.renderImage(1, 20, null))
-                .isInstanceOf(NotAnImageAttachmentException.class)
-                .satisfies(e -> assertThat(((NotAnImageAttachmentException) e).filename()).isEqualTo("doc.pdf"));
+        when(extractor.isTextExtractable("photo.png", "image/png")).thenReturn(false);
+        when(extractor.getFileExtension("photo.png")).thenReturn("png");
+
+        var result = service.readContext(1, 20);
+
+        assertThat(result.textExtracted()).isFalse();
+        assertThat(result.parts()).isEmpty();
+        assertThat(result.note()).contains("getAttachmentFile");
     }
 
     @Test
-    void renderImageShouldThrowWhenDownloadFails() {
+    void materializeFileShouldThrowWhenDownloadFails() {
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
-        when(extractor.getFileExtension("photo.png")).thenReturn("png");
         when(client.downloadAttachment(att.contentUrl())).thenReturn(null);
-        assertThatThrownBy(() -> service.renderImage(1, 20, null))
+        assertThatThrownBy(() -> service.materializeFile(1, 20))
                 .isInstanceOf(AttachmentDownloadFailedException.class);
     }
 
@@ -168,15 +177,6 @@ class AttachmentServiceTest {
         );
     }
 
-    private static byte[] pngBytes(int width, int height) throws Exception {
-        var image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        var g = image.createGraphics();
-        g.fillRect(0, 0, width, height);
-        g.dispose();
-        var baos = new ByteArrayOutputStream();
-        ImageIO.write(image, "png", baos);
-        return baos.toByteArray();
-    }
 }
 
 

@@ -5,15 +5,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import io.modelcontextprotocol.spec.McpSchema;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 
-import javax.imageio.ImageIO;
-import java.io.ByteArrayInputStream;
-import java.util.Base64;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,9 +39,9 @@ class Issue4202DocxIntegrationTest {
 
         printIssueAndAttachment(issue, attachment);
 
-        String content = readAttachmentContent(attachment);
+        String content = readAttachmentContext(attachment);
         var contentJson = ToolJsonTestSupport.parse(content);
-        String contentBody = contentJson.get("content").asText();
+        String contentBody = contentJson.get("parts").get(0).get("content").asText();
         String directText = contentBody;
 
         assertThat(content)
@@ -60,37 +58,26 @@ class Issue4202DocxIntegrationTest {
         System.out.println("Direct extractor preview:");
         System.out.println(snippet(directText, 2_000));
         System.out.println();
-        System.out.println("AttachmentTools.getAttachmentContent preview:");
+        System.out.println("AttachmentTools.getAttachmentContext preview:");
         System.out.println(snippet(content, 2_000));
     }
 
     @Test
-    void shouldLoadFirstPngAttachmentFromIssue4202AsImageContent() throws Exception {
+    void shouldLoadFirstPngAttachmentFromIssue4202AsOriginalFile() throws Exception {
         var issue = loadIssue4202();
         var attachment = findFirstImageAttachment(issue);
 
-        McpSchema.CallToolResult result = attachmentTools.getImageAttachment(ISSUE_ID, attachment.id(), null);
+        String result = attachmentTools.getAttachmentFile(ISSUE_ID, attachment.id());
+        var json = ToolJsonTestSupport.parse(result);
 
-        assertThat(result.isError()).isFalse();
-        assertThat(result.content()).hasSize(2);
-        assertThat(result.content().getFirst()).isInstanceOf(McpSchema.TextContent.class);
-        assertThat(((McpSchema.TextContent) result.content().getFirst()).text())
-                .contains(attachment.filename());
-        assertThat(result.content().get(1)).isInstanceOf(McpSchema.ImageContent.class);
-
-        var imageContent = (McpSchema.ImageContent) result.content().get(1);
-        assertThat(imageContent.mimeType()).isEqualTo("image/png");
-        assertThat(imageContent.data()).isNotBlank();
-
-        byte[] imageBytes = Base64.getDecoder().decode(imageContent.data());
-        var image = ImageIO.read(new ByteArrayInputStream(imageBytes));
-        assertThat(image).isNotNull();
-        assertThat(image.getWidth()).isGreaterThan(0);
-        assertThat(image.getHeight()).isGreaterThan(0);
+        assertThat(json.get("attachment").get("filename").asText()).isEqualTo(attachment.filename());
+        Path localPath = Path.of(json.get("localPath").asText());
+        assertThat(localPath).exists().isRegularFile();
+        assertThat(Files.size(localPath)).isGreaterThan(0);
 
         System.out.println();
         System.out.println("PNG attachment: #" + attachment.id() + " " + attachment.filename());
-        System.out.println("Decoded image size: " + image.getWidth() + "x" + image.getHeight());
+        System.out.println("Local file: " + localPath);
     }
 
     @Test
@@ -170,9 +157,9 @@ class Issue4202DocxIntegrationTest {
         return attachment;
     }
 
-    private String readAttachmentContent(RedmineAttachment attachment) {
+    private String readAttachmentContext(RedmineAttachment attachment) {
         try {
-            return attachmentTools.getAttachmentContent(ISSUE_ID, attachment.id());
+            return attachmentTools.getAttachmentContext(ISSUE_ID, attachment.id());
         } catch (Exception e) {
             throw new AssertionError(
                     "Failed to read DOCX attachment #%d (%s) from issue #%d via content URL %s"

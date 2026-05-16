@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -43,21 +44,59 @@ public class DocumentTextExtractor {
      * Extract text from an already downloaded attachment file.
      */
     public String extractText(RedmineAttachment attachment, Path localFile) {
+        var parts = extractTextParts(attachment, localFile).stream()
+                .filter(ExtractedTextPart::textExtracted)
+                .toList();
+        if (parts.isEmpty()) {
+            return null;
+        }
+        if (parts.size() == 1 && parts.getFirst().name() == null) {
+            return parts.getFirst().content();
+        }
+
+        var text = new StringBuilder();
+        for (var part : parts) {
+            text.append("\n--- %s ---\n".formatted(part.name()));
+            text.append(part.content()).append("\n");
+        }
+        return normalizeExtractedText(text.toString());
+    }
+
+    /**
+     * Extract text parts from an already downloaded attachment file.
+     * ZIP archives are represented as separate parts per archive entry.
+     */
+    public List<ExtractedTextPart> extractTextParts(RedmineAttachment attachment, Path localFile) {
         String ext = getFileExtension(attachment.filename());
         String contentType = attachment.contentType() != null ? attachment.contentType() : "";
 
         if (!isDocument(ext, contentType)
                 && !isArchive(ext, contentType)
                 && !isPlainText(contentType, attachment.filename())) {
-            return null;
+            return List.of();
         }
 
         try {
-            return extractFromBytes(attachment.filename(), contentType, Files.readAllBytes(localFile));
+            byte[] data = Files.readAllBytes(localFile);
+            if (isArchive(ext, contentType)) {
+                return extractZipTextParts(attachment.filename(), data, 0);
+            }
+
+            String text = extractFromBytes(attachment.filename(), contentType, data);
+            if (text == null) {
+                return List.of();
+            }
+            return List.of(new ExtractedTextPart(
+                    null,
+                    detectExtractionType(attachment.filename(), contentType),
+                    (long) data.length,
+                    text,
+                    null
+            ));
         } catch (IOException e) {
             log.warn("Failed to read materialized attachment #{} ({}): {}",
                     attachment.id(), localFile, e.getMessage());
-            return null;
+            return List.of();
         }
     }
 
@@ -131,14 +170,18 @@ public class DocumentTextExtractor {
     }
 
     public String detectExtractionType(RedmineAttachment attachment) {
-        String ext = getFileExtension(attachment.filename());
-        String contentType = attachment.contentType() != null ? attachment.contentType() : "";
+        return detectExtractionType(attachment.filename(), attachment.contentType());
+    }
 
-        if ("pdf".equals(ext) || contentType.equals("application/pdf")) return "pdf";
-        if ("docx".equals(ext) || contentType.contains("wordprocessingml")) return "docx";
-        if ("xlsx".equals(ext) || contentType.contains("spreadsheetml")) return "xlsx";
-        if ("pptx".equals(ext) || contentType.contains("presentationml")) return "pptx";
-        if ("zip".equals(ext) || isArchive(ext, contentType)) return "zip";
+    public String detectExtractionType(String filename, String contentType) {
+        String ext = getFileExtension(filename);
+        String ct = contentType != null ? contentType : "";
+
+        if ("pdf".equals(ext) || ct.equals("application/pdf")) return "pdf";
+        if ("docx".equals(ext) || ct.contains("wordprocessingml")) return "docx";
+        if ("xlsx".equals(ext) || ct.contains("spreadsheetml")) return "xlsx";
+        if ("pptx".equals(ext) || ct.contains("presentationml")) return "pptx";
+        if ("zip".equals(ext) || isArchive(ext, ct)) return "zip";
         return "text";
     }
 
@@ -256,15 +299,42 @@ public class DocumentTextExtractor {
     }
 
     private String extractZipText(String filename, byte[] data, int archiveDepth) {
+        var parts = extractZipTextParts(filename, data, archiveDepth);
+        if (parts.size() == 1 && !parts.getFirst().textExtracted() && parts.getFirst().note() != null) {
+            return parts.getFirst().note();
+        }
+
         var manifest = new StringBuilder();
         var extractedText = new StringBuilder();
-        int entries = 0;
-        int extracted = 0;
-        int skipped = 0;
-        long[] totalBytes = {0};
+        int entries = parts.size();
+        long extracted = parts.stream().filter(ExtractedTextPart::textExtracted).count();
+        long skipped = entries - extracted;
 
         manifest.append("ZIP archive: %s\n".formatted(filename));
         manifest.append("--- ZIP entries ---\n");
+        for (var part : parts) {
+            if (part.textExtracted()) {
+                manifest.append("- %s (extracted, %s)\n".formatted(part.name(), formatBytes(part.size())));
+                extractedText.append("\n--- %s ---\n".formatted(part.name()));
+                extractedText.append(part.content()).append("\n");
+            } else {
+                manifest.append("- %s (%s)\n".formatted(part.name(), part.note()));
+            }
+        }
+        if (entries == 0) {
+            manifest.append("- (archive contains no files)\n");
+        }
+
+        manifest.append("\nEntries scanned: %d, extracted: %d, skipped: %d\n"
+                .formatted(entries, extracted, skipped));
+        manifest.append(extractedText);
+        return manifest.toString();
+    }
+
+    private List<ExtractedTextPart> extractZipTextParts(String filename, byte[] data, int archiveDepth) {
+        var parts = new ArrayList<ExtractedTextPart>();
+        int entries = 0;
+        long[] totalBytes = {0};
 
         try (var zip = new ZipInputStream(new ByteArrayInputStream(data))) {
             ZipEntry entry;
@@ -275,14 +345,25 @@ public class DocumentTextExtractor {
 
                 entries++;
                 if (entries > MAX_ARCHIVE_ENTRIES) {
-                    manifest.append("- ... skipped remaining entries (limit: %d)\n".formatted(MAX_ARCHIVE_ENTRIES));
+                    parts.add(new ExtractedTextPart(
+                            "...",
+                            "zip-entry",
+                            null,
+                            null,
+                            "skipped remaining entries (limit: %d)".formatted(MAX_ARCHIVE_ENTRIES)
+                    ));
                     break;
                 }
 
                 String entryName = normalizeZipEntryName(entry.getName());
                 if (!isSafeZipEntryName(entryName)) {
-                    skipped++;
-                    manifest.append("- %s (skipped, unsafe entry name)\n".formatted(entry.getName()));
+                    parts.add(new ExtractedTextPart(
+                            entry.getName(),
+                            "zip-entry",
+                            null,
+                            null,
+                            "skipped, unsafe entry name"
+                    ));
                     continue;
                 }
 
@@ -290,38 +371,55 @@ public class DocumentTextExtractor {
                 try {
                     entryBytes = readZipEntry(zip, entryName, totalBytes);
                 } catch (ArchiveReadLimitException e) {
-                    skipped++;
-                    manifest.append("- %s (skipped, %s)\n".formatted(entryName, e.getMessage()));
-                    manifest.append("- ... stopped archive extraction after reaching safety limits\n");
+                    parts.add(new ExtractedTextPart(
+                            entryName,
+                            detectExtractionType(entryName, null),
+                            null,
+                            null,
+                            "skipped, %s".formatted(e.getMessage())
+                    ));
+                    parts.add(new ExtractedTextPart(
+                            "...",
+                            "zip-entry",
+                            null,
+                            null,
+                            "stopped archive extraction after reaching safety limits"
+                    ));
                     break;
                 }
 
                 String text = extractFromBytes(entryName, null, entryBytes, archiveDepth + 1);
                 if (text == null) {
-                    skipped++;
-                    manifest.append("- %s (skipped, not text-extractable, %s)\n"
-                            .formatted(entryName, formatBytes(entryBytes.length)));
+                    parts.add(new ExtractedTextPart(
+                            entryName,
+                            detectExtractionType(entryName, null),
+                            (long) entryBytes.length,
+                            null,
+                            "skipped, not text-extractable"
+                    ));
                     continue;
                 }
 
-                extracted++;
-                manifest.append("- %s (extracted, %s)\n".formatted(entryName, formatBytes(entryBytes.length)));
-                extractedText.append("\n--- %s ---\n".formatted(entryName));
-                extractedText.append(text).append("\n");
+                parts.add(new ExtractedTextPart(
+                        entryName,
+                        detectExtractionType(entryName, null),
+                        (long) entryBytes.length,
+                        text,
+                        null
+                ));
             }
         } catch (Exception e) {
             log.warn("Failed to extract text from ZIP archive: {}", e.getMessage());
-            return "(failed to extract ZIP archive: %s)".formatted(e.getMessage());
+            return List.of(new ExtractedTextPart(
+                    filename,
+                    "zip",
+                    (long) data.length,
+                    null,
+                    "failed to extract ZIP archive: %s".formatted(e.getMessage())
+            ));
         }
 
-        if (entries == 0) {
-            manifest.append("- (archive contains no files)\n");
-        }
-
-        manifest.append("\nEntries scanned: %d, extracted: %d, skipped: %d\n"
-                .formatted(entries, extracted, skipped));
-        manifest.append(extractedText);
-        return manifest.toString();
+        return parts;
     }
 
     private byte[] readZipEntry(ZipInputStream zip, String entryName, long[] totalBytes) throws IOException {
@@ -376,6 +474,18 @@ public class DocumentTextExtractor {
     private static class ArchiveReadLimitException extends IOException {
         private ArchiveReadLimitException(String message) {
             super(message);
+        }
+    }
+
+    public record ExtractedTextPart(
+            String name,
+            String extractionType,
+            Long size,
+            String content,
+            String note
+    ) {
+        public boolean textExtracted() {
+            return content != null;
         }
     }
 }

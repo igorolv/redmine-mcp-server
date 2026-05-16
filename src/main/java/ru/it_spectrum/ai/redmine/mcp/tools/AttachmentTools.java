@@ -8,13 +8,7 @@ import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
-import ru.it_spectrum.ai.redmine.mcp.service.ImageProcessingFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
-import ru.it_spectrum.ai.redmine.mcp.service.NotAnImageAttachmentException;
-
-import io.modelcontextprotocol.spec.McpSchema;
-
-import java.util.Base64;
 
 @Service
 public class AttachmentTools {
@@ -31,89 +25,65 @@ public class AttachmentTools {
         this.errors = errors;
     }
 
-    @McpTool(description = "Get the content of an attachment from Redmine. " +
-            "Supports text files (txt, log, xml, json, csv, etc.), " +
-            "PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives with supported files. " +
-            "For images use getImageAttachment instead. " +
-            "For other binary files returns only metadata. " +
+    @McpTool(description = "Download an attachment from Redmine into the local issue snapshot directory " +
+            "and return the original file path and file URI. " +
             "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.")
-    public String getAttachmentContent(
+    public String getAttachmentFile(
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
-        return getAttachmentContentInternal(issueId, attachmentId);
+        return getAttachmentFileInternal(issueId, attachmentId);
     }
 
-    private String getAttachmentContentInternal(int issueId, int attachmentId) {
-        log.info("Tool call: getAttachmentContent (attachmentId={}, issueId={})", attachmentId, issueId);
+    private String getAttachmentFileInternal(int issueId, int attachmentId) {
+        log.info("Tool call: getAttachmentFile (attachmentId={}, issueId={})", attachmentId, issueId);
         long start = System.nanoTime();
         try {
-            var result = attachmentService.readContent(issueId, attachmentId);
-            ToolLogger.completed(log, "getAttachmentContent", start);
+            var result = attachmentService.materializeFile(issueId, attachmentId);
+            ToolLogger.completed(log, "getAttachmentFile", start);
             return json.write(result);
         } catch (AttachmentNotFoundException e) {
-            ToolLogger.failed(log, "getAttachmentContent", start, e.getMessage());
+            ToolLogger.failed(log, "getAttachmentFile", start, e.getMessage());
             return errors.notFound("attachment", "#" + attachmentId);
         } catch (IssueNotFoundException e) {
-            ToolLogger.failed(log, "getAttachmentContent", start, e.getMessage());
+            ToolLogger.failed(log, "getAttachmentFile", start, e.getMessage());
             return errors.notFound("issue", "#" + issueId);
         } catch (AttachmentDownloadFailedException e) {
-            ToolLogger.failed(log, "getAttachmentContent", start, e.getMessage());
+            ToolLogger.failed(log, "getAttachmentFile", start, e.getMessage());
             return errors.unavailable("attachment #" + attachmentId);
         }
     }
 
-    @McpTool(description = "Download an image attachment from Redmine and return it for visual analysis. " +
-            "Supports PNG, JPEG, GIF, BMP, WebP. Automatically resizes large images to save tokens. " +
+    @McpTool(description = "Get text context extracted from an attachment. " +
+            "Supports text files (txt, log, xml, json, csv, etc.), " +
+            "PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives with supported files. " +
+            "Returns a structured parts array; ZIP archives can produce one part per archive entry. " +
+            "For images and other binary files returns metadata and a note; use getAttachmentFile for the original file. " +
             "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.")
-    public McpSchema.CallToolResult getImageAttachment(
+    public String getAttachmentContext(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Attachment ID number") int attachmentId,
-            @McpToolParam(description = "Maximum image width in pixels for resizing (default 1024). " +
-                    "Height is scaled proportionally.", required = false) Integer maxWidth
+            @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
-        return getImageAttachmentInternal(issueId, attachmentId, maxWidth);
+        return getAttachmentContextInternal(issueId, attachmentId);
     }
 
-    private McpSchema.CallToolResult getImageAttachmentInternal(int issueId, int attachmentId, Integer maxWidth) {
-        log.info("Tool call: getImageAttachment (attachmentId={}, maxWidth={}, issueId={})",
-                attachmentId, maxWidth, issueId);
+    private String getAttachmentContextInternal(int issueId, int attachmentId) {
+        log.info("Tool call: getAttachmentContext (attachmentId={}, issueId={})", attachmentId, issueId);
         long start = System.nanoTime();
         try {
-            var rendered = attachmentService.renderImage(issueId, attachmentId, maxWidth);
-            String base64 = Base64.getEncoder().encodeToString(rendered.data());
-            String metadata = "Attachment: %s (%s, %s)".formatted(
-                    rendered.filename(), rendered.contentType(), attachmentService.formatSize(rendered.size()));
-            var result = McpSchema.CallToolResult.builder()
-                    .addTextContent(metadata)
-                    .addContent(new McpSchema.ImageContent(null, base64, rendered.mimeType()))
-                    .build();
-            ToolLogger.completed(log, "getImageAttachment", start);
-            return result;
+            var result = attachmentService.readContext(issueId, attachmentId);
+            ToolLogger.completed(log, "getAttachmentContext", start);
+            return json.write(result);
         } catch (AttachmentNotFoundException e) {
-            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
-            return errorResult("Attachment #%d not found".formatted(e.attachmentId()));
+            ToolLogger.failed(log, "getAttachmentContext", start, e.getMessage());
+            return errors.notFound("attachment", "#" + attachmentId);
         } catch (IssueNotFoundException e) {
-            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
-            return errorResult("Issue #%d not found".formatted(e.issueId()));
-        } catch (NotAnImageAttachmentException e) {
-            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
-            return errorResult("Attachment #%d (%s) is not an image. Use getAttachmentContent for text/document files."
-                    .formatted(e.attachmentId(), e.filename()));
+            ToolLogger.failed(log, "getAttachmentContext", start, e.getMessage());
+            return errors.notFound("issue", "#" + issueId);
         } catch (AttachmentDownloadFailedException e) {
-            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
-            return errorResult("Failed to download attachment #%d".formatted(e.attachmentId()));
-        } catch (ImageProcessingFailedException e) {
-            ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
-            return errorResult(e.getMessage());
+            ToolLogger.failed(log, "getAttachmentContext", start, e.getMessage());
+            return errors.unavailable("attachment #" + attachmentId);
         }
-    }
-
-    private McpSchema.CallToolResult errorResult(String message) {
-        return McpSchema.CallToolResult.builder()
-                .addTextContent(message)
-                .isError(true)
-                .build();
     }
 
 }
