@@ -10,6 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.model.AttachmentContentResult;
 import ru.it_spectrum.ai.redmine.mcp.model.ImageRenderResult;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
@@ -242,7 +243,7 @@ public class AttachmentService {
 
         var page = client.listIssues(request.projectId(), "*", null, null, null, null,
                 "updated_on:desc", null, 0, request.issueLimit());
-        var issues = new ArrayList<>(page.issues());
+        var issues = new ArrayList<RedmineIssueSummary>(page.issues());
         var fullIssues = new ArrayList<RedmineIssue>();
         for (var issue : issues) {
             var full = client.getIssue(issue.id());

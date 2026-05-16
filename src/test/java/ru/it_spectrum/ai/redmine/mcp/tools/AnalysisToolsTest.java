@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
 import ru.it_spectrum.ai.redmine.mcp.service.AnalysisService;
@@ -42,16 +43,16 @@ class AnalysisToolsTest {
     @Test
     void shouldReturnProjectSummary() {
         var issues = List.of(
-                issue(1, "Fix bug", "New", "Normal", "Bug", "Alice", null, null),
-                issue(2, "Add feature", "In Progress", "High", "Feature", "Bob", null, null),
-                issue(3, "Write docs", "New", "Low", "Task", null, null, null)
+                summary(1, "Fix bug", "New", "Normal", "Bug", "Alice", null, null),
+                summary(2, "Add feature", "In Progress", "High", "Feature", "Bob", null, null),
+                summary(3, "Write docs", "New", "Low", "Task", null, null, null)
         );
         when(client.listIssues(eq("proj"), eq("open"), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), eq(0), eq(100)))
-                .thenReturn(new RedmineIssue.Page(issues, 3, 0, 100));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 3, 0, 100));
         when(client.listIssues(eq("proj"), eq("closed"), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), eq(0), eq(1)))
-                .thenReturn(new RedmineIssue.Page(List.of(), 5, 0, 1));
+                .thenReturn(new RedmineIssueSummary.Page(List.of(), 5, 0, 1));
 
         String result = tools.getProjectSummary("proj", null);
 
@@ -72,14 +73,14 @@ class AnalysisToolsTest {
     void shouldCountOverdueIssuesInSummary() {
         String pastDate = LocalDate.now().minusDays(10).toString();
         var issues = List.of(
-                issue(1, "Overdue task", "Open", "High", "Bug", "Alice", pastDate, null)
+                summary(1, "Overdue task", "Open", "High", "Bug", "Alice", pastDate, null)
         );
         when(client.listIssues(eq("proj"), eq("open"), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), eq(0), eq(100)))
-                .thenReturn(new RedmineIssue.Page(issues, 1, 0, 100));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 1, 0, 100));
         when(client.listIssues(eq("proj"), eq("closed"), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), eq(0), eq(1)))
-                .thenReturn(new RedmineIssue.Page(List.of(), 0, 0, 1));
+                .thenReturn(new RedmineIssueSummary.Page(List.of(), 0, 0, 1));
 
         String result = tools.getProjectSummary("proj", null);
 
@@ -96,12 +97,12 @@ class AnalysisToolsTest {
         when(client.getCurrentUser()).thenReturn(user);
 
         var issues = List.of(
-                issue(1, "Fix bug", "Open", "High", "Bug", "Alice", null, "proj-a"),
-                issue(2, "Add feature", "Open", "Normal", "Feature", "Alice", null, "proj-b")
+                summary(1, "Fix bug", "Open", "High", "Bug", "Alice", null, "proj-a"),
+                summary(2, "Add feature", "Open", "Normal", "Feature", "Alice", null, "proj-b")
         );
         when(client.listIssues(isNull(), eq("open"), isNull(), eq(42),
                 isNull(), isNull(), isNull(), isNull(), eq(0), eq(100)))
-                .thenReturn(new RedmineIssue.Page(issues, 2, 0, 100));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 2, 0, 100));
         when(client.getIssuePriorities()).thenReturn(List.of(
                 new IdName(1, "Low"), new IdName(2, "Normal"), new IdName(3, "High")));
 
@@ -135,13 +136,13 @@ class AnalysisToolsTest {
         when(client.getProjectVersions("proj")).thenReturn(List.of(version));
 
         var issues = List.of(
-                issue(1, "Fix crash", "Closed", "High", "Bug", "Alice", null, null),
-                issue(2, "Add OAuth", "In Progress", "Normal", "Feature", "Bob", null, null),
-                issue(3, "Fix leak", "Closed", "Normal", "Bug", "Alice", null, null)
+                summary(1, "Fix crash", "Closed", "High", "Bug", "Alice", null, null),
+                summary(2, "Add OAuth", "In Progress", "Normal", "Feature", "Bob", null, null),
+                summary(3, "Fix leak", "Closed", "Normal", "Bug", "Alice", null, null)
         );
         when(client.listIssues(eq("proj"), eq("*"), isNull(), isNull(),
                 isNull(), eq(10), isNull(), isNull(), eq(0), eq(100)))
-                .thenReturn(new RedmineIssue.Page(issues, 3, 0, 100));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 3, 0, 100));
 
         String result = tools.getVersionChangelog("proj", 10);
 
@@ -226,12 +227,12 @@ class AnalysisToolsTest {
                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
         var issues = List.of(
-                issueWithUpdatedOn(1, "Old issue", "Open", "Normal", oldDate),
-                issueWithUpdatedOn(2, "Recent issue", "Open", "Normal", recentDate)
+                summaryWithUpdatedOn(1, "Old issue", "Open", "Normal", oldDate),
+                summaryWithUpdatedOn(2, "Recent issue", "Open", "Normal", recentDate)
         );
         when(client.listIssues(eq("proj"), eq("open"), isNull(), isNull(),
                 isNull(), isNull(), eq("updated_on:asc"), isNull(), eq(0), eq(25)))
-                .thenReturn(new RedmineIssue.Page(issues, 2, 0, 25));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 2, 0, 25));
 
         String result = tools.getStaleIssues("proj", 30, null);
 
@@ -247,11 +248,11 @@ class AnalysisToolsTest {
         String recentDate = OffsetDateTime.now(ZoneOffset.UTC).minusDays(2)
                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         var issues = List.of(
-                issueWithUpdatedOn(1, "Recent", "Open", "Normal", recentDate)
+                summaryWithUpdatedOn(1, "Recent", "Open", "Normal", recentDate)
         );
         when(client.listIssues(eq("proj"), eq("open"), isNull(), isNull(),
                 isNull(), isNull(), eq("updated_on:asc"), isNull(), eq(0), eq(25)))
-                .thenReturn(new RedmineIssue.Page(issues, 1, 0, 25));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 1, 0, 25));
 
         String result = tools.getStaleIssues("proj", 30, null);
 
@@ -294,7 +295,11 @@ class AnalysisToolsTest {
 
         when(client.listIssues(eq("proj"), eq("open"), isNull(), isNull(),
                 isNull(), eq(10), isNull(), isNull(), eq(0), eq(100)))
-                .thenReturn(new RedmineIssue.Page(List.of(issue1, issue2), 2, 0, 100));
+                .thenReturn(new RedmineIssueSummary.Page(
+                        List.of(RedmineIssueSummary.fromIssue(issue1), RedmineIssueSummary.fromIssue(issue2)),
+                        2, 0, 100));
+        when(client.getIssue(1)).thenReturn(issue1);
+        when(client.getIssue(2)).thenReturn(issue2);
         when(client.getIssuePriorities()).thenReturn(List.of(
                 new IdName(1, "Low"), new IdName(2, "Normal"), new IdName(3, "High")));
 
@@ -317,7 +322,7 @@ class AnalysisToolsTest {
         when(client.getProjectVersions("proj")).thenReturn(List.of());
         when(client.listIssues(eq("proj"), eq("open"), isNull(), isNull(),
                 isNull(), eq(10), isNull(), isNull(), eq(0), eq(100)))
-                .thenReturn(new RedmineIssue.Page(List.of(), 0, 0, 100));
+                .thenReturn(new RedmineIssueSummary.Page(List.of(), 0, 0, 100));
         when(client.getIssuePriorities()).thenReturn(List.of(new IdName(2, "Normal")));
 
         String result = tools.getReleaseRisks("proj", 10);
@@ -337,20 +342,20 @@ class AnalysisToolsTest {
         when(client.getProjectVersions("proj")).thenReturn(List.of(v1, v2));
 
         var v1Issues = List.of(
-                issue(1, "Fix bug", "Closed", "Normal", "Bug", "Alice", null, null),
-                issue(2, "Shared task", "Closed", "Normal", "Task", "Bob", null, null)
+                summary(1, "Fix bug", "Closed", "Normal", "Bug", "Alice", null, null),
+                summary(2, "Shared task", "Closed", "Normal", "Task", "Bob", null, null)
         );
         var v2Issues = List.of(
-                issue(2, "Shared task", "Closed", "Normal", "Task", "Bob", null, null),
-                issue(3, "New feature", "Open", "High", "Feature", "Alice", null, null)
+                summary(2, "Shared task", "Closed", "Normal", "Task", "Bob", null, null),
+                summary(3, "New feature", "Open", "High", "Feature", "Alice", null, null)
         );
 
         when(client.listIssues(eq("proj"), eq("*"), isNull(), isNull(),
                 isNull(), eq(10), isNull(), isNull(), eq(0), eq(100)))
-                .thenReturn(new RedmineIssue.Page(v1Issues, 2, 0, 100));
+                .thenReturn(new RedmineIssueSummary.Page(v1Issues, 2, 0, 100));
         when(client.listIssues(eq("proj"), eq("*"), isNull(), isNull(),
                 isNull(), eq(20), isNull(), isNull(), eq(0), eq(100)))
-                .thenReturn(new RedmineIssue.Page(v2Issues, 2, 0, 100));
+                .thenReturn(new RedmineIssueSummary.Page(v2Issues, 2, 0, 100));
 
         String result = tools.compareVersions("proj", 10, 20);
 
@@ -371,9 +376,9 @@ class AnalysisToolsTest {
 
     // ── Test helpers ───────────────────────────────────────────────────
 
-    private static RedmineIssue issue(int id, String subject, String status, String priority,
+    private static RedmineIssueSummary summary(int id, String subject, String status, String priority,
                                        String tracker, String assignee, String dueDate, String project) {
-        return new RedmineIssue(
+        return RedmineIssueSummary.fromIssue(new RedmineIssue(
                 id,
                 new IdName(1, project != null ? project : "test-project"),
                 new IdName(1, tracker),
@@ -387,7 +392,7 @@ class AnalysisToolsTest {
                 null, null, false,
                 "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
                 null, null, null, null, null
-        );
+        ));
     }
 
     private static RedmineIssue issueWithRelations(int id, String subject, String status,
@@ -409,9 +414,9 @@ class AnalysisToolsTest {
         );
     }
 
-    private static RedmineIssue issueWithUpdatedOn(int id, String subject, String status,
+    private static RedmineIssueSummary summaryWithUpdatedOn(int id, String subject, String status,
                                                      String priority, String updatedOn) {
-        return new RedmineIssue(
+        return RedmineIssueSummary.fromIssue(new RedmineIssue(
                 id,
                 new IdName(1, "test-project"),
                 new IdName(1, "Bug"),
@@ -425,7 +430,7 @@ class AnalysisToolsTest {
                 null, null, false,
                 "2025-01-01T00:00:00Z", updatedOn,
                 null, null, null, null, null
-        );
+        ));
     }
 
 }

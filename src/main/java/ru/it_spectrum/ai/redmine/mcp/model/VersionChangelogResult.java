@@ -1,6 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.model;
 
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
 
 import java.util.List;
@@ -13,7 +13,7 @@ public record VersionChangelogResult(
         int totalIssues,
         int analyzedIssues,
         boolean truncated,
-        Map<String, List<RedmineIssue>> byTracker,
+        Map<String, List<RedmineIssueSummary>> byTracker,
         IssueCountSummary counts,
         HoursSummary hours
 ) {

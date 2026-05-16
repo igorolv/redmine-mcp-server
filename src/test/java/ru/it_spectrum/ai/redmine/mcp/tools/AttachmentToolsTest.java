@@ -12,6 +12,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
@@ -206,10 +207,10 @@ class AttachmentToolsTest {
         var issue1 = issueWithAttachments(101, List.of(att1));
 
         // listIssues returns issue summaries (no attachments)
-        var summaryIssue = issueWithAttachments(101, null);
+        var summaryIssue = RedmineIssueSummary.fromIssue(issueWithAttachments(101, null));
         when(client.listIssues("proj", "*", null, null, null, null,
                 "updated_on:desc", null, 0, 10))
-                .thenReturn(new RedmineIssue.Page(List.of(summaryIssue), 1, 0, 10));
+                .thenReturn(new RedmineIssueSummary.Page(List.of(summaryIssue), 1, 0, 10));
         when(client.getIssue(101)).thenReturn(issue1);
         when(client.downloadAttachment(att1.contentUrl()))
                 .thenReturn("OAuth integration guide".getBytes());
@@ -298,5 +299,4 @@ class AttachmentToolsTest {
         );
     }
 }
-
 

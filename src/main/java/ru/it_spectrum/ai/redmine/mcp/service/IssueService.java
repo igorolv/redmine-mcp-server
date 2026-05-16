@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
 import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
 import ru.it_spectrum.ai.redmine.mcp.model.MyIssuesResult;
@@ -60,10 +61,10 @@ public class IssueService {
 
     // --- Listing / search ---
 
-    public RedmineIssue.Page list(String projectId, String statusId, Integer trackerId,
-                                  Integer assignedToId, Integer priorityId, Integer versionId,
-                                  Integer queryId, Map<String, String> customFieldFilters,
-                                  String sort, int offset, int limit) {
+    public RedmineIssueSummary.Page list(String projectId, String statusId, Integer trackerId,
+                                         Integer assignedToId, Integer priorityId, Integer versionId,
+                                         Integer queryId, Map<String, String> customFieldFilters,
+                                         String sort, int offset, int limit) {
         return client.listIssues(projectId, statusId, trackerId, assignedToId, priorityId,
                 versionId, sort, queryId, customFieldFilters != null ? customFieldFilters : Map.of(),
                 offset, limit);
@@ -100,7 +101,7 @@ public class IssueService {
         return filters;
     }
 
-    public RedmineClient.SearchWithIssues searchIssues(String query, String projectId, int offset, int limit) {
+    public RedmineClient.SearchWithIssueSummaries searchIssues(String query, String projectId, int offset, int limit) {
         return client.searchIssues(query, projectId, offset, limit);
     }
 

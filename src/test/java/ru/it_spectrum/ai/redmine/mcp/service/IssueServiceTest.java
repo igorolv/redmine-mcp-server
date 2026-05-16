@@ -6,9 +6,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssues;
+import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssueSummaries;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
 import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
 
@@ -54,7 +55,7 @@ class IssueServiceTest {
 
     @Test
     void listShouldPassFiltersToClient() {
-        var page = new RedmineIssue.Page(List.of(), 0, 0, 25);
+        var page = new RedmineIssueSummary.Page(List.of(), 0, 0, 25);
         when(client.listIssues("p", "open", 1, 2, 3, 4, "updated_on:desc", 5,
                 Map.of("cf_1", "x"), 0, 25)).thenReturn(page);
 
@@ -66,7 +67,7 @@ class IssueServiceTest {
 
     @Test
     void listShouldDefaultNullCustomFieldFiltersToEmptyMap() {
-        var page = new RedmineIssue.Page(List.of(), 0, 0, 25);
+        var page = new RedmineIssueSummary.Page(List.of(), 0, 0, 25);
         when(client.listIssues(null, null, null, null, null, null, null, null,
                 Map.of(), 0, 25)).thenReturn(page);
 
@@ -77,7 +78,7 @@ class IssueServiceTest {
 
     @Test
     void searchIssuesShouldDelegateToClient() {
-        var sw = new SearchWithIssues(List.of(), 0, 0, 25);
+        var sw = new SearchWithIssueSummaries(List.of(), 0, 0, 25);
         when(client.searchIssues("q", "p", 0, 25)).thenReturn(sw);
         assertThat(service.searchIssues("q", "p", 0, 25)).isSameAs(sw);
     }
@@ -94,7 +95,7 @@ class IssueServiceTest {
     void getMyIssuesShouldComposeUserAndIssuesPage() {
         var user = new RedmineUser(42, "jdoe", "John", "Doe",
                 null, null, null, null, null, null, null);
-        var page = new RedmineIssue.Page(List.of(issue(1, "Bug")), 1, 0, 25);
+        var page = new RedmineIssueSummary.Page(List.of(summary(1, "Bug")), 1, 0, 25);
         when(client.getCurrentUser()).thenReturn(user);
         when(client.listIssues("p", "open", null, 42, null, null, "updated_on:desc", 0, 25))
                 .thenReturn(page);
@@ -229,6 +230,10 @@ class IssueServiceTest {
                 subject, null, null, null, 0, null, null, false,
                 "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
                 null, null, null, null, null);
+    }
+
+    private static RedmineIssueSummary summary(int id, String subject) {
+        return RedmineIssueSummary.fromIssue(issue(id, subject));
     }
 
     private static RedmineIssue treeIssue(int id, String subject, IdName parent,

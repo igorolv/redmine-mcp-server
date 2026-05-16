@@ -178,13 +178,4 @@ public record RedmineIssue(
     public record Single(RedmineIssue issue) {
     }
 
-    /** Wrapper for {"issues": [...], "total_count": N, "offset": N, "limit": N} */
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Page(
-            List<RedmineIssue> issues,
-            @JsonProperty("total_count") int totalCount,
-            int offset,
-            int limit
-    ) {
-    }
 }

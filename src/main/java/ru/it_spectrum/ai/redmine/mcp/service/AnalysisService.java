@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
 import ru.it_spectrum.ai.redmine.mcp.model.AssigneeSummary;
 import ru.it_spectrum.ai.redmine.mcp.model.BlockerChainResult;
@@ -77,10 +78,10 @@ public class AnalysisService {
         long overdueCount = issues.stream().filter(this::isOverdue).count();
         double estimated = issues.stream()
                 .filter(i -> i.estimatedHours() != null)
-                .mapToDouble(RedmineIssue::estimatedHours).sum();
+                .mapToDouble(RedmineIssueSummary::estimatedHours).sum();
         double spent = issues.stream()
                 .filter(i -> i.spentHours() != null)
-                .mapToDouble(RedmineIssue::spentHours).sum();
+                .mapToDouble(RedmineIssueSummary::spentHours).sum();
 
         return new ProjectSummaryResult(
                 projectId, versionId,
@@ -114,10 +115,10 @@ public class AnalysisService {
 
         double estimated = issues.stream()
                 .filter(i -> i.estimatedHours() != null)
-                .mapToDouble(RedmineIssue::estimatedHours).sum();
+                .mapToDouble(RedmineIssueSummary::estimatedHours).sum();
         double spent = issues.stream()
                 .filter(i -> i.spentHours() != null)
-                .mapToDouble(RedmineIssue::spentHours).sum();
+                .mapToDouble(RedmineIssueSummary::spentHours).sum();
         long overdueCount = issues.stream().filter(this::isOverdue).count();
 
         var byProject = issues.stream()
@@ -132,14 +133,14 @@ public class AnalysisService {
                         e.getValue().size(),
                         e.getValue().stream()
                                 .filter(i -> i.estimatedHours() != null)
-                                .mapToDouble(RedmineIssue::estimatedHours).sum(),
+                                .mapToDouble(RedmineIssueSummary::estimatedHours).sum(),
                         groupAndCount(e.getValue(), i -> name(i.priority()))))
                 .toList();
 
         var priorityOrder = client.getIssuePriorities().stream()
                 .collect(Collectors.toMap(p -> p.name(), p -> p.id()));
         var sorted = issues.stream()
-                .sorted(Comparator.<RedmineIssue, Integer>comparing(
+                .sorted(Comparator.<RedmineIssueSummary, Integer>comparing(
                                 i -> priorityOrder.getOrDefault(name(i.priority()), 0))
                         .reversed()
                         .thenComparing(i -> i.dueDate() != null ? i.dueDate() : "9999"))
@@ -171,10 +172,10 @@ public class AnalysisService {
         long open = issues.size() - closed;
         double estimated = issues.stream()
                 .filter(i -> i.estimatedHours() != null)
-                .mapToDouble(RedmineIssue::estimatedHours).sum();
+                .mapToDouble(RedmineIssueSummary::estimatedHours).sum();
         double spent = issues.stream()
                 .filter(i -> i.spentHours() != null)
-                .mapToDouble(RedmineIssue::spentHours).sum();
+                .mapToDouble(RedmineIssueSummary::spentHours).sum();
 
         return new VersionChangelogResult(
                 projectId, versionId, version,
@@ -240,8 +241,7 @@ public class AnalysisService {
         var issues = batch.issues;
 
         var blockers = issues.stream()
-                .filter(i -> i.relations() != null && i.relations().stream()
-                        .anyMatch(r -> "blocks".equals(r.relationType()) && r.issueId() == i.id()))
+                .filter(this::hasBlockingRelation)
                 .toList();
         var overdue = issues.stream().filter(this::isOverdue).toList();
         var priorities = client.getIssuePriorities();
@@ -286,8 +286,8 @@ public class AnalysisService {
         var batch1 = fetchAllIssues(projectId, "*", versionId1, null);
         var batch2 = fetchAllIssues(projectId, "*", versionId2, null);
 
-        var ids1 = batch1.issues.stream().map(RedmineIssue::id).collect(Collectors.toSet());
-        var ids2 = batch2.issues.stream().map(RedmineIssue::id).collect(Collectors.toSet());
+        var ids1 = batch1.issues.stream().map(RedmineIssueSummary::id).collect(Collectors.toSet());
+        var ids2 = batch2.issues.stream().map(RedmineIssueSummary::id).collect(Collectors.toSet());
 
         var onlyIn1 = batch1.issues.stream().filter(i -> !ids2.contains(i.id())).toList();
         var onlyIn2 = batch2.issues.stream().filter(i -> !ids1.contains(i.id())).toList();
@@ -315,7 +315,7 @@ public class AnalysisService {
                 .orElse(null);
     }
 
-    private record IssuesBatch(List<RedmineIssue> issues, int totalCount) {
+    private record IssuesBatch(List<RedmineIssueSummary> issues, int totalCount) {
         boolean truncated() {
             return issues.size() < totalCount;
         }
@@ -323,7 +323,7 @@ public class AnalysisService {
 
     private IssuesBatch fetchAllIssues(String projectId, String statusId,
                                        Integer versionId, Integer assignedToId) {
-        var all = new ArrayList<RedmineIssue>();
+        var all = new ArrayList<RedmineIssueSummary>();
         int offset = 0;
         int total = 0;
         for (int page = 0; page < MAX_PAGES; page++) {
@@ -370,7 +370,13 @@ public class AnalysisService {
         }
     }
 
-    private boolean isOverdue(RedmineIssue issue) {
+    private boolean hasBlockingRelation(RedmineIssueSummary summary) {
+        RedmineIssue issue = client.getIssue(summary.id());
+        return issue != null && issue.relations() != null && issue.relations().stream()
+                .anyMatch(r -> "blocks".equals(r.relationType()) && r.issueId() == issue.id());
+    }
+
+    private boolean isOverdue(RedmineIssueSummary issue) {
         if (issue.dueDate() == null) return false;
         try {
             return LocalDate.parse(issue.dueDate()).isBefore(LocalDate.now());
@@ -413,8 +419,8 @@ public class AnalysisService {
         return idName != null ? idName.name() : "—";
     }
 
-    private Map<String, Integer> groupAndCount(List<RedmineIssue> issues,
-                                               java.util.function.Function<RedmineIssue, String> keyFn) {
+    private Map<String, Integer> groupAndCount(List<RedmineIssueSummary> issues,
+                                               java.util.function.Function<RedmineIssueSummary, String> keyFn) {
         var map = new LinkedHashMap<String, Integer>();
         for (var issue : issues) {
             map.merge(keyFn.apply(issue), 1, Integer::sum);

@@ -6,9 +6,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssues;
+import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssueSummaries;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
@@ -42,11 +43,11 @@ class IssueToolsTest {
         when(client.getCurrentUser()).thenReturn(user);
 
         var issues = List.of(
-                issue(101, "Fix login bug", "In Progress", "my-project"),
-                issue(102, "Update docs", "New", "my-project")
+                summary(101, "Fix login bug", "In Progress", "my-project"),
+                summary(102, "Update docs", "New", "my-project")
         );
         when(client.listIssues(null, null, null, 42, null, null, null, 0, 25))
-                .thenReturn(new RedmineIssue.Page(issues, 2, 0, 25));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 2, 0, 25));
 
         String result = tools.getMyIssues(null, null, null, null, null);
 
@@ -66,9 +67,9 @@ class IssueToolsTest {
                 null, null, null, null, null, null, null);
         when(client.getCurrentUser()).thenReturn(user);
 
-        var issues = List.of(issue(201, "Deploy service", "New", "backend"));
+        var issues = List.of(summary(201, "Deploy service", "New", "backend"));
         when(client.listIssues("backend", "open", null, 42, null, null, "updated_on:desc", 0, 10))
-                .thenReturn(new RedmineIssue.Page(issues, 1, 0, 10));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 1, 0, 10));
 
         String result = tools.getMyIssues("backend", "open", "updated_on:desc", 10, 0);
 
@@ -84,7 +85,7 @@ class IssueToolsTest {
                 null, null, null, null, null, null, null);
         when(client.getCurrentUser()).thenReturn(user);
         when(client.listIssues(null, null, null, 42, null, null, null, 0, 25))
-                .thenReturn(new RedmineIssue.Page(List.of(), 0, 0, 25));
+                .thenReturn(new RedmineIssueSummary.Page(List.of(), 0, 0, 25));
 
         String result = tools.getMyIssues(null, null, null, null, null);
 
@@ -105,9 +106,9 @@ class IssueToolsTest {
 
     @Test
     void shouldListIssuesWithQueryId() {
-        var issues = List.of(issue(301, "Filtered issue", "Open", "test-project"));
+        var issues = List.of(summary(301, "Filtered issue", "Open", "test-project"));
         when(client.listIssues(null, null, null, null, null, null, null, 7, Map.of(), 0, 25))
-                .thenReturn(new RedmineIssue.Page(issues, 1, 0, 25));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 1, 0, 25));
 
         String result = tools.listIssues(null, null, null, null, null, null, 7, null, null, null);
 
@@ -117,10 +118,10 @@ class IssueToolsTest {
 
     @Test
     void shouldListIssuesWithCustomFieldFilters() {
-        var issues = List.of(issue(302, "RTK issue", "Open", "test-project"));
+        var issues = List.of(summary(302, "RTK issue", "Open", "test-project"));
         when(client.listIssues(null, null, null, null, null, null, null, null,
                 Map.of("cf_10", "rtk", "cf_3", "502167"), 0, 25))
-                .thenReturn(new RedmineIssue.Page(issues, 1, 0, 25));
+                .thenReturn(new RedmineIssueSummary.Page(issues, 1, 0, 25));
 
         String result = tools.listIssues(null, null, null, null, null, null,
                 null, "cf_10=rtk&cf_3=502167", null, null, null);
@@ -293,9 +294,9 @@ class IssueToolsTest {
 
     @Test
     void shouldSearchIssues() {
-        var issues = List.of(issue(101, "Login bug", "Open", "backend"));
+        var issues = List.of(summary(101, "Login bug", "Open", "backend"));
         when(client.searchIssues("login", null, 0, 25))
-                .thenReturn(new SearchWithIssues(issues, 1, 0, 25));
+                .thenReturn(new SearchWithIssueSummaries(issues, 1, 0, 25));
 
         String result = tools.searchIssues("login", null, null, null);
 
@@ -306,9 +307,9 @@ class IssueToolsTest {
 
     @Test
     void shouldSearchIssuesInProject() {
-        var issues = List.of(issue(201, "Deploy failure", "New", "infra"));
+        var issues = List.of(summary(201, "Deploy failure", "New", "infra"));
         when(client.searchIssues("deploy", "infra", 0, 10))
-                .thenReturn(new SearchWithIssues(issues, 1, 0, 10));
+                .thenReturn(new SearchWithIssueSummaries(issues, 1, 0, 10));
 
         String result = tools.searchIssues("deploy", "infra", 10, 0);
 
@@ -544,6 +545,10 @@ class IssueToolsTest {
                 "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
                 null, null, null, null, null
         );
+    }
+
+    private static RedmineIssueSummary summary(int id, String subject, String status, String project) {
+        return RedmineIssueSummary.fromIssue(issue(id, subject, status, project));
     }
 
     private static RedmineIssue treeIssue(int id, String subject, String status, String project,

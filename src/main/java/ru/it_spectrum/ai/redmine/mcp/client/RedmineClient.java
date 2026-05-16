@@ -5,6 +5,7 @@ import org.springframework.web.client.RestClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineMembership;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineProject;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineQuery;
@@ -34,9 +35,9 @@ public class RedmineClient {
     }
 
     /**
-     * Full-text search via /search.json, then fetches issue details for matching results.
+     * Full-text search via /search.json, then fetches issue summaries for matching results.
      */
-    public SearchWithIssues searchIssues(String query, String projectId, int offset, int limit) {
+    public SearchWithIssueSummaries searchIssues(String query, String projectId, int offset, int limit) {
         var searchUri = buildSearchUri(query, projectId, offset, limit);
 
         var searchResult = restClient.get()
@@ -45,18 +46,18 @@ public class RedmineClient {
                 .body(RedmineSearchResult.class);
 
         if (searchResult == null || searchResult.results() == null) {
-            return new SearchWithIssues(List.of(), 0, offset, limit);
+            return new SearchWithIssueSummaries(List.of(), 0, offset, limit);
         }
 
-        // Filter only issue-type results and fetch their details
+        // Filter only issue-type results and fetch their summaries.
         List<Integer> issueIds = searchResult.results().stream()
                 .filter(r -> "issue".equals(r.type()))
                 .map(RedmineSearchResult.ResultItem::id)
                 .toList();
 
-        List<RedmineIssue> issues = fetchIssuesByIds(issueIds);
+        List<RedmineIssueSummary> issues = fetchIssuesByIds(issueIds);
 
-        return new SearchWithIssues(issues, searchResult.totalCount(), offset, limit);
+        return new SearchWithIssueSummaries(issues, searchResult.totalCount(), offset, limit);
     }
 
     /**
@@ -129,9 +130,9 @@ public class RedmineClient {
     /**
      * List issues with flexible filtering.
      */
-    public RedmineIssue.Page listIssues(String projectId, String statusId, Integer trackerId,
-                                         Integer assignedToId, Integer priorityId, Integer versionId,
-                                         String sort, int offset, int limit) {
+    public RedmineIssueSummary.Page listIssues(String projectId, String statusId, Integer trackerId,
+                                               Integer assignedToId, Integer priorityId, Integer versionId,
+                                               String sort, int offset, int limit) {
         return listIssues(projectId, statusId, trackerId, assignedToId, priorityId, versionId,
                 sort, null, Map.of(), offset, limit);
     }
@@ -139,9 +140,9 @@ public class RedmineClient {
     /**
      * List issues with flexible filtering, optionally using a saved query.
      */
-    public RedmineIssue.Page listIssues(String projectId, String statusId, Integer trackerId,
-                                         Integer assignedToId, Integer priorityId, Integer versionId,
-                                         String sort, Integer queryId, int offset, int limit) {
+    public RedmineIssueSummary.Page listIssues(String projectId, String statusId, Integer trackerId,
+                                               Integer assignedToId, Integer priorityId, Integer versionId,
+                                               String sort, Integer queryId, int offset, int limit) {
         return listIssues(projectId, statusId, trackerId, assignedToId, priorityId, versionId,
                 sort, queryId, Map.of(), offset, limit);
     }
@@ -149,10 +150,10 @@ public class RedmineClient {
     /**
      * List issues with flexible filtering, including dynamic custom field filters like cf_10=rtk.
      */
-    public RedmineIssue.Page listIssues(String projectId, String statusId, Integer trackerId,
-                                         Integer assignedToId, Integer priorityId, Integer versionId,
-                                         String sort, Integer queryId, Map<String, String> customFieldFilters,
-                                         int offset, int limit) {
+    public RedmineIssueSummary.Page listIssues(String projectId, String statusId, Integer trackerId,
+                                               Integer assignedToId, Integer priorityId, Integer versionId,
+                                               String sort, Integer queryId, Map<String, String> customFieldFilters,
+                                               int offset, int limit) {
         var params = new LinkedHashMap<String, String>();
         putIfPresent(params, "project_id", projectId);
         putIfPresent(params, "query_id", queryId);
@@ -171,9 +172,9 @@ public class RedmineClient {
         var response = restClient.get()
                 .uri("/issues.json" + buildQueryString(params))
                 .retrieve()
-                .body(RedmineIssue.Page.class);
+                .body(RedmineIssueSummary.Page.class);
 
-        return response != null ? response : new RedmineIssue.Page(List.of(), 0, offset, limit);
+        return response != null ? response : new RedmineIssueSummary.Page(List.of(), 0, offset, limit);
     }
 
     /**
@@ -349,9 +350,9 @@ public class RedmineClient {
     }
 
     /**
-     * Fetch issues by a list of IDs using /issues.json?issue_id=1,2,3
+     * Fetch issue summaries by a list of IDs using /issues.json?issue_id=1,2,3
      */
-    private List<RedmineIssue> fetchIssuesByIds(List<Integer> ids) {
+    private List<RedmineIssueSummary> fetchIssuesByIds(List<Integer> ids) {
         if (ids.isEmpty()) {
             return List.of();
         }
@@ -363,7 +364,7 @@ public class RedmineClient {
         var response = restClient.get()
                 .uri("/issues.json?issue_id={ids}&status_id=*&limit={limit}", idsParam, ids.size())
                 .retrieve()
-                .body(RedmineIssue.Page.class);
+                .body(RedmineIssueSummary.Page.class);
 
         return response != null ? response.issues() : List.of();
     }
@@ -408,8 +409,8 @@ public class RedmineClient {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    public record SearchWithIssues(
-            List<RedmineIssue> issues,
+    public record SearchWithIssueSummaries(
+            List<RedmineIssueSummary> issues,
             int totalCount,
             int offset,
             int limit
