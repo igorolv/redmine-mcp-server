@@ -1,7 +1,7 @@
 # Redmine MCP Server — Setup Guide for AI Agents
 
 This is a local MCP server that provides read-only access to a corporate Redmine instance.
-It exposes 33 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, reference data, project analytics, and task context.
+It exposes 32 read-only tools for searching and reading issues, projects, members, versions, wiki pages, attachments, time entries, reference data, project analytics, and task context.
 
 Step-by-step setup guides: [Claude Code](CLAUDE_CODE_SETUP.md) | [Qwen Code](QWEN_CODE_SETUP.md)
 
@@ -84,7 +84,7 @@ After adding the configuration, restart the client so it picks up the new MCP se
 
 ## Available tools
 
-The current implementation exposes **33 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, analytics, and task-context domains.
+The current implementation exposes **32 read-only MCP tools** across user, project, issue, attachment, wiki, time-entry, reference-data, analytics, and task-context domains.
 
 | Tool | Description |
 |---|---|
@@ -102,7 +102,6 @@ The current implementation exposes **33 read-only MCP tools** across user, proje
 | `getIssueHistory` | Full change history with timeline of status/assignment/priority changes and status durations. Params: `issueId` |
 | `getAttachmentContent` | Get content of an attachment. Supports text files (txt, log, xml, json, csv, etc.), PDF, Word (.docx), Excel (.xlsx), and PowerPoint (.pptx). Attachment IDs are returned by `getIssue.attachments`. For images use `getImageAttachment`. Params: `issueId`, `attachmentId` |
 | `getImageAttachment` | Download an image attachment (PNG, JPEG, GIF, BMP, WebP) with automatic resizing for AI visual analysis. Attachment IDs are returned by `getIssue.attachments`. Params: `issueId`, `attachmentId`, `maxWidth` (optional, default 1024) |
-| `searchAttachmentContent` | Search for text across attachments of an issue or project. Extracts text from PDF/DOCX/XLSX/PPTX/text, returns matching snippets. Params: `query`, `issueId`, `projectId`, `limit` |
 | `getWikiPage` | Get wiki page content and attachments. Params: `projectId`, `pageTitle` |
 | `listWikiPages` | List all wiki pages in a project. Params: `projectId` |
 | `listTimeEntries` | List time entries with filters (project, issue, user, date range). Params: `projectId`, `issueId`, `userId`, `from`, `to`, `limit`, `offset` |

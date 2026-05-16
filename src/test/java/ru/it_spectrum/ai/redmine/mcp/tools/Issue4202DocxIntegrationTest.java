@@ -65,31 +65,6 @@ class Issue4202DocxIntegrationTest {
     }
 
     @Test
-    void shouldSearchInsideFirstDocxAttachmentFromIssue4202() {
-        var issue = loadIssue4202();
-        var attachment = findFirstDocxAttachment(issue);
-        String directText;
-        try {
-            directText = ToolJsonTestSupport.parse(readAttachmentContent(attachment)).get("content").asText();
-        } catch (Exception e) {
-            throw new AssertionError("Could not read DOCX attachment content", e);
-        }
-        String query = pickSearchQuery(directText);
-
-        String result = attachmentTools.searchAttachmentContent(query, ISSUE_ID, null, null);
-
-        assertThat(result)
-                .contains("Attachment content search for \"" + query + "\" in issue #" + ISSUE_ID)
-                .contains("Issue #" + ISSUE_ID + ":")
-                .contains("[" + attachment.id() + "] " + attachment.filename())
-                .doesNotContain("No matches found");
-
-        System.out.println();
-        System.out.println("Attachment search query: " + query);
-        System.out.println(snippet(result, 2_000));
-    }
-
-    @Test
     void shouldLoadFirstPngAttachmentFromIssue4202AsImageContent() throws Exception {
         var issue = loadIssue4202();
         var attachment = findFirstImageAttachment(issue);
@@ -222,28 +197,6 @@ class Issue4202DocxIntegrationTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError(
                         "Issue #%d does not contain custom field '%s'".formatted(ISSUE_ID, name)));
-    }
-
-    private static String pickSearchQuery(String text) {
-        String normalized = text.replace("\r\n", "\n").replace('\r', '\n');
-        String[] preferred = {
-                "Налоговое резидентство",
-                "Ведение сведений второго гражданства",
-                "Основное гражданство"
-        };
-
-        for (String candidate : preferred) {
-            if (normalized.contains(candidate)) {
-                return candidate;
-            }
-        }
-
-        var matcher = java.util.regex.Pattern.compile("[\\p{L}]{8,}(?:\\s+[\\p{L}]{8,}){1,3}").matcher(normalized);
-        if (matcher.find()) {
-            return matcher.group();
-        }
-
-        throw new AssertionError("Could not pick a stable search query from extracted DOCX text");
     }
 
     private static String snippet(String text, int maxLength) {

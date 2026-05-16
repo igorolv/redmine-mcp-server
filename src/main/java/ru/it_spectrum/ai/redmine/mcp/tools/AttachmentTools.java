@@ -7,8 +7,6 @@ import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchResponse;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ImageProcessingFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
@@ -109,34 +107,6 @@ public class AttachmentTools {
             ToolLogger.failed(log, "getImageAttachment", start, e.getMessage());
             return errorResult(e.getMessage());
         }
-    }
-
-    @McpTool(description = "Search for text across attachments of a specific issue or all recent issues in a project. " +
-            "Extracts text from PDF, DOCX, XLSX, PPTX, ZIP archives and text files, then searches for the query. " +
-            "Returns matching snippets with context. At least one of issueId or projectId must be provided.")
-    public String searchAttachmentContent(
-            @McpToolParam(description = "Text to search for (case-insensitive)") String query,
-            @McpToolParam(description = "Issue ID to search attachments of (optional)", required = false) Integer issueId,
-            @McpToolParam(description = "Project identifier to search across recent issues (optional)", required = false) String projectId,
-            @McpToolParam(description = "Max issues to scan when searching by project, default 10", required = false) Integer limit
-    ) {
-        log.info("Tool call: searchAttachmentContent (query={}, issueId={}, projectId={}, limit={})",
-                query, issueId, projectId, limit);
-        long start = System.nanoTime();
-        if (issueId == null && (projectId == null || projectId.isBlank())) {
-            ToolLogger.failed(log, "searchAttachmentContent", start, "At least one of issueId or projectId must be provided");
-            return errors.argument("At least one of issueId or projectId must be provided");
-        }
-
-        int issueLimit = limit != null ? Math.min(Math.max(limit, 1), 50) : 10;
-        var request = new AttachmentSearchRequest(query, issueId, projectId, issueLimit);
-        var result = attachmentService.search(request);
-        ToolLogger.completed(log, "searchAttachmentContent", start);
-
-        if (!result.issueFound()) {
-            return errors.notFound("issue", "#" + issueId);
-        }
-        return json.write(new AttachmentSearchResponse(query, issueId, projectId, result));
     }
 
     private McpSchema.CallToolResult errorResult(String message) {

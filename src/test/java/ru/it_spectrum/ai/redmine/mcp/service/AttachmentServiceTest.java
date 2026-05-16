@@ -13,7 +13,6 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -23,8 +22,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -139,61 +136,6 @@ class AttachmentServiceTest {
         when(client.downloadAttachment(att.contentUrl())).thenReturn(null);
         assertThatThrownBy(() -> service.renderImage(1, 20, null))
                 .isInstanceOf(AttachmentDownloadFailedException.class);
-    }
-
-    // --- search ---
-
-    @Test
-    void searchShouldReturnIssueFoundFalseForMissingIssue() {
-        when(client.getIssue(99)).thenReturn(null);
-        var request = new AttachmentSearchRequest("anything", 99, null, 10);
-
-        var result = service.search(request);
-
-        assertThat(result.issueFound()).isFalse();
-        assertThat(result.issues()).isEmpty();
-        assertThat(result.counters().totalMatches()).isZero();
-    }
-
-    @Test
-    void searchShouldReturnTypedMatches() {
-        var att = attachment(50, "spec.txt", "text/plain");
-        when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
-        when(extractor.isTextExtractable("spec.txt", "text/plain")).thenReturn(true);
-        when(client.downloadAttachment(att.contentUrl()))
-                .thenReturn("OAuth and JWT are configured. Refer to OAuth docs.".getBytes());
-        when(extractor.extractText(any(RedmineAttachment.class), any(Path.class)))
-                .thenReturn("OAuth and JWT are configured. Refer to OAuth docs.");
-
-        var request = new AttachmentSearchRequest("oauth", 1, null, 10);
-        var result = service.search(request);
-
-        assertThat(result.issueFound()).isTrue();
-        assertThat(result.issues()).hasSize(1);
-        var issueMatch = result.issues().getFirst();
-        assertThat(issueMatch.issueId()).isEqualTo(1);
-        assertThat(issueMatch.attachments()).hasSize(1);
-        var attMatch = issueMatch.attachments().getFirst();
-        assertThat(attMatch.attachmentId()).isEqualTo(50);
-        assertThat(attMatch.snippets()).hasSize(2);
-        assertThat(result.counters().totalMatches()).isEqualTo(2);
-        assertThat(result.counters().matchingAttachments()).isEqualTo(1);
-        assertThat(result.counters().matchingIssues()).isEqualTo(1);
-        assertThat(result.counters().scannedAttachments()).isEqualTo(1);
-        assertThat(result.counters().scannedIssues()).isEqualTo(1);
-    }
-
-    @Test
-    void searchShouldSkipNonExtractableAttachments() {
-        var bin = attachment(60, "image.png", "image/png");
-        when(client.getIssue(1)).thenReturn(issue(1, List.of(bin)));
-        lenient().when(extractor.isTextExtractable("image.png", "image/png")).thenReturn(false);
-
-        var result = service.search(new AttachmentSearchRequest("x", 1, null, 10));
-
-        assertThat(result.issueFound()).isTrue();
-        assertThat(result.issues()).isEmpty();
-        assertThat(result.counters().scannedAttachments()).isZero();
     }
 
     // --- helpers ---

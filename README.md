@@ -37,7 +37,7 @@ AI-клиент запускает сервер как дочерний проц
 
 ## Инструменты
 
-Сервер экспортирует **33 read-only MCP tools**.
+Сервер экспортирует **32 read-only MCP tools**.
 
 ### Пользователь
 
@@ -77,7 +77,6 @@ AI-клиент запускает сервер как дочерний проц
 |---|---|
 | `getAttachmentContent` | Содержимое вложений: текстовые (txt, log, xml, json, csv и др.), PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx). ID вложений берите из `getIssue.attachments`. Для изображений — `getImageAttachment` |
 | `getImageAttachment` | Скачивание изображений (PNG, JPEG, GIF, BMP, WebP) с автоматическим ресайзом для визуального анализа AI |
-| `searchAttachmentContent` | Поиск текста по содержимому вложений задачи или проекта. Извлекает текст из PDF/DOCX/XLSX/PPTX/текстовых файлов, возвращает сниппеты с контекстом. Параметры: `query`, `issueId`, `projectId`, `limit` |
 | `getWikiPage` | Содержимое wiki-страницы проекта |
 | `listWikiPages` | Список всех wiki-страниц проекта |
 
@@ -251,7 +250,6 @@ AI-клиент получает ровно те данные, которые з
 | ZIP-файл внутри архива | до 10 MB |
 | ZIP-архив суммарно | до 50 MB извлечённых данных |
 | `getIssueTree` | глубина до 5, максимум 50 задач |
-| `searchAttachmentContent` по проекту | до 50 последних задач |
 
 Часть обычных списковых инструментов (`listIssues`, `listProjects`, `listTimeEntries`, `listQueries`) принимает `limit` и `offset` напрямую. Для устойчивой работы лучше не запрашивать чрезмерно большие страницы; практичный диапазон — 25-100 элементов за вызов.
 
@@ -319,7 +317,7 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   │   └── RedmineWikiPage.java           — wiki-страница
 │   └── tools/
 │       ├── AnalysisTools.java             — 7 MCP-инструментов аналитики и анализа рисков
-│       ├── AttachmentTools.java           — 4 MCP-инструмента для вложений и изображений
+│       ├── AttachmentTools.java           — 2 MCP-инструмента для вложений и изображений
 │       ├── ContextTools.java              — 1 MCP-инструмент для контекста задачи
 │       ├── IssueTools.java                — 7 MCP-инструментов для задач и поиска
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
