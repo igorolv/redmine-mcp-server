@@ -2,7 +2,6 @@ package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.model.ContextIssue;
 import ru.it_spectrum.ai.redmine.mcp.model.ContextStats;
@@ -56,13 +55,12 @@ public class ContextService {
             }
         }
 
-        int siblingsTotal = 0;
-        int siblingsFetched = 0;
-        int siblingsClosedFetched = 0;
+        boolean siblingsTruncated = false;
         if (parent != null && parent.children() != null) {
-            siblingsTotal = (int) parent.children().stream()
+            long siblingsTotal = parent.children().stream()
                     .filter(child -> child.id() != issueId)
                     .count();
+            siblingsTruncated = siblingsTotal > MAX_SIBLINGS;
             int siblingAttempts = 0;
             for (var child : parent.children()) {
                 if (child.id() == issueId) continue;
@@ -71,18 +69,13 @@ public class ContextService {
                 var sibling = client.getIssue(child.id());
                 if (sibling != null) {
                     attachmentService.snapshotIssue(sibling);
-                    siblingsFetched++;
-                    if (isClosedStatus(sibling.status())) {
-                        siblingsClosedFetched++;
-                    }
                     addContextIssue(contextIssues, sibling, new IssueContextRole(
                             "sibling", null, null, parent.id(), sibling.id(), null));
                 }
             }
         }
 
-        int childrenTotal = issue.children() != null ? issue.children().size() : 0;
-        int childrenFetched = 0;
+        boolean childrenTruncated = issue.children() != null && issue.children().size() > MAX_CHILDREN;
         if (issue.children() != null) {
             int childAttempts = 0;
             for (var child : issue.children()) {
@@ -91,15 +84,13 @@ public class ContextService {
                 var childIssue = client.getIssue(child.id());
                 if (childIssue != null) {
                     attachmentService.snapshotIssue(childIssue);
-                    childrenFetched++;
                     addContextIssue(contextIssues, childIssue, new IssueContextRole(
                             "child", null, null, issueId, childIssue.id(), null));
                 }
             }
         }
 
-        int relatedTotal = issue.relations() != null ? issue.relations().size() : 0;
-        int relatedFetched = 0;
+        boolean relatedTruncated = issue.relations() != null && issue.relations().size() > MAX_RELATED;
         if (issue.relations() != null && !issue.relations().isEmpty()) {
             int relCount = 0;
 
@@ -111,7 +102,6 @@ public class ContextService {
                 relCount++;
                 if (related != null) {
                     attachmentService.snapshotIssue(related);
-                    relatedFetched++;
                     addContextIssue(contextIssues, related, new IssueContextRole(
                             "related", relType, rel.id(), issueId, relatedId, rel.delay()));
                 }
@@ -139,16 +129,9 @@ public class ContextService {
         }
 
         var stats = new ContextStats(
-                siblingsTotal,
-                siblingsFetched,
-                siblingsClosedFetched,
-                childrenTotal,
-                childrenFetched,
-                relatedTotal,
-                relatedFetched,
-                siblingsTotal > MAX_SIBLINGS,
-                childrenTotal > MAX_CHILDREN,
-                relatedTotal > MAX_RELATED
+                siblingsTruncated,
+                childrenTruncated,
+                relatedTruncated
         );
 
         return Optional.of(new IssueFullContextResult(
@@ -174,13 +157,6 @@ public class ContextService {
             case "copied_to" -> "copied_from";
             default -> type;
         };
-    }
-
-    private boolean isClosedStatus(IdName status) {
-        if (status == null) return false;
-        String lower = status.name().toLowerCase();
-        return lower.contains("closed") || lower.contains("rejected")
-                || lower.contains("resolved") || lower.contains("done");
     }
 
     private String truncate(String text, int maxLength) {

@@ -26,7 +26,7 @@ public class ContextTools {
             "One call replaces 10+ separate tool calls. Returns: the issue with description, " +
             "nearby context issues with explicit roles (parent, sibling, child, related), " +
             "document attachments extracted inline (PDF/DOCX/XLSX), recent discussion notes, " +
-            "and fetch/truncation stats. Ideal first call when investigating or implementing a task.")
+            "and truncation flags. Ideal first call when investigating or implementing a task.")
     public String getIssueFullContext(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {

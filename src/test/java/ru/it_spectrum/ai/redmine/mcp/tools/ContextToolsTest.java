@@ -97,10 +97,9 @@ class ContextToolsTest {
             assertThat(result).contains("\"id\":95");
             assertThat(result).contains("Date API endpoint");
             assertThat(result).contains("\"stats\"");
-            assertThat(result).contains("\"siblingsTotal\":1");
-            assertThat(result).contains("\"siblingsFetched\":1");
-            assertThat(result).contains("\"relatedTotal\":1");
-            assertThat(result).contains("\"relatedFetched\":1");
+            assertThat(result).contains("\"siblingsTruncated\":false");
+            assertThat(result).contains("\"childrenTruncated\":false");
+            assertThat(result).contains("\"relatedTruncated\":false");
             assertThat(result).contains("Check the date format spec");
         }
 
@@ -144,8 +143,9 @@ class ContextToolsTest {
             assertThat(result).contains("\"id\":10");
             assertThat(result).contains("Standalone task");
             assertThat(result).contains("\"contextIssues\":[]");
-            assertThat(result).contains("\"siblingsTotal\":0");
-            assertThat(result).contains("\"relatedTotal\":0");
+            assertThat(result).contains("\"siblingsTruncated\":false");
+            assertThat(result).contains("\"childrenTruncated\":false");
+            assertThat(result).contains("\"relatedTruncated\":false");
         }
 
         @Test
