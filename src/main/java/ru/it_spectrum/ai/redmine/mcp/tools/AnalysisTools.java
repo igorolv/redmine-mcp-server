@@ -5,13 +5,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.model.BlockerChainResult;
-import ru.it_spectrum.ai.redmine.mcp.model.ProjectSummaryResult;
-import ru.it_spectrum.ai.redmine.mcp.model.ReleaseRisksResult;
-import ru.it_spectrum.ai.redmine.mcp.model.StaleIssuesResult;
-import ru.it_spectrum.ai.redmine.mcp.model.UserWorkloadResult;
-import ru.it_spectrum.ai.redmine.mcp.model.VersionChangelogResult;
-import ru.it_spectrum.ai.redmine.mcp.model.VersionComparisonResult;
+import ru.it_spectrum.ai.redmine.mcp.api.BlockerChain;
+import ru.it_spectrum.ai.redmine.mcp.api.ProjectSummary;
+import ru.it_spectrum.ai.redmine.mcp.api.ReleaseRisks;
+import ru.it_spectrum.ai.redmine.mcp.api.StaleIssues;
+import ru.it_spectrum.ai.redmine.mcp.api.UserWorkload;
+import ru.it_spectrum.ai.redmine.mcp.api.VersionChangelog;
+import ru.it_spectrum.ai.redmine.mcp.api.VersionComparison;
 import ru.it_spectrum.ai.redmine.mcp.service.AnalysisService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
@@ -35,7 +35,7 @@ public class AnalysisTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public ProjectSummaryResult getProjectSummary(
+    public ProjectSummary getProjectSummary(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId
     ) {
@@ -54,7 +54,7 @@ public class AnalysisTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public UserWorkloadResult getUserWorkload(
+    public UserWorkload getUserWorkload(
             @McpToolParam(description = "User ID (optional, defaults to current user)", required = false) Integer userId,
             @McpToolParam(description = "Project identifier to limit scope (optional)", required = false) String projectId
     ) {
@@ -77,7 +77,7 @@ public class AnalysisTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public VersionChangelogResult getVersionChangelog(
+    public VersionChangelog getVersionChangelog(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Version/milestone ID") int versionId
     ) {
@@ -96,7 +96,7 @@ public class AnalysisTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public BlockerChainResult getBlockerChain(
+    public BlockerChain getBlockerChain(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
         log.info("Tool call: getBlockerChain (issueId={})", issueId);
@@ -117,7 +117,7 @@ public class AnalysisTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public StaleIssuesResult getStaleIssues(
+    public StaleIssues getStaleIssues(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Minimum days since last update, default 30", required = false) Integer daysSinceUpdate,
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit
@@ -137,7 +137,7 @@ public class AnalysisTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public ReleaseRisksResult getReleaseRisks(
+    public ReleaseRisks getReleaseRisks(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "Version/milestone ID") int versionId
     ) {
@@ -156,7 +156,7 @@ public class AnalysisTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public VersionComparisonResult compareVersions(
+    public VersionComparison compareVersions(
             @McpToolParam(description = "Project identifier") String projectId,
             @McpToolParam(description = "First version/milestone ID") int versionId1,
             @McpToolParam(description = "Second version/milestone ID") int versionId2

@@ -1,27 +1,23 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.api.BlockerChain;
+import ru.it_spectrum.ai.redmine.mcp.api.HoursSummary;
+import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.IssueCountSummary;
+import ru.it_spectrum.ai.redmine.mcp.api.IssueSummary;
+import ru.it_spectrum.ai.redmine.mcp.api.ProjectSummary;
+import ru.it_spectrum.ai.redmine.mcp.api.ReleaseRisks;
+import ru.it_spectrum.ai.redmine.mcp.api.StaleIssues;
+import ru.it_spectrum.ai.redmine.mcp.api.UserWorkload;
+import ru.it_spectrum.ai.redmine.mcp.api.Version;
+import ru.it_spectrum.ai.redmine.mcp.api.VersionChangelog;
+import ru.it_spectrum.ai.redmine.mcp.api.VersionComparison;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
-import ru.it_spectrum.ai.redmine.mcp.model.AssigneeSummary;
-import ru.it_spectrum.ai.redmine.mcp.model.BlockerChainResult;
-import ru.it_spectrum.ai.redmine.mcp.model.BlockerNode;
-import ru.it_spectrum.ai.redmine.mcp.model.HoursSummary;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueCountSummary;
-import ru.it_spectrum.ai.redmine.mcp.model.ProjectSummaryResult;
-import ru.it_spectrum.ai.redmine.mcp.model.ProjectWorkload;
-import ru.it_spectrum.ai.redmine.mcp.model.ReleaseRisksResult;
-import ru.it_spectrum.ai.redmine.mcp.model.RiskCategory;
-import ru.it_spectrum.ai.redmine.mcp.model.RiskScore;
-import ru.it_spectrum.ai.redmine.mcp.model.StaleIssue;
-import ru.it_spectrum.ai.redmine.mcp.model.StaleIssuesResult;
-import ru.it_spectrum.ai.redmine.mcp.model.UserWorkloadResult;
-import ru.it_spectrum.ai.redmine.mcp.model.VersionChangelogResult;
-import ru.it_spectrum.ai.redmine.mcp.model.VersionComparisonResult;
-import ru.it_spectrum.ai.redmine.mcp.model.VersionScope;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -51,7 +47,7 @@ public class AnalysisService {
         this.client = client;
     }
 
-    public ProjectSummaryResult getProjectSummary(String projectId, Integer versionId) {
+    public ProjectSummary getProjectSummary(String projectId, Integer versionId) {
         var openBatch = fetchAllIssues(projectId, "open", versionId, null);
         int closedCount = client.listIssues(projectId, "closed", null, null,
                 null, versionId, null, null, 0, 1).totalCount();
@@ -63,10 +59,10 @@ public class AnalysisService {
         var byStatus = groupAndCount(issues, i -> name(i.status()));
         var byTracker = groupAndCount(issues, i -> name(i.tracker()));
         var byPriority = groupAndCount(issues, i -> name(i.priority()));
-        var byAssignee = groupAndCount(issues,
+        var byAssigneeCounts = groupAndCount(issues,
                 i -> i.assignedTo() != null ? i.assignedTo().name() : "Unassigned");
-        var assignees = byAssignee.entrySet().stream()
-                .map(e -> new AssigneeSummary(
+        var assignees = byAssigneeCounts.entrySet().stream()
+                .map(e -> new ProjectSummary.Assignee(
                         e.getKey(),
                         e.getValue(),
                         (int) issues.stream()
@@ -76,14 +72,10 @@ public class AnalysisService {
                                 .count()))
                 .toList();
         long overdueCount = issues.stream().filter(this::isOverdue).count();
-        double estimated = issues.stream()
-                .filter(i -> i.estimatedHours() != null)
-                .mapToDouble(RedmineIssueSummary::estimatedHours).sum();
-        double spent = issues.stream()
-                .filter(i -> i.spentHours() != null)
-                .mapToDouble(RedmineIssueSummary::spentHours).sum();
+        double estimated = sumEstimated(issues);
+        double spent = sumSpent(issues);
 
-        return new ProjectSummaryResult(
+        return new ProjectSummary(
                 projectId, versionId,
                 new IssueCountSummary(openCount, closedCount, total),
                 openBatch.truncated(),
@@ -94,7 +86,7 @@ public class AnalysisService {
         );
     }
 
-    public Optional<UserWorkloadResult> getUserWorkload(Integer userId, String projectId) {
+    public Optional<UserWorkload> getUserWorkload(Integer userId, String projectId) {
         int actualUserId;
         String userName;
 
@@ -113,12 +105,8 @@ public class AnalysisService {
         var batch = fetchAllIssues(projectId, "open", null, actualUserId);
         var issues = batch.issues;
 
-        double estimated = issues.stream()
-                .filter(i -> i.estimatedHours() != null)
-                .mapToDouble(RedmineIssueSummary::estimatedHours).sum();
-        double spent = issues.stream()
-                .filter(i -> i.spentHours() != null)
-                .mapToDouble(RedmineIssueSummary::spentHours).sum();
+        double estimated = sumEstimated(issues);
+        double spent = sumSpent(issues);
         long overdueCount = issues.stream().filter(this::isOverdue).count();
 
         var byProject = issues.stream()
@@ -128,7 +116,7 @@ public class AnalysisService {
                         Collectors.toList()));
 
         var projects = byProject.entrySet().stream()
-                .map(e -> new ProjectWorkload(
+                .map(e -> new UserWorkload.ProjectShare(
                         e.getKey(),
                         e.getValue().size(),
                         e.getValue().stream()
@@ -138,16 +126,17 @@ public class AnalysisService {
                 .toList();
 
         var priorityOrder = client.getIssuePriorities().stream()
-                .collect(Collectors.toMap(IdName::name, p -> p.id()));
+                .collect(Collectors.toMap(IdName::name, IdName::id));
         var sorted = issues.stream()
                 .sorted(Comparator.<RedmineIssueSummary, Integer>comparing(
                                 i -> priorityOrder.getOrDefault(name(i.priority()), 0))
                         .reversed()
                         .thenComparing(i -> i.dueDate() != null ? i.dueDate() : "9999"))
                 .limit(10)
+                .map(IssueSummary::from)
                 .toList();
 
-        return Optional.of(new UserWorkloadResult(
+        return Optional.of(new UserWorkload(
                 actualUserId, userName, projectId,
                 batch.totalCount, issues.size(), batch.truncated(),
                 new HoursSummary(estimated, spent),
@@ -157,7 +146,7 @@ public class AnalysisService {
         ));
     }
 
-    public VersionChangelogResult getVersionChangelog(String projectId, int versionId) {
+    public VersionChangelog getVersionChangelog(String projectId, int versionId) {
         var version = findVersion(projectId, versionId);
         var batch = fetchAllIssues(projectId, "*", versionId, null);
         var issues = batch.issues;
@@ -166,19 +155,15 @@ public class AnalysisService {
                 .collect(Collectors.groupingBy(
                         i -> name(i.tracker()),
                         LinkedHashMap::new,
-                        Collectors.toList()));
+                        Collectors.mapping(IssueSummary::from, Collectors.toList())));
 
         long closed = issues.stream().filter(i -> isClosedStatus(i.status())).count();
         long open = issues.size() - closed;
-        double estimated = issues.stream()
-                .filter(i -> i.estimatedHours() != null)
-                .mapToDouble(RedmineIssueSummary::estimatedHours).sum();
-        double spent = issues.stream()
-                .filter(i -> i.spentHours() != null)
-                .mapToDouble(RedmineIssueSummary::spentHours).sum();
+        double estimated = sumEstimated(issues);
+        double spent = sumSpent(issues);
 
-        return new VersionChangelogResult(
-                projectId, versionId, version,
+        return new VersionChangelog(
+                projectId, versionId, Version.from(version),
                 batch.totalCount, issues.size(), batch.truncated(),
                 byTracker,
                 new IssueCountSummary((int) open, (int) closed, issues.size()),
@@ -186,7 +171,7 @@ public class AnalysisService {
         );
     }
 
-    public BlockerChainResult getBlockerChain(int issueId) {
+    public BlockerChain getBlockerChain(int issueId) {
         var visited = new HashSet<Integer>();
         var fetchCount = new int[]{0};
 
@@ -195,25 +180,25 @@ public class AnalysisService {
             throw new ResourceNotFoundException("issue", "#" + issueId);
         }
 
-        var blockedBy = new ArrayList<BlockerNode>();
+        var blockedBy = new ArrayList<BlockerChain.Node>();
         collectBlockers(root, true, visited, fetchCount, blockedBy, 0);
 
         visited.clear();
         visited.add(issueId);
         fetchCount[0] = 1;
 
-        var blocks = new ArrayList<BlockerNode>();
+        var blocks = new ArrayList<BlockerChain.Node>();
         collectBlockers(root, false, visited, fetchCount, blocks, 0);
 
-        int upstreamDepth = blockedBy.stream().mapToInt(BlockerNode::depth).max().orElse(0);
-        int downstreamDepth = blocks.stream().mapToInt(BlockerNode::depth).max().orElse(0);
+        int upstreamDepth = blockedBy.stream().mapToInt(BlockerChain.Node::depth).max().orElse(0);
+        int downstreamDepth = blocks.stream().mapToInt(BlockerChain.Node::depth).max().orElse(0);
         int totalDepth = upstreamDepth + 1 + downstreamDepth;
         int totalIssues = 1 + blockedBy.size() + blocks.size();
 
-        return new BlockerChainResult(root, blockedBy, blocks, totalDepth, totalIssues);
+        return new BlockerChain(Issue.from(root), blockedBy, blocks, totalDepth, totalIssues);
     }
 
-    public StaleIssuesResult getStaleIssues(String projectId, Integer daysSinceUpdate, Integer limit) {
+    public StaleIssues getStaleIssues(String projectId, Integer daysSinceUpdate, Integer limit) {
         int minDays = daysSinceUpdate != null ? daysSinceUpdate : 30;
         int actualLimit = limit != null ? Math.min(Math.max(limit, 1), 100) : 25;
 
@@ -230,12 +215,12 @@ public class AnalysisService {
 
         long oldest = stale.stream().mapToLong(i -> daysAgo(i.updatedOn())).max().orElse(0);
         var staleItems = stale.stream()
-                .map(i -> new StaleIssue(i, daysAgo(i.updatedOn()), isOverdue(i)))
+                .map(i -> new StaleIssues.Entry(IssueSummary.from(i), daysAgo(i.updatedOn()), isOverdue(i)))
                 .toList();
-        return new StaleIssuesResult(projectId, minDays, actualLimit, staleItems, oldest);
+        return new StaleIssues(projectId, minDays, actualLimit, staleItems, oldest);
     }
 
-    public ReleaseRisksResult getReleaseRisks(String projectId, int versionId) {
+    public ReleaseRisks getReleaseRisks(String projectId, int versionId) {
         var version = findVersion(projectId, versionId);
         var batch = fetchAllIssues(projectId, "open", versionId, null);
         var issues = batch.issues;
@@ -259,23 +244,23 @@ public class AnalysisService {
                 .filter(i -> highPriorityNames.contains(name(i.priority())))
                 .toList();
         var unassigned = issues.stream().filter(i -> i.assignedTo() == null).toList();
-        var categories = new ArrayList<RiskCategory>();
-        if (!blockers.isEmpty()) categories.add(new RiskCategory("blockers", blockers));
-        if (!overdue.isEmpty()) categories.add(new RiskCategory("overdue", overdue));
-        if (!highPriority.isEmpty()) categories.add(new RiskCategory("high_priority", highPriority));
-        if (!unassigned.isEmpty()) categories.add(new RiskCategory("unassigned", unassigned));
+        var categories = new ArrayList<ReleaseRisks.Category>();
+        if (!blockers.isEmpty()) categories.add(new ReleaseRisks.Category("blockers", toSummaries(blockers)));
+        if (!overdue.isEmpty()) categories.add(new ReleaseRisks.Category("overdue", toSummaries(overdue)));
+        if (!highPriority.isEmpty()) categories.add(new ReleaseRisks.Category("high_priority", toSummaries(highPriority)));
+        if (!unassigned.isEmpty()) categories.add(new ReleaseRisks.Category("unassigned", toSummaries(unassigned)));
         int riskItems = categories.stream().mapToInt(c -> c.issues().size()).sum();
 
-        return new ReleaseRisksResult(
-                projectId, versionId, version,
+        return new ReleaseRisks(
+                projectId, versionId, Version.from(version),
                 batch.totalCount, issues.size(), batch.truncated(),
                 highPriorityNames,
                 categories,
-                new RiskScore(riskItems, categories.size(), issues.size())
+                new ReleaseRisks.Score(riskItems, categories.size(), issues.size())
         );
     }
 
-    public VersionComparisonResult compareVersions(String projectId, int versionId1, int versionId2) {
+    public VersionComparison compareVersions(String projectId, int versionId1, int versionId2) {
         var versions = client.getProjectVersions(projectId);
         var v1Meta = versions.stream().filter(v -> v.id() == versionId1).findFirst().orElse(null);
         var v2Meta = versions.stream().filter(v -> v.id() == versionId2).findFirst().orElse(null);
@@ -289,19 +274,19 @@ public class AnalysisService {
         var ids1 = batch1.issues.stream().map(RedmineIssueSummary::id).collect(Collectors.toSet());
         var ids2 = batch2.issues.stream().map(RedmineIssueSummary::id).collect(Collectors.toSet());
 
-        var onlyIn1 = batch1.issues.stream().filter(i -> !ids2.contains(i.id())).toList();
-        var onlyIn2 = batch2.issues.stream().filter(i -> !ids1.contains(i.id())).toList();
-        var inBoth = batch1.issues.stream().filter(i -> ids2.contains(i.id())).toList();
+        var onlyIn1 = toSummaries(batch1.issues.stream().filter(i -> !ids2.contains(i.id())).toList());
+        var onlyIn2 = toSummaries(batch2.issues.stream().filter(i -> !ids1.contains(i.id())).toList());
+        var inBoth = toSummaries(batch1.issues.stream().filter(i -> ids2.contains(i.id())).toList());
 
         long closed1 = batch1.issues.stream().filter(i -> isClosedStatus(i.status())).count();
         long closed2 = batch2.issues.stream().filter(i -> isClosedStatus(i.status())).count();
 
-        return new VersionComparisonResult(
+        return new VersionComparison(
                 projectId,
-                new VersionScope(versionId1, v1Name, v1Meta, batch1.totalCount,
+                new VersionComparison.Scope(versionId1, v1Name, Version.from(v1Meta), batch1.totalCount,
                         batch1.issues.size(), (int) closed1, batch1.issues.size() - (int) closed1,
                         completionPercent(closed1, batch1.issues.size()), batch1.truncated()),
-                new VersionScope(versionId2, v2Name, v2Meta, batch2.totalCount,
+                new VersionComparison.Scope(versionId2, v2Name, Version.from(v2Meta), batch2.totalCount,
                         batch2.issues.size(), (int) closed2, batch2.issues.size() - (int) closed2,
                         completionPercent(closed2, batch2.issues.size()), batch2.truncated()),
                 onlyIn1, onlyIn2, inBoth
@@ -347,7 +332,7 @@ public class AnalysisService {
 
     private void collectBlockers(RedmineIssue issue, boolean upstream,
                                  Set<Integer> visited, int[] fetchCount,
-                                 List<BlockerNode> result, int depth) {
+                                 List<BlockerChain.Node> result, int depth) {
         if (issue.relations() == null || depth >= MAX_BLOCKER_DEPTH) return;
 
         for (var rel : issue.relations()) {
@@ -365,7 +350,7 @@ public class AnalysisService {
             RedmineIssue target = fetchBlockerIssue(targetId, visited, fetchCount);
             if (target == null) continue;
 
-            result.add(new BlockerNode(target, depth));
+            result.add(new BlockerChain.Node(Issue.from(target), depth));
             collectBlockers(target, upstream, visited, fetchCount, result, depth + 1);
         }
     }
@@ -417,6 +402,22 @@ public class AnalysisService {
 
     private String name(IdName idName) {
         return idName != null ? idName.name() : "—";
+    }
+
+    private double sumEstimated(List<RedmineIssueSummary> issues) {
+        return issues.stream()
+                .filter(i -> i.estimatedHours() != null)
+                .mapToDouble(RedmineIssueSummary::estimatedHours).sum();
+    }
+
+    private double sumSpent(List<RedmineIssueSummary> issues) {
+        return issues.stream()
+                .filter(i -> i.spentHours() != null)
+                .mapToDouble(RedmineIssueSummary::spentHours).sum();
+    }
+
+    private List<IssueSummary> toSummaries(List<RedmineIssueSummary> issues) {
+        return issues.stream().map(IssueSummary::from).toList();
     }
 
     private Map<String, Integer> groupAndCount(List<RedmineIssueSummary> issues,
