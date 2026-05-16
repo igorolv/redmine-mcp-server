@@ -44,13 +44,11 @@ public class ContextService {
         }
         attachmentService.snapshotIssue(issue);
 
-        int fetchCount = 1;
         var contextIssues = new LinkedHashMap<Integer, ContextIssueBuilder>();
 
         RedmineIssue parent = null;
         if (issue.parent() != null) {
             parent = client.getIssue(issue.parent().id());
-            fetchCount++;
             if (parent != null) {
                 attachmentService.snapshotIssue(parent);
                 addContextIssue(contextIssues, parent, new IssueContextRole(
@@ -71,7 +69,6 @@ public class ContextService {
                 if (siblingAttempts >= MAX_SIBLINGS) break;
                 siblingAttempts++;
                 var sibling = client.getIssue(child.id());
-                fetchCount++;
                 if (sibling != null) {
                     attachmentService.snapshotIssue(sibling);
                     siblingsFetched++;
@@ -92,7 +89,6 @@ public class ContextService {
                 if (childAttempts >= MAX_CHILDREN) break;
                 childAttempts++;
                 var childIssue = client.getIssue(child.id());
-                fetchCount++;
                 if (childIssue != null) {
                     attachmentService.snapshotIssue(childIssue);
                     childrenFetched++;
@@ -112,7 +108,6 @@ public class ContextService {
                 int relatedId = rel.issueId() == issueId ? rel.issueToId() : rel.issueId();
                 String relType = formatRelationType(rel, issueId);
                 var related = client.getIssue(relatedId);
-                fetchCount++;
                 relCount++;
                 if (related != null) {
                     attachmentService.snapshotIssue(related);
@@ -163,8 +158,7 @@ public class ContextService {
                         .toList(),
                 documents,
                 recentNotes,
-                stats,
-                fetchCount
+                stats
         ));
     }
 

@@ -9,7 +9,6 @@ public record IssueFullContextResult(
         List<ContextIssue> contextIssues,
         List<DocumentExcerpt> documents,
         List<RedmineIssue.Journal> recentNotes,
-        ContextStats stats,
-        int apiCalls
+        ContextStats stats
 ) {
 }
