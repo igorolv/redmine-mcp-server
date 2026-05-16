@@ -37,7 +37,7 @@ AI-клиент запускает сервер как дочерний проц
 
 ## Инструменты
 
-Сервер экспортирует **30 read-only MCP tools**.
+Сервер экспортирует **31 read-only MCP tools**.
 
 ### Пользователь
 
@@ -68,7 +68,7 @@ AI-клиент запускает сервер как дочерний проц
 
 | Tool | Описание |
 |---|---|
-| `searchAll` | Глобальный поиск по всему Redmine: задачи, wiki, новости, коммиты и др. |
+| `searchAll` | Глобальный поиск по Redmine: задачи, wiki, новости, документы, коммиты и др. Параметры: `query`, `projectId`, `types`, `limit`, `offset` |
 
 ### Вложения и Wiki
 
@@ -77,6 +77,7 @@ AI-клиент запускает сервер как дочерний проц
 | `getAttachment` | Скачивает оригинальный файл вложения в локальный snapshot-каталог, возвращает `localPath`/`fileUri` и сразу добавляет текстовый контекст в `parts[]`, если формат поддержан: txt/log/xml/json/csv, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), ZIP. ZIP может дать отдельную часть на каждый entry |
 | `getWikiPage` | Содержимое wiki-страницы проекта |
 | `listWikiPages` | Список всех wiki-страниц проекта |
+| `searchWikiPages` | Полнотекстовый поиск по wiki-страницам. Параметры: `query`, `projectId`, `limit`, `offset` |
 
 ### Трудозатраты
 
@@ -285,7 +286,7 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 
 - HTTP-таймауты и retry-политика сейчас не настраиваются отдельно. Если Redmine долго не отвечает, MCP-вызов может ждать ответа дольше, чем удобно для AI-клиента.
 - Ошибки Redmine (`401`, `403`, `404`, `5xx`) сейчас в основном обрабатываются на уровне Spring `RestClient`; для пользователя AI-клиента сообщение может быть менее дружелюбным, чем специализированная ошибка MCP tool.
-- Поиск зависит от настроек Redmine. Если `/search.json` отключён администратором, `searchAll` и `searchIssues` могут не возвращать ожидаемые результаты.
+- Поиск зависит от настроек Redmine. Если `/search.json` отключён администратором, `searchAll`, `searchIssues` и `searchWikiPages` могут не возвращать ожидаемые результаты.
 - Извлечение текста из PDF работает только для PDF с текстовым слоем. Сканированные документы без OCR будут определены как PDF без извлекаемого текста.
 - Изображения не перекодируются и не ресайзятся. `getAttachment` возвращает путь к оригинальному файлу; текстовые `parts[]` для изображений остаются пустыми.
 
@@ -316,13 +317,13 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │       ├── AnalysisTools.java             — 7 MCP-инструментов аналитики и анализа рисков
 │       ├── AttachmentTools.java           — 1 MCP-инструмент для файлов и контекста вложений
 │       ├── ContextTools.java              — 1 MCP-инструмент для контекста задачи
-│       ├── IssueTools.java                — 7 MCP-инструментов для задач и поиска
+│       ├── IssueTools.java                — 6 MCP-инструментов для задач
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
-│       ├── ProgressSupport.java           — вспомогательный helper для MCP progress notifications
 │       ├── ReferenceDataTools.java        — 6 MCP-инструментов для справочников
+│       ├── SearchTools.java               — 1 MCP-инструмент для глобального поиска
 │       ├── TimeEntryTools.java            — 2 MCP-инструмента для трудозатрат
 │       ├── UserTools.java                 — 1 MCP-инструмент для текущего пользователя
-│       └── WikiTools.java                 — 2 MCP-инструмента для wiki
+│       └── WikiTools.java                 — 3 MCP-инструмента для wiki
 └── src/main/resources/
     ├── application.yml                    — конфигурация MCP-сервера (stdio)
     └── logback-spring.xml                 — конфигурация логирования

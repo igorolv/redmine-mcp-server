@@ -70,24 +70,6 @@ public class IssueTools {
                 queryId, null, sort, limit, offset);
     }
 
-    @McpTool(description = "Search across all Redmine content — issues, wiki pages, news, documents, etc. " +
-            "Returns results of all types with title, type, URL, and description excerpt. " +
-            "Use searchIssues if you only need issues with full details.")
-    public String searchAll(
-            @McpToolParam(description = "Search query text") String query,
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
-    ) {
-        log.info("Tool call: searchAll (query={}, limit={}, offset={})", query, limit, offset);
-        long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 25;
-        int actualOffset = offset != null ? offset : 0;
-
-        var result = issueService.searchAll(query, actualOffset, actualLimit);
-        ToolLogger.completed(log, "searchAll", start);
-        return json.write(result);
-    }
-
     @McpTool(description = "Search for issues in Redmine using full-text search. " +
             "Returns a list of matching issues with their details (subject, status, assignee, etc). " +
             "Supports pagination via offset/limit parameters.")

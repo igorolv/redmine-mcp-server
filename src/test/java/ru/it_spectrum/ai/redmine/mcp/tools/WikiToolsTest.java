@@ -6,12 +6,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
+import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchType;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPage;
 import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -88,5 +91,25 @@ class WikiToolsTest {
         String result = tools.listWikiPages("empty");
 
         assertThat(result).isEqualTo("[]");
+    }
+
+    // --- searchWikiPages ---
+
+    @Test
+    void shouldSearchWikiPages() {
+        var results = List.of(
+                new RedmineSearchResult.ResultItem(5, "Auth Guide", "wiki-page",
+                        "http://redmine/wiki/Auth_Guide", "Authentication setup guide", "2025-02-15T08:00:00Z")
+        );
+        when(client.search("auth", "backend", Set.of(SearchType.WIKI_PAGES), false, 0, 10))
+                .thenReturn(new RedmineSearchResult(results, 1, 0, 10));
+
+        String result = tools.searchWikiPages("auth", "backend", 10, 0);
+
+        assertThat(result).contains("\"total_count\":1");
+        assertThat(result).contains("\"type\":\"wiki-page\"");
+        assertThat(result).contains("\"id\":5");
+        assertThat(result).contains("Auth Guide");
+        assertThat(result).contains("Authentication setup guide");
     }
 }

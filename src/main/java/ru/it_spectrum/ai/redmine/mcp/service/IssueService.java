@@ -105,10 +105,6 @@ public class IssueService {
         return client.searchIssues(query, projectId, offset, limit);
     }
 
-    public ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult searchAll(String query, int offset, int limit) {
-        return client.search(query, offset, limit);
-    }
-
     public Optional<MyIssuesResult> getMyIssues(String projectId, String statusId, String sort,
                                                 int offset, int limit) {
         var user = client.getCurrentUser();

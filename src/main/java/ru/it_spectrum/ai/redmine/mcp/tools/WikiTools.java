@@ -52,4 +52,24 @@ public class WikiTools {
         ToolLogger.completed(log, "listWikiPages", start);
         return json.write(result);
     }
+
+    @McpTool(description = "Search Redmine wiki pages using full-text search. " +
+            "Returns wiki search hits with title, URL, description excerpt, and datetime. " +
+            "Use getWikiPage to read a specific page's full content.")
+    public String searchWikiPages(
+            @McpToolParam(description = "Search query text") String query,
+            @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
+            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+    ) {
+        log.info("Tool call: searchWikiPages (query={}, projectId={}, limit={}, offset={})",
+                query, projectId, limit, offset);
+        long start = System.nanoTime();
+        int actualLimit = limit != null ? limit : 25;
+        int actualOffset = offset != null ? offset : 0;
+
+        var result = wikiService.searchPages(query, projectId, actualOffset, actualLimit);
+        ToolLogger.completed(log, "searchWikiPages", start);
+        return json.write(result);
+    }
 }

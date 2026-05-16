@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -38,12 +39,7 @@ public class RedmineClient {
      * Full-text search via /search.json, then fetches issue summaries for matching results.
      */
     public SearchWithIssueSummaries searchIssues(String query, String projectId, int offset, int limit) {
-        var searchUri = buildSearchUri(query, projectId, offset, limit);
-
-        var searchResult = restClient.get()
-                .uri(searchUri)
-                .retrieve()
-                .body(RedmineSearchResult.class);
+        var searchResult = search(query, projectId, Set.of(SearchType.ISSUES), false, offset, limit);
 
         if (searchResult == null || searchResult.results() == null) {
             return new SearchWithIssueSummaries(List.of(), 0, offset, limit);
@@ -241,11 +237,15 @@ public class RedmineClient {
      * Global full-text search across all Redmine content (issues, wiki, news, etc).
      */
     public RedmineSearchResult search(String query, int offset, int limit) {
-        var uri = "/search.json?q=" + query
-                + "&all_words=1"
-                + "&titles_only=0"
-                + "&offset=" + offset
-                + "&limit=" + limit;
+        return search(query, null, Set.of(), true, offset, limit);
+    }
+
+    /**
+     * Full-text search via /search.json, optionally scoped to a project and content types.
+     */
+    public RedmineSearchResult search(String query, String projectId, Set<SearchType> types,
+                                      boolean allWords, int offset, int limit) {
+        var uri = buildSearchUri(query, projectId, types, allWords, offset, limit);
 
         var response = restClient.get()
                 .uri(uri)
@@ -369,20 +369,27 @@ public class RedmineClient {
         return response != null ? response.issues() : List.of();
     }
 
-    private String buildSearchUri(String query, String projectId, int offset, int limit) {
-        var sb = new StringBuilder();
+    private String buildSearchUri(String query, String projectId, Set<SearchType> types,
+                                  boolean allWords, int offset, int limit) {
+        var path = new StringBuilder();
 
         if (projectId != null && !projectId.isBlank()) {
-            sb.append("/projects/").append(projectId);
+            path.append("/projects/").append(encode(projectId));
         }
 
-        sb.append("/search.json?q=").append(query)
-                .append("&issues=1")
-                .append("&titles_only=0")
-                .append("&offset=").append(offset)
-                .append("&limit=").append(limit);
+        var params = new LinkedHashMap<String, String>();
+        params.put("q", query);
+        if (allWords) {
+            params.put("all_words", "1");
+        }
+        params.put("titles_only", "0");
+        if (types != null) {
+            types.forEach(type -> params.put(type.parameterName(), "1"));
+        }
+        params.put("offset", String.valueOf(offset));
+        params.put("limit", String.valueOf(limit));
 
-        return sb.toString();
+        return path.append("/search.json").append(buildQueryString(params)).toString();
     }
 
     private void putIfPresent(Map<String, String> params, String key, Object value) {
@@ -415,5 +422,25 @@ public class RedmineClient {
             int offset,
             int limit
     ) {
+    }
+
+    public enum SearchType {
+        ISSUES("issues"),
+        NEWS("news"),
+        DOCUMENTS("documents"),
+        CHANGESETS("changesets"),
+        WIKI_PAGES("wiki_pages"),
+        MESSAGES("messages"),
+        PROJECTS("projects");
+
+        private final String parameterName;
+
+        SearchType(String parameterName) {
+            this.parameterName = parameterName;
+        }
+
+        public String parameterName() {
+            return parameterName;
+        }
     }
 }

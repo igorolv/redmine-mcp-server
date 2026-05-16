@@ -10,7 +10,6 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssueSummari
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 
@@ -262,31 +261,6 @@ class IssueToolsTest {
 
         assertThat(result).contains("\"kind\":\"not_found\"");
         assertThat(result).contains("issue #999 not found");
-    }
-
-    // --- searchAll ---
-
-    @Test
-    void shouldSearchAll() {
-        var results = List.of(
-                new RedmineSearchResult.ResultItem(101, "Login bug", "issue",
-                        "http://redmine/issues/101", "Cannot login with LDAP", "2025-03-01T10:00:00Z"),
-                new RedmineSearchResult.ResultItem(5, "Auth Guide", "wiki-page",
-                        "http://redmine/wiki/Auth_Guide", "Authentication setup guide", "2025-02-15T08:00:00Z")
-        );
-        when(client.search("auth", 0, 25))
-                .thenReturn(new RedmineSearchResult(results, 2, 0, 25));
-
-        String result = tools.searchAll("auth", null, null);
-
-        assertThat(result).contains("\"total_count\":2");
-        assertThat(result).contains("\"type\":\"issue\"");
-        assertThat(result).contains("\"id\":101");
-        assertThat(result).contains("Login bug");
-        assertThat(result).contains("Cannot login with LDAP");
-        assertThat(result).contains("\"type\":\"wiki-page\"");
-        assertThat(result).contains("\"id\":5");
-        assertThat(result).contains("Auth Guide");
     }
 
     // --- searchIssues ---
