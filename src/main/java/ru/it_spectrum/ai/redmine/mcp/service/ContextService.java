@@ -1,13 +1,15 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.api.Attachment;
+import ru.it_spectrum.ai.redmine.mcp.api.ContextIssue;
+import ru.it_spectrum.ai.redmine.mcp.api.ContextRole;
+import ru.it_spectrum.ai.redmine.mcp.api.ContextStats;
+import ru.it_spectrum.ai.redmine.mcp.api.DocumentExcerpt;
+import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.model.ContextIssue;
-import ru.it_spectrum.ai.redmine.mcp.model.ContextStats;
-import ru.it_spectrum.ai.redmine.mcp.model.DocumentExcerpt;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueContextRole;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueFullContextResult;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -38,7 +40,7 @@ public class ContextService {
         this.issueService = issueService;
     }
 
-    public Optional<IssueFullContextResult> getIssueFullContext(int issueId) {
+    public Optional<IssueFullContext> getIssueFullContext(int issueId) {
         var issue = client.getIssue(issueId);
         if (issue == null) {
             return Optional.empty();
@@ -54,7 +56,7 @@ public class ContextService {
             parent = client.getIssue(issue.parent().id());
             if (parent != null) {
                 attachmentService.snapshotIssue(parent);
-                addContextIssue(contextIssues, parent, new IssueContextRole(
+                addContextIssue(contextIssues, parent, new ContextRole(
                         "parent", null, null, issueId, parent.id(), null));
             }
         }
@@ -73,7 +75,7 @@ public class ContextService {
                 var sibling = client.getIssue(child.id());
                 if (sibling != null) {
                     attachmentService.snapshotIssue(sibling);
-                    addContextIssue(contextIssues, sibling, new IssueContextRole(
+                    addContextIssue(contextIssues, sibling, new ContextRole(
                             "sibling", null, null, parent.id(), sibling.id(), null));
                 }
             }
@@ -88,7 +90,7 @@ public class ContextService {
                 var childIssue = client.getIssue(child.id());
                 if (childIssue != null) {
                     attachmentService.snapshotIssue(childIssue);
-                    addContextIssue(contextIssues, childIssue, new IssueContextRole(
+                    addContextIssue(contextIssues, childIssue, new ContextRole(
                             "child", null, null, issueId, childIssue.id(), null));
                 }
             }
@@ -106,7 +108,7 @@ public class ContextService {
                 relCount++;
                 if (related != null) {
                     attachmentService.snapshotIssue(related);
-                    addContextIssue(contextIssues, related, new IssueContextRole(
+                    addContextIssue(contextIssues, related, new ContextRole(
                             "related", relType, rel.id(), issueId, relatedId, rel.delay()));
                 }
             }
@@ -118,7 +120,7 @@ public class ContextService {
             collectDocumentExcerpts(parent, "parent", parent.id(), documents);
         }
 
-        List<RedmineIssue.Journal> recentNotes = List.of();
+        List<Issue.Journal> recentNotes = List.of();
         if (issue.journals() != null) {
             var notes = issue.journals().stream()
                     .filter(j -> j.notes() != null && !j.notes().isBlank())
@@ -128,6 +130,7 @@ public class ContextService {
                 recentNotes = notes.subList(startIdx, notes.size()).stream()
                         .map(j -> new RedmineIssue.Journal(j.id(), j.user(),
                                 truncate(j.notes(), MAX_NOTE_LENGTH), j.createdOn(), j.details()))
+                        .map(Issue.Journal::from)
                         .toList();
             }
         }
@@ -138,8 +141,8 @@ public class ContextService {
                 relatedTruncated
         );
 
-        return Optional.of(new IssueFullContextResult(
-                issue,
+        return Optional.of(new IssueFullContext(
+                Issue.from(issue),
                 history,
                 contextIssues.values().stream()
                         .map(ContextIssueBuilder::build)
@@ -188,7 +191,7 @@ public class ContextService {
 
             String truncatedText = truncate(text, allowedLength);
             documents.add(new DocumentExcerpt(
-                    att,
+                    Attachment.from(att),
                     source,
                     sourceIssueId,
                     attachmentService.detectExtractionType(att),
@@ -201,24 +204,24 @@ public class ContextService {
 
     private void addContextIssue(Map<Integer, ContextIssueBuilder> contextIssues,
                                  RedmineIssue issue,
-                                 IssueContextRole role) {
+                                 ContextRole role) {
         contextIssues.computeIfAbsent(issue.id(), ignored -> new ContextIssueBuilder(issue)).addRole(role);
     }
 
     private static final class ContextIssueBuilder {
         private final RedmineIssue issue;
-        private final List<IssueContextRole> roles = new ArrayList<>();
+        private final List<ContextRole> roles = new ArrayList<>();
 
         private ContextIssueBuilder(RedmineIssue issue) {
             this.issue = issue;
         }
 
-        private void addRole(IssueContextRole role) {
+        private void addRole(ContextRole role) {
             roles.add(role);
         }
 
         private ContextIssue build() {
-            return new ContextIssue(issue, List.copyOf(roles));
+            return new ContextIssue(Issue.from(issue), List.copyOf(roles));
         }
     }
 

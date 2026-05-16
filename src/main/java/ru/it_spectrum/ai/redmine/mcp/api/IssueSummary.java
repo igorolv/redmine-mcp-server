@@ -1,0 +1,78 @@
+package ru.it_spectrum.ai.redmine.mcp.api;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
+
+import java.util.List;
+
+@Schema(description = "Compact issue projection used in list and search results. Heavy fields (description, journals, attachments) and low-signal fields (author, isPrivate, spentHours) are omitted — fetch the full Issue when they are needed.")
+public record IssueSummary(
+        @Schema(description = "Issue identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345")
+        int id,
+        @Schema(description = "Project the issue belongs to.", requiredMode = Schema.RequiredMode.REQUIRED)
+        Ref project,
+        @Schema(description = "Tracker type (Bug, Feature, Task, ...).", requiredMode = Schema.RequiredMode.REQUIRED)
+        Ref tracker,
+        @Schema(description = "Current workflow status.", requiredMode = Schema.RequiredMode.REQUIRED)
+        Ref status,
+        @Schema(description = "Priority.", requiredMode = Schema.RequiredMode.REQUIRED)
+        Ref priority,
+        @Schema(description = "User currently assigned, null when unassigned.")
+        Ref assignedTo,
+        @Schema(description = "Parent issue reference if this is a subtask.")
+        Ref parent,
+        @Schema(description = "Target version / milestone.")
+        Ref fixedVersion,
+        @Schema(description = "Issue category.")
+        Ref category,
+        @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.REQUIRED, example = "API returns 500 on empty payload")
+        String subject,
+        @Schema(description = "Planned start date in ISO-8601.", format = "date")
+        String startDate,
+        @Schema(description = "Planned due date in ISO-8601.", format = "date")
+        String dueDate,
+        @Schema(description = "Completion percentage from 0 to 100.", requiredMode = Schema.RequiredMode.REQUIRED)
+        int doneRatio,
+        @Schema(description = "Estimated effort in hours.")
+        Double estimatedHours,
+        @Schema(description = "Creation timestamp in ISO-8601.", format = "date-time")
+        String createdOn,
+        @Schema(description = "Timestamp of the most recent change in ISO-8601.", format = "date-time")
+        String updatedOn,
+        @Schema(description = "Project-defined custom field values.")
+        List<Issue.CustomFieldValue> customFields
+) {
+
+    public static IssueSummary from(RedmineIssueSummary source) {
+        if (source == null) {
+            return null;
+        }
+        return new IssueSummary(
+                source.id(),
+                Ref.from(source.project()),
+                Ref.from(source.tracker()),
+                Ref.from(source.status()),
+                Ref.from(source.priority()),
+                Ref.from(source.assignedTo()),
+                Ref.from(source.parent()),
+                Ref.from(source.fixedVersion()),
+                Ref.from(source.category()),
+                source.subject(),
+                source.startDate(),
+                source.dueDate(),
+                source.doneRatio(),
+                source.estimatedHours(),
+                source.createdOn(),
+                source.updatedOn(),
+                Issue.CustomFieldValue.fromAll(source.customFields())
+        );
+    }
+
+    public static IssueSummary from(RedmineIssue source) {
+        if (source == null) {
+            return null;
+        }
+        return from(RedmineIssueSummary.fromIssue(source));
+    }
+}

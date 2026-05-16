@@ -120,7 +120,7 @@ class IssueFullContextToolTest {
 
             var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(123));
 
-            assertThat(result).contains("custom_fields");
+            assertThat(result).contains("customFields");
             assertThat(result).contains("# в системе заказчика");
             assertThat(result).contains("502167");
             assertThat(result).contains("applications");

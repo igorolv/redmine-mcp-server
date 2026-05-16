@@ -55,9 +55,9 @@ class IssueToolsTest {
         var result = ToolJsonTestSupport.stringify(tools.getMyIssues(null, null, null, null, null));
 
         assertThat(result).contains("\"user\"");
-        assertThat(result).contains("\"firstname\":\"John\"");
-        assertThat(result).contains("\"lastname\":\"Doe\"");
-        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("\"login\":\"jdoe\"");
+        assertThat(result).contains("\"name\":\"John Doe\"");
+        assertThat(result).contains("\"totalCount\":2");
         assertThat(result).contains("\"id\":101");
         assertThat(result).contains("Fix login bug");
         assertThat(result).contains("\"id\":102");
@@ -76,8 +76,8 @@ class IssueToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.getMyIssues("backend", "open", "updated_on:desc", 10, 0));
 
-        assertThat(result).contains("\"firstname\":\"John\"");
-        assertThat(result).contains("\"total_count\":1");
+        assertThat(result).contains("\"name\":\"John Doe\"");
+        assertThat(result).contains("\"totalCount\":1");
         assertThat(result).contains("\"id\":201");
         assertThat(result).contains("Deploy service");
     }
@@ -92,7 +92,7 @@ class IssueToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.getMyIssues(null, null, null, null, null));
 
-        assertThat(result).contains("\"total_count\":0");
+        assertThat(result).contains("\"totalCount\":0");
     }
 
     @Test
@@ -206,7 +206,7 @@ class IssueToolsTest {
         assertThat(result).contains("be561082833c6d4fbeba95228a253298a1cfa874");
         assertThat(result).contains("Igor Olvovsky");
         assertThat(result).contains("#4183. Текущие версии snapshot");
-        assertThat(result).contains("\"committed_on\":\"2026-03-06T13:06:16Z\"");
+        assertThat(result).contains("\"committedOn\":\"2026-03-06T13:06:16Z\"");
     }
 
     @Test
@@ -369,11 +369,11 @@ class IssueToolsTest {
         var result = ToolJsonTestSupport.stringify(tools.getIssueTree(100, null));
 
         assertThat(result).contains("\"relations\"");
-        assertThat(result).contains("\"issue_id\":100");
-        assertThat(result).contains("\"issue_to_id\":200");
-        assertThat(result).contains("\"relation_type\":\"blocks\"");
-        assertThat(result).contains("\"issue_id\":300");
-        assertThat(result).contains("\"relation_type\":\"relates\"");
+        assertThat(result).contains("\"issueId\":100");
+        assertThat(result).contains("\"issueToId\":200");
+        assertThat(result).contains("\"relationType\":\"blocks\"");
+        assertThat(result).contains("\"issueId\":300");
+        assertThat(result).contains("\"relationType\":\"relates\"");
     }
 
     // --- helpers ---

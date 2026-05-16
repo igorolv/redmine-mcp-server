@@ -1,13 +1,16 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.IssueHistory;
+import ru.it_spectrum.ai.redmine.mcp.api.IssuePage;
+import ru.it_spectrum.ai.redmine.mcp.api.IssueTree;
+import ru.it_spectrum.ai.redmine.mcp.api.MyIssues;
+import ru.it_spectrum.ai.redmine.mcp.api.Ref;
+import ru.it_spectrum.ai.redmine.mcp.api.User;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
-import ru.it_spectrum.ai.redmine.mcp.model.MyIssuesResult;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -51,19 +54,20 @@ public class IssueService {
 
     // --- Basic lookup ---
 
-    public Optional<RedmineIssue> find(int issueId) {
-        return Optional.ofNullable(client.getIssue(issueId));
+    public Optional<Issue> find(int issueId) {
+        return Optional.ofNullable(client.getIssue(issueId)).map(Issue::from);
     }
 
     // --- Listing / search ---
 
-    public RedmineIssueSummary.Page list(String projectId, String statusId, Integer trackerId,
-                                         Integer assignedToId, Integer priorityId, Integer versionId,
-                                         Integer queryId, Map<String, String> customFieldFilters,
-                                         String sort, int offset, int limit) {
-        return client.listIssues(projectId, statusId, trackerId, assignedToId, priorityId,
+    public IssuePage list(String projectId, String statusId, Integer trackerId,
+                          Integer assignedToId, Integer priorityId, Integer versionId,
+                          Integer queryId, Map<String, String> customFieldFilters,
+                          String sort, int offset, int limit) {
+        var page = client.listIssues(projectId, statusId, trackerId, assignedToId, priorityId,
                 versionId, sort, queryId, customFieldFilters != null ? customFieldFilters : Map.of(),
                 offset, limit);
+        return IssuePage.from(page);
     }
 
     public Map<String, String> parseCustomFieldFilters(String customFieldFilters) {
@@ -97,28 +101,28 @@ public class IssueService {
         return filters;
     }
 
-    public RedmineClient.SearchWithIssueSummaries searchIssues(String query, String projectId, int offset, int limit) {
-        return client.searchIssues(query, projectId, offset, limit);
+    public IssuePage searchIssues(String query, String projectId, int offset, int limit) {
+        return IssuePage.from(client.searchIssues(query, projectId, offset, limit));
     }
 
-    public Optional<MyIssuesResult> getMyIssues(String projectId, String statusId, String sort,
-                                                int offset, int limit) {
+    public Optional<MyIssues> getMyIssues(String projectId, String statusId, String sort,
+                                          int offset, int limit) {
         var user = client.getCurrentUser();
         if (user == null) {
             return Optional.empty();
         }
         var page = client.listIssues(projectId, statusId, null, user.id(), null, null,
                 sort, offset, limit);
-        return Optional.of(new MyIssuesResult(user, page));
+        return Optional.of(new MyIssues(User.from(user), IssuePage.from(page)));
     }
 
     // --- Tree ---
 
-    public IssueTreeView getTree(int issueId, Integer depth) {
+    public IssueTree getTree(int issueId, Integer depth) {
         return getTree(issueId, depth, new IssueFetchContext(client));
     }
 
-    public IssueTreeView getTree(int issueId, Integer depth, IssueFetchContext ctx) {
+    public IssueTree getTree(int issueId, Integer depth, IssueFetchContext ctx) {
         int actualDepth = depth != null
                 ? Math.min(Math.max(depth, 0), MAX_TREE_DEPTH)
                 : DEFAULT_TREE_DEPTH;
@@ -145,19 +149,28 @@ public class IssueService {
         var subtree = nodeFromIssue(root);
         expandChildren(subtree, root, actualDepth, 0, visited, fetchCount, ctx);
 
-        var relations = root.relations() != null ? root.relations() : List.<RedmineIssue.Relation>of();
+        var relations = root.relations() != null
+                ? root.relations().stream().map(Issue.Relation::from).toList()
+                : List.<Issue.Relation>of();
         boolean limitReached = fetchCount[0] >= MAX_TREE_ISSUES;
-        return new IssueTreeView(root, ancestors, subtree, relations, fetchCount[0], limitReached);
+        return new IssueTree(
+                Issue.from(root),
+                ancestors.stream().map(Issue::from).toList(),
+                subtree,
+                relations,
+                fetchCount[0],
+                limitReached
+        );
     }
 
     // --- History ---
 
-    public IssueHistoryView buildHistory(RedmineIssue issue) {
+    public IssueHistory buildHistory(RedmineIssue issue) {
         return buildHistory(issue, new IssueFetchContext(client));
     }
 
-    public IssueHistoryView buildHistory(RedmineIssue issue, IssueFetchContext ctx) {
-        var timeline = new ArrayList<IssueHistoryView.TimelineEntry>();
+    public IssueHistory buildHistory(RedmineIssue issue, IssueFetchContext ctx) {
+        var timeline = new ArrayList<IssueHistory.TimelineEntry>();
         var statusSnapshots = new ArrayList<StatusSnapshot>();
 
         var customFieldNames = customFieldNames(issue);
@@ -165,14 +178,14 @@ public class IssueService {
         String initialStatus = findInitialStatus(issue, ctx);
         statusSnapshots.add(new StatusSnapshot(initialStatus, issue.createdOn()));
 
-        var createdChanges = new ArrayList<IssueHistoryView.FieldChange>();
-        createdChanges.add(new IssueHistoryView.FieldChange("Status", null, nameOf(issue.status())));
-        createdChanges.add(new IssueHistoryView.FieldChange("Priority", null, nameOf(issue.priority())));
+        var createdChanges = new ArrayList<IssueHistory.FieldChange>();
+        createdChanges.add(new IssueHistory.FieldChange("Status", null, nameOf(issue.status())));
+        createdChanges.add(new IssueHistory.FieldChange("Priority", null, nameOf(issue.priority())));
         if (issue.assignedTo() != null) {
-            createdChanges.add(new IssueHistoryView.FieldChange("Assigned to", null, issue.assignedTo().name()));
+            createdChanges.add(new IssueHistory.FieldChange("Assigned to", null, issue.assignedTo().name()));
         }
-        timeline.add(new IssueHistoryView.TimelineEntry(
-                IssueHistoryView.Kind.CREATED,
+        timeline.add(new IssueHistory.TimelineEntry(
+                IssueHistory.Kind.CREATED,
                 issue.createdOn(),
                 nameOf(issue.author()),
                 List.copyOf(createdChanges),
@@ -181,7 +194,7 @@ public class IssueService {
 
         if (issue.journals() != null) {
             for (var journal : issue.journals()) {
-                var changes = new ArrayList<IssueHistoryView.FieldChange>();
+                var changes = new ArrayList<IssueHistory.FieldChange>();
                 if (journal.details() != null) {
                     for (var detail : journal.details()) {
                         var fc = toFieldChange(detail, ctx, issue, customFieldNames);
@@ -197,8 +210,8 @@ public class IssueService {
                 }
                 boolean hasNotes = journal.notes() != null && !journal.notes().isBlank();
                 if (!changes.isEmpty() || hasNotes) {
-                    timeline.add(new IssueHistoryView.TimelineEntry(
-                            IssueHistoryView.Kind.UPDATED,
+                    timeline.add(new IssueHistory.TimelineEntry(
+                            IssueHistory.Kind.UPDATED,
                             journal.createdOn(),
                             journal.user() != null ? journal.user().name() : "unknown",
                             List.copyOf(changes),
@@ -209,7 +222,7 @@ public class IssueService {
         }
 
         var durations = computeStatusDurations(statusSnapshots);
-        return new IssueHistoryView(List.copyOf(timeline), durations);
+        return new IssueHistory(List.copyOf(timeline), durations);
     }
 
     // --- Tree helpers ---
@@ -223,23 +236,23 @@ public class IssueService {
         return ctx.getIssue(issueId);
     }
 
-    private IssueTreeView.TreeNode nodeFromIssue(RedmineIssue issue) {
-        return new IssueTreeView.TreeNode(
+    private IssueTree.Node nodeFromIssue(RedmineIssue issue) {
+        return new IssueTree.Node(
                 issue.id(), issue.subject(),
-                issue.status(), issue.tracker(), issue.assignedTo(),
+                Ref.from(issue.status()), Ref.from(issue.tracker()), Ref.from(issue.assignedTo()),
                 new ArrayList<>(), false
         );
     }
 
-    private IssueTreeView.TreeNode stubFromChild(RedmineIssue.Child child) {
-        return new IssueTreeView.TreeNode(
+    private IssueTree.Node stubFromChild(RedmineIssue.Child child) {
+        return new IssueTree.Node(
                 child.id(), child.subject(),
-                null, child.tracker(), null,
+                null, Ref.from(child.tracker()), null,
                 List.of(), true
         );
     }
 
-    private void expandChildren(IssueTreeView.TreeNode parentNode, RedmineIssue parentIssue,
+    private void expandChildren(IssueTree.Node parentNode, RedmineIssue parentIssue,
                                 int maxDepth, int currentDepth,
                                 Set<Integer> visited, int[] fetchCount,
                                 IssueFetchContext ctx) {
@@ -287,8 +300,8 @@ public class IssueService {
         return nameOf(issue.status());
     }
 
-    private IssueHistoryView.FieldChange toFieldChange(RedmineIssue.Detail detail, IssueFetchContext ctx,
-                                                       RedmineIssue issue, Map<String, String> customFieldNames) {
+    private IssueHistory.FieldChange toFieldChange(RedmineIssue.Detail detail, IssueFetchContext ctx,
+                                                   RedmineIssue issue, Map<String, String> customFieldNames) {
         if (!"attr".equals(detail.property()) && !"cf".equals(detail.property())) {
             return null;
         }
@@ -298,7 +311,7 @@ public class IssueService {
         if (oldVal == null && newVal == null) {
             return null;
         }
-        return new IssueHistoryView.FieldChange(fieldLabel, oldVal, newVal);
+        return new IssueHistory.FieldChange(fieldLabel, oldVal, newVal);
     }
 
     private String formatFieldLabel(String property, String name, Map<String, String> customFieldNames) {
@@ -375,18 +388,18 @@ public class IssueService {
         return map;
     }
 
-    private List<IssueHistoryView.StatusDuration> computeStatusDurations(List<StatusSnapshot> snapshots) {
-        var durations = new ArrayList<IssueHistoryView.StatusDuration>();
+    private List<IssueHistory.StatusDuration> computeStatusDurations(List<StatusSnapshot> snapshots) {
+        var durations = new ArrayList<IssueHistory.StatusDuration>();
         for (int i = 0; i < snapshots.size(); i++) {
             var s = snapshots.get(i);
             if (i + 1 < snapshots.size()) {
                 var next = snapshots.get(i + 1);
-                durations.add(new IssueHistoryView.StatusDuration(
+                durations.add(new IssueHistory.StatusDuration(
                         s.statusName(), s.timestamp(), next.timestamp(),
                         formatDuration(s.timestamp(), next.timestamp())
                 ));
             } else {
-                durations.add(new IssueHistoryView.StatusDuration(
+                durations.add(new IssueHistory.StatusDuration(
                         s.statusName(), s.timestamp(), null,
                         formatDuration(s.timestamp(), null)
                 ));

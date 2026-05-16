@@ -5,13 +5,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.IssueHistory;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssueSummaries;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueHistoryView;
 
 import java.util.List;
 import java.util.Map;
@@ -47,14 +48,15 @@ class IssueServiceTest {
 
     @Test
     void listShouldPassFiltersToClient() {
-        var page = new RedmineIssueSummary.Page(List.of(), 0, 0, 25);
+        var page = new RedmineIssueSummary.Page(List.of(summary(1, "Bug")), 1, 0, 25);
         when(client.listIssues("p", "open", 1, 2, 3, 4, "updated_on:desc", 5,
                 Map.of("cf_1", "x"), 0, 25)).thenReturn(page);
 
         var result = service.list("p", "open", 1, 2, 3, 4, 5,
                 Map.of("cf_1", "x"), "updated_on:desc", 0, 25);
 
-        assertThat(result).isSameAs(page);
+        assertThat(result.totalCount()).isEqualTo(1);
+        assertThat(result.issues()).singleElement().satisfies(i -> assertThat(i.id()).isEqualTo(1));
     }
 
     @Test
@@ -65,14 +67,18 @@ class IssueServiceTest {
 
         var result = service.list(null, null, null, null, null, null, null, null, null, 0, 25);
 
-        assertThat(result).isSameAs(page);
+        assertThat(result.issues()).isEmpty();
     }
 
     @Test
     void searchIssuesShouldDelegateToClient() {
-        var sw = new SearchWithIssueSummaries(List.of(), 0, 0, 25);
+        var sw = new SearchWithIssueSummaries(List.of(summary(7, "Hit")), 1, 0, 25);
         when(client.searchIssues("q", "p", 0, 25)).thenReturn(sw);
-        assertThat(service.searchIssues("q", "p", 0, 25)).isSameAs(sw);
+
+        var result = service.searchIssues("q", "p", 0, 25);
+
+        assertThat(result.totalCount()).isEqualTo(1);
+        assertThat(result.issues()).singleElement().satisfies(i -> assertThat(i.id()).isEqualTo(7));
     }
 
     // --- getMyIssues ---
@@ -95,8 +101,11 @@ class IssueServiceTest {
         var result = service.getMyIssues("p", "open", "updated_on:desc", 0, 25);
 
         assertThat(result).isPresent();
-        assertThat(result.get().user()).isSameAs(user);
-        assertThat(result.get().page()).isSameAs(page);
+        assertThat(result.get().user().id()).isEqualTo(42);
+        assertThat(result.get().user().name()).isEqualTo("John Doe");
+        assertThat(result.get().page().totalCount()).isEqualTo(1);
+        assertThat(result.get().page().issues()).singleElement()
+                .satisfies(i -> assertThat(i.id()).isEqualTo(1));
     }
 
     // --- getTree ---
@@ -120,7 +129,7 @@ class IssueServiceTest {
         var view = service.getTree(3, 2);
 
         assertThat(view.root().id()).isEqualTo(3);
-        assertThat(view.ancestors()).extracting(RedmineIssue::id).containsExactly(2, 1);
+        assertThat(view.ancestors()).extracting(Issue::id).containsExactly(2, 1);
         assertThat(view.subtree().id()).isEqualTo(3);
         assertThat(view.fetchedCount()).isEqualTo(3);
         assertThat(view.limitReached()).isFalse();
@@ -174,11 +183,11 @@ class IssueServiceTest {
 
         assertThat(view.timeline()).hasSize(2);
         var created = view.timeline().get(0);
-        assertThat(created.kind()).isEqualTo(IssueHistoryView.Kind.CREATED);
+        assertThat(created.kind()).isEqualTo(IssueHistory.Kind.CREATED);
         assertThat(created.actor()).isEqualTo("John");
 
         var updated = view.timeline().get(1);
-        assertThat(updated.kind()).isEqualTo(IssueHistoryView.Kind.UPDATED);
+        assertThat(updated.kind()).isEqualTo(IssueHistory.Kind.UPDATED);
         assertThat(updated.note()).isEqualTo("Starting");
         assertThat(updated.changes()).singleElement().satisfies(c -> {
             assertThat(c.fieldLabel()).isEqualTo("Status");
@@ -186,7 +195,7 @@ class IssueServiceTest {
             assertThat(c.newValue()).isEqualTo("In Progress");
         });
 
-        assertThat(view.statusDurations()).extracting(IssueHistoryView.StatusDuration::statusName)
+        assertThat(view.statusDurations()).extracting(IssueHistory.StatusDuration::statusName)
                 .containsExactly("New", "In Progress");
         assertThat(view.statusDurations().get(1).toTimestamp()).isNull();
     }

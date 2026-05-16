@@ -5,12 +5,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueFullContextResult;
-import ru.it_spectrum.ai.redmine.mcp.model.IssueTreeView;
-import ru.it_spectrum.ai.redmine.mcp.model.MyIssuesResult;
+import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
+import ru.it_spectrum.ai.redmine.mcp.api.IssuePage;
+import ru.it_spectrum.ai.redmine.mcp.api.IssueTree;
+import ru.it_spectrum.ai.redmine.mcp.api.MyIssues;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
@@ -40,7 +39,7 @@ public class IssueTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineIssueSummary.Page listIssues(
+    public IssuePage listIssues(
             @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
             @McpToolParam(description = "Status filter: open, closed, * (all), or numeric status ID (optional)", required = false) String statusId,
             @McpToolParam(description = "Tracker ID to filter by (optional)", required = false) Integer trackerId,
@@ -72,9 +71,9 @@ public class IssueTools {
         return page;
     }
 
-    public RedmineIssueSummary.Page listIssues(String projectId, String statusId, Integer trackerId,
-                                               Integer assignedToId, Integer priorityId, Integer versionId,
-                                               Integer queryId, String sort, Integer limit, Integer offset) {
+    public IssuePage listIssues(String projectId, String statusId, Integer trackerId,
+                                Integer assignedToId, Integer priorityId, Integer versionId,
+                                Integer queryId, String sort, Integer limit, Integer offset) {
         return listIssues(projectId, statusId, trackerId, assignedToId, priorityId, versionId,
                 queryId, null, sort, limit, offset);
     }
@@ -86,7 +85,7 @@ public class IssueTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineClient.SearchWithIssueSummaries searchIssues(
+    public IssuePage searchIssues(
             @McpToolParam(description = "Search query text") String query,
             @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
@@ -109,7 +108,7 @@ public class IssueTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public MyIssuesResult getMyIssues(
+    public MyIssues getMyIssues(
             @McpToolParam(description = "Project identifier to filter by (optional)", required = false) String projectId,
             @McpToolParam(description = "Status filter: open (default), closed, * (all), or numeric status ID (optional)", required = false) String statusId,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc' (optional)", required = false) String sort,
@@ -140,13 +139,13 @@ public class IssueTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public IssueTreeView getIssueTree(
+    public IssueTree getIssueTree(
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "How deep to traverse children, default 2, max 5", required = false) Integer depth
     ) {
         log.info("Tool call: getIssueTree (issueId={}, depth={})", issueId, depth);
         long start = System.nanoTime();
-        IssueTreeView view;
+        IssueTree view;
         try {
             view = issueService.getTree(issueId, depth);
             ToolLogger.completed(log, "getIssueTree", start);
@@ -165,7 +164,7 @@ public class IssueTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineIssue getIssue(
+    public Issue getIssue(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
         log.info("Tool call: getIssue (issueId={})", issueId);
@@ -190,7 +189,7 @@ public class IssueTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public IssueFullContextResult getIssueFullContext(
+    public IssueFullContext getIssueFullContext(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
         log.info("Tool call: getIssueFullContext (issueId={})", issueId);
