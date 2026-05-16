@@ -85,15 +85,22 @@ class ContextToolsTest {
             assertThat(result).contains("Implement date filter");
             assertThat(result).contains("Bob");
             assertThat(result).contains("Filter issues by date range");
-            assertThat(result).contains("\"parent\"");
+            assertThat(result).contains("\"contextIssues\"");
+            assertThat(result).contains("\"role\":\"parent\"");
             assertThat(result).contains("\"id\":100");
             assertThat(result).contains("Epic: Reports Module");
-            assertThat(result).contains("\"siblings\"");
+            assertThat(result).contains("\"role\":\"sibling\"");
             assertThat(result).contains("\"id\":124");
             assertThat(result).contains("Add charts");
-            assertThat(result).contains("\"relates\"");
+            assertThat(result).contains("\"role\":\"related\"");
+            assertThat(result).contains("\"relationType\":\"relates\"");
             assertThat(result).contains("\"id\":95");
             assertThat(result).contains("Date API endpoint");
+            assertThat(result).contains("\"stats\"");
+            assertThat(result).contains("\"siblingsTotal\":1");
+            assertThat(result).contains("\"siblingsFetched\":1");
+            assertThat(result).contains("\"relatedTotal\":1");
+            assertThat(result).contains("\"relatedFetched\":1");
             assertThat(result).contains("Check the date format spec");
         }
 
@@ -136,8 +143,34 @@ class ContextToolsTest {
 
             assertThat(result).contains("\"id\":10");
             assertThat(result).contains("Standalone task");
-            assertThat(result).doesNotContain("Parent:");
-            assertThat(result).doesNotContain("Siblings");
+            assertThat(result).contains("\"contextIssues\":[]");
+            assertThat(result).contains("\"siblingsTotal\":0");
+            assertThat(result).contains("\"relatedTotal\":0");
+        }
+
+        @Test
+        void shouldMergeMultipleRolesForSameContextIssue() throws Exception {
+            var issue = issueBuilder(123, "Implement date filter")
+                    .children(List.of(child(201, "Validate date range")))
+                    .relations(List.of(new RedmineIssue.Relation(7, 123, 201, "relates", null)))
+                    .build();
+            var contextIssue = contextIssue(201, "Validate date range",
+                    new IdName(1, "New"), new IdName(2, "Bob"),
+                    "Reject invalid date ranges");
+
+            when(client.getIssue(123)).thenReturn(issue);
+            when(client.getIssue(201)).thenReturn(contextIssue);
+
+            String result = tools.getIssueFullContext(123);
+
+            var root = new ObjectMapper().readTree(result);
+            var contextIssues = root.get("contextIssues");
+            assertThat(contextIssues).hasSize(1);
+            assertThat(contextIssues.get(0).get("issue").get("id").asInt()).isEqualTo(201);
+            assertThat(contextIssues.get(0).get("roles")).hasSize(2);
+            assertThat(result).contains("\"role\":\"child\"");
+            assertThat(result).contains("\"role\":\"related\"");
+            assertThat(result).contains("\"relationType\":\"relates\"");
         }
 
     }

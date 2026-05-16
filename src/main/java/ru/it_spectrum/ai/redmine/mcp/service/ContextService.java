@@ -4,19 +4,23 @@ import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.ContextIssue;
+import ru.it_spectrum.ai.redmine.mcp.model.ContextStats;
 import ru.it_spectrum.ai.redmine.mcp.model.DocumentExcerpt;
+import ru.it_spectrum.ai.redmine.mcp.model.IssueContextRole;
 import ru.it_spectrum.ai.redmine.mcp.model.IssueFullContextResult;
-import ru.it_spectrum.ai.redmine.mcp.model.SiblingSummary;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 @Service
 public class ContextService {
     private static final int MAX_SIBLINGS = 20;
+    private static final int MAX_CHILDREN = 20;
     private static final int MAX_RELATED = 10;
     private static final int MAX_INLINE_DOCS = 3;
     private static final int MAX_DOC_TEXT_LENGTH = 10_000;
@@ -41,25 +45,65 @@ public class ContextService {
         attachmentService.snapshotIssue(issue);
 
         int fetchCount = 1;
+        var contextIssues = new LinkedHashMap<Integer, ContextIssueBuilder>();
+
         RedmineIssue parent = null;
         if (issue.parent() != null) {
             parent = client.getIssue(issue.parent().id());
-            attachmentService.snapshotIssue(parent);
             fetchCount++;
+            if (parent != null) {
+                attachmentService.snapshotIssue(parent);
+                addContextIssue(contextIssues, parent, new IssueContextRole(
+                        "parent", null, null, issueId, parent.id(), null));
+            }
         }
 
-        var siblings = new ArrayList<RedmineIssue>();
-        if (parent != null && parent.children() != null && parent.children().size() > 1) {
+        int siblingsTotal = 0;
+        int siblingsFetched = 0;
+        int siblingsClosedFetched = 0;
+        if (parent != null && parent.children() != null) {
+            siblingsTotal = (int) parent.children().stream()
+                    .filter(child -> child.id() != issueId)
+                    .count();
+            int siblingAttempts = 0;
             for (var child : parent.children()) {
-                if (child.id() != issueId && siblings.size() < MAX_SIBLINGS) {
-                    var sibling = client.getIssue(child.id());
-                    fetchCount++;
-                    if (sibling != null) siblings.add(sibling);
+                if (child.id() == issueId) continue;
+                if (siblingAttempts >= MAX_SIBLINGS) break;
+                siblingAttempts++;
+                var sibling = client.getIssue(child.id());
+                fetchCount++;
+                if (sibling != null) {
+                    attachmentService.snapshotIssue(sibling);
+                    siblingsFetched++;
+                    if (isClosedStatus(sibling.status())) {
+                        siblingsClosedFetched++;
+                    }
+                    addContextIssue(contextIssues, sibling, new IssueContextRole(
+                            "sibling", null, null, parent.id(), sibling.id(), null));
                 }
             }
         }
 
-        var relatedByType = new LinkedHashMap<String, List<RedmineIssue>>();
+        int childrenTotal = issue.children() != null ? issue.children().size() : 0;
+        int childrenFetched = 0;
+        if (issue.children() != null) {
+            int childAttempts = 0;
+            for (var child : issue.children()) {
+                if (childAttempts >= MAX_CHILDREN) break;
+                childAttempts++;
+                var childIssue = client.getIssue(child.id());
+                fetchCount++;
+                if (childIssue != null) {
+                    attachmentService.snapshotIssue(childIssue);
+                    childrenFetched++;
+                    addContextIssue(contextIssues, childIssue, new IssueContextRole(
+                            "child", null, null, issueId, childIssue.id(), null));
+                }
+            }
+        }
+
+        int relatedTotal = issue.relations() != null ? issue.relations().size() : 0;
+        int relatedFetched = 0;
         if (issue.relations() != null && !issue.relations().isEmpty()) {
             int relCount = 0;
 
@@ -71,7 +115,10 @@ public class ContextService {
                 fetchCount++;
                 relCount++;
                 if (related != null) {
-                    relatedByType.computeIfAbsent(relType, k -> new ArrayList<>()).add(related);
+                    attachmentService.snapshotIssue(related);
+                    relatedFetched++;
+                    addContextIssue(contextIssues, related, new IssueContextRole(
+                            "related", relType, rel.id(), issueId, relatedId, rel.delay()));
                 }
             }
         }
@@ -96,18 +143,27 @@ public class ContextService {
             }
         }
 
-        int siblingTotal = siblings.size() + (parent != null ? 1 : 0);
-        int siblingClosed = (int) siblings.stream().filter(s -> isClosedStatus(s.status())).count();
+        var stats = new ContextStats(
+                siblingsTotal,
+                siblingsFetched,
+                siblingsClosedFetched,
+                childrenTotal,
+                childrenFetched,
+                relatedTotal,
+                relatedFetched,
+                siblingsTotal > MAX_SIBLINGS,
+                childrenTotal > MAX_CHILDREN,
+                relatedTotal > MAX_RELATED
+        );
 
         return Optional.of(new IssueFullContextResult(
                 issue,
-                parent,
-                new SiblingSummary(siblingTotal, siblingClosed, siblings),
-                issue.children() != null ? issue.children() : List.of(),
-                relatedByType,
-                issue.attachments() != null ? issue.attachments() : List.of(),
+                contextIssues.values().stream()
+                        .map(ContextIssueBuilder::build)
+                        .toList(),
                 documents,
                 recentNotes,
+                stats,
                 fetchCount
         ));
     }
@@ -165,6 +221,29 @@ public class ContextService {
                     text.length() > allowedLength
             ));
             totalDocText += truncatedText.length();
+        }
+    }
+
+    private void addContextIssue(Map<Integer, ContextIssueBuilder> contextIssues,
+                                 RedmineIssue issue,
+                                 IssueContextRole role) {
+        contextIssues.computeIfAbsent(issue.id(), ignored -> new ContextIssueBuilder(issue)).addRole(role);
+    }
+
+    private static final class ContextIssueBuilder {
+        private final RedmineIssue issue;
+        private final List<IssueContextRole> roles = new ArrayList<>();
+
+        private ContextIssueBuilder(RedmineIssue issue) {
+            this.issue = issue;
+        }
+
+        private void addRole(IssueContextRole role) {
+            roles.add(role);
+        }
+
+        private ContextIssue build() {
+            return new ContextIssue(issue, List.copyOf(roles));
         }
     }
 

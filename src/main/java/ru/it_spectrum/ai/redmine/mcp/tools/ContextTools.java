@@ -24,9 +24,9 @@ public class ContextTools {
 
     @McpTool(description = "Get full context needed to understand and implement a Redmine issue. " +
             "One call replaces 10+ separate tool calls. Returns: the issue with description, " +
-            "parent issue context (epic/story), sibling issues (same parent — shows feature scope and progress), " +
-            "related issues with descriptions, document attachments extracted inline (PDF/DOCX/XLSX), " +
-            "and recent discussion notes. Ideal first call when investigating or implementing a task.")
+            "nearby context issues with explicit roles (parent, sibling, child, related), " +
+            "document attachments extracted inline (PDF/DOCX/XLSX), recent discussion notes, " +
+            "and fetch/truncation stats. Ideal first call when investigating or implementing a task.")
     public String getIssueFullContext(
             @McpToolParam(description = "Issue ID number") int issueId
     ) {
