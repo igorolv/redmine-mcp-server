@@ -5,8 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPage;
+import ru.it_spectrum.ai.redmine.mcp.api.SearchResult;
+import ru.it_spectrum.ai.redmine.mcp.api.WikiPage;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
 
@@ -29,7 +29,7 @@ public class WikiTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineWikiPage getWikiPage(
+    public WikiPage getWikiPage(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
             @McpToolParam(description = "Wiki page title (use 'Wiki' for the start page)") String pageTitle
     ) {
@@ -51,7 +51,7 @@ public class WikiTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<RedmineWikiPage> listWikiPages(
+    public List<WikiPage> listWikiPages(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
         log.info("Tool call: listWikiPages (projectId={})", projectId);
@@ -68,7 +68,7 @@ public class WikiTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineSearchResult searchWikiPages(
+    public SearchResult searchWikiPages(
             @McpToolParam(description = "Search query text") String query,
             @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,

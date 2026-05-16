@@ -45,7 +45,7 @@ class ProjectToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listProjects(null, null));
 
-        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("\"totalCount\":2");
         assertThat(result).contains("Backend");
         assertThat(result).contains("backend");
         assertThat(result).contains("Backend services");
@@ -63,7 +63,7 @@ class ProjectToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listProjects(5, 10));
 
-        assertThat(result).contains("\"total_count\":15");
+        assertThat(result).contains("\"totalCount\":15");
         assertThat(result).contains("Mobile");
         assertThat(result).contains("mobile");
     }
@@ -86,7 +86,7 @@ class ProjectToolsTest {
         assertThat(result).contains("Parent Corp");
         assertThat(result).contains("Main backend");
         assertThat(result).contains("https://example.com");
-        assertThat(result).contains("\"is_public\":true");
+        assertThat(result).contains("\"isPublic\":true");
         assertThat(result).contains("Bug");
         assertThat(result).contains("Feature");
         assertThat(result).contains("issue_tracking");
@@ -116,7 +116,7 @@ class ProjectToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listProjectMembers("backend", null, null));
 
-        assertThat(result).contains("\"total_count\":2");
+        assertThat(result).contains("\"totalCount\":2");
         assertThat(result).contains("Alice");
         assertThat(result).contains("Developer");
         assertThat(result).contains("QA Team");

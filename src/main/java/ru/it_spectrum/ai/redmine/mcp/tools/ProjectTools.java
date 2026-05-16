@@ -5,9 +5,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineMembership;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineProject;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
+import ru.it_spectrum.ai.redmine.mcp.api.MembershipPage;
+import ru.it_spectrum.ai.redmine.mcp.api.Project;
+import ru.it_spectrum.ai.redmine.mcp.api.ProjectPage;
+import ru.it_spectrum.ai.redmine.mcp.api.Version;
 import ru.it_spectrum.ai.redmine.mcp.service.ProjectService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 
@@ -30,7 +31,7 @@ public class ProjectTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineProject.Page listProjects(
+    public ProjectPage listProjects(
             @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
@@ -50,7 +51,7 @@ public class ProjectTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineProject getProject(
+    public Project getProject(
             @McpToolParam(description = "Project identifier (string slug) or numeric ID") String projectId
     ) {
         log.info("Tool call: getProject (projectId={})", projectId);
@@ -70,7 +71,7 @@ public class ProjectTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public RedmineMembership.Page listProjectMembers(
+    public MembershipPage listProjectMembers(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
             @McpToolParam(description = "Maximum number of results, default 100", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
@@ -91,7 +92,7 @@ public class ProjectTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<RedmineVersion> listVersions(
+    public List<Version> listVersions(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
         log.info("Tool call: listVersions (projectId={})", projectId);

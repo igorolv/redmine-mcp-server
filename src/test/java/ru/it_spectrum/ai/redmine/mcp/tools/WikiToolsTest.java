@@ -105,7 +105,7 @@ class WikiToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.searchWikiPages("auth", "backend", 10, 0));
 
-        assertThat(result).contains("\"total_count\":1");
+        assertThat(result).contains("\"totalCount\":1");
         assertThat(result).contains("\"type\":\"wiki-page\"");
         assertThat(result).contains("\"id\":5");
         assertThat(result).contains("Auth Guide");

@@ -1,0 +1,41 @@
+package ru.it_spectrum.ai.redmine.mcp.api;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
+
+@Schema(description = "Redmine version / milestone. Audit timestamps are omitted — they rarely matter for LLM-level planning.")
+public record Version(
+        @Schema(description = "Version identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
+        int id,
+        @Schema(description = "Project the version belongs to.")
+        Ref project,
+        @Schema(description = "Version name as shown in the UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "v1.2.0")
+        String name,
+        @Schema(description = "Optional description of the version's scope.")
+        String description,
+        @Schema(description = "Lifecycle status of the version.", allowableValues = {"open", "locked", "closed"})
+        String status,
+        @Schema(description = "Planned release date in ISO-8601.", format = "date", example = "2025-06-30")
+        String dueDate,
+        @Schema(description = "Sharing scope of the version across projects.",
+                allowableValues = {"none", "descendants", "hierarchy", "tree", "system"})
+        String sharing,
+        @Schema(description = "Wiki page title that holds the release notes for this version, when configured.")
+        String wikiPageTitle
+) {
+    public static Version from(RedmineVersion source) {
+        if (source == null) {
+            return null;
+        }
+        return new Version(
+                source.id(),
+                Ref.from(source.project()),
+                source.name(),
+                source.description(),
+                source.status(),
+                source.dueDate(),
+                source.sharing(),
+                source.wikiPageTitle()
+        );
+    }
+}

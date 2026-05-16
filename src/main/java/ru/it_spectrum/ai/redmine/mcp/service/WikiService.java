@@ -1,10 +1,10 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.api.SearchResult;
+import ru.it_spectrum.ai.redmine.mcp.api.WikiPage;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchType;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
-import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPage;
 
 import java.util.List;
 import java.util.Set;
@@ -17,19 +17,24 @@ public class WikiService {
         this.client = client;
     }
 
-    public RedmineWikiPage getPageOrThrow(String projectId, String pageTitle) {
+    public WikiPage getPageOrThrow(String projectId, String pageTitle) {
         var page = client.getWikiPage(projectId, pageTitle);
         if (page == null) {
             throw new ResourceNotFoundException("wiki page", pageTitle);
         }
-        return page;
+        return WikiPage.from(page);
     }
 
-    public List<RedmineWikiPage> listPages(String projectId) {
-        return client.getWikiIndex(projectId);
+    public List<WikiPage> listPages(String projectId) {
+        var pages = client.getWikiIndex(projectId);
+        if (pages == null) {
+            return List.of();
+        }
+        return pages.stream().map(WikiPage::from).toList();
     }
 
-    public RedmineSearchResult searchPages(String query, String projectId, int offset, int limit) {
-        return client.search(query, projectId, Set.of(SearchType.WIKI_PAGES), false, offset, limit);
+    public SearchResult searchPages(String query, String projectId, int offset, int limit) {
+        return SearchResult.from(
+                client.search(query, projectId, Set.of(SearchType.WIKI_PAGES), false, offset, limit));
     }
 }
