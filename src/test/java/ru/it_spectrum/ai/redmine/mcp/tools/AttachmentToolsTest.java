@@ -42,7 +42,7 @@ class AttachmentToolsTest {
         tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
-    // --- getAttachmentFile ---
+    // --- getAttachment ---
 
     @Test
     void shouldReturnMaterializedFilePath() throws Exception {
@@ -52,7 +52,7 @@ class AttachmentToolsTest {
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(data);
 
-        String result = tools.getAttachmentFile(100, 20);
+        String result = tools.getAttachment(100, 20);
 
         var json = ToolJsonTestSupport.parse(result);
         assertThat(json.get("attachment").get("filename").asText()).isEqualTo("photo.png");
@@ -65,34 +65,37 @@ class AttachmentToolsTest {
 
     @Test
     void shouldReturnImageContextAsMetadataOnly() {
-        var attachment = attachment(21, "big.png", "image/png", 5_000);
+        byte[] data = new byte[]{1, 2, 3};
+        var attachment = attachment(21, "big.png", "image/png", data.length);
 
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(data);
 
-        String result = tools.getAttachmentContext(100, 21);
+        String result = tools.getAttachment(100, 21);
 
         assertThat(result).contains("big.png");
         assertThat(result).contains("\"parts\":[]");
         assertThat(result).contains("\"textExtracted\":false");
-        assertThat(result).contains("getAttachmentFile");
+        assertThat(result).contains("localPath");
+        assertThat(result).contains("fileUri");
     }
 
     @Test
-    void shouldHandleAttachmentFileNotFound() {
+    void shouldHandleAttachmentNotFound() {
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of()));
 
-        String result = tools.getAttachmentFile(100, 999);
+        String result = tools.getAttachment(100, 999);
 
         assertThat(result).contains("not found");
     }
 
     @Test
-    void shouldHandleAttachmentFileDownloadFailure() {
+    void shouldHandleAttachmentDownloadFailure() {
         var attachment = attachment(23, "fail.png", "image/png", 5_000);
         when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(null);
 
-        String result = tools.getAttachmentFile(100, 23);
+        String result = tools.getAttachment(100, 23);
 
         assertThat(result).contains("unavailable");
     }

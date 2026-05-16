@@ -58,7 +58,7 @@ class Issue4202DocxIntegrationTest {
         System.out.println("Direct extractor preview:");
         System.out.println(snippet(directText, 2_000));
         System.out.println();
-        System.out.println("AttachmentTools.getAttachmentContext preview:");
+        System.out.println("AttachmentTools.getAttachment preview:");
         System.out.println(snippet(content, 2_000));
     }
 
@@ -67,7 +67,7 @@ class Issue4202DocxIntegrationTest {
         var issue = loadIssue4202();
         var attachment = findFirstImageAttachment(issue);
 
-        String result = attachmentTools.getAttachmentFile(ISSUE_ID, attachment.id());
+        String result = attachmentTools.getAttachment(ISSUE_ID, attachment.id());
         var json = ToolJsonTestSupport.parse(result);
 
         assertThat(json.get("attachment").get("filename").asText()).isEqualTo(attachment.filename());
@@ -159,7 +159,7 @@ class Issue4202DocxIntegrationTest {
 
     private String readAttachmentContext(RedmineAttachment attachment) {
         try {
-            return attachmentTools.getAttachmentContext(ISSUE_ID, attachment.id());
+            return attachmentTools.getAttachment(ISSUE_ID, attachment.id());
         } catch (Exception e) {
             throw new AssertionError(
                     "Failed to read DOCX attachment #%d (%s) from issue #%d via content URL %s"

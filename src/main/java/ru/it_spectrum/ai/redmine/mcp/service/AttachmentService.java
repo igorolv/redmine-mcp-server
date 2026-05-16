@@ -5,8 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentContextPart;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentContextResult;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentFileResult;
+import ru.it_spectrum.ai.redmine.mcp.model.AttachmentResult;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 
@@ -70,46 +69,32 @@ public class AttachmentService {
         return Optional.ofNullable(textExtractor.extractText(attachment, localFile));
     }
 
-    public AttachmentFileResult materializeFile(int issueId, int attachmentId) {
+    public AttachmentResult getAttachment(int issueId, int attachmentId) {
         var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
         var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
-        return new AttachmentFileResult(
-                attachment,
-                localFile.toString(),
-                localFile.toUri().toString(),
-                localSize(localFile)
-        );
-    }
-
-    public AttachmentContextResult readContext(int issueId, int attachmentId) {
-        var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
         boolean image = isImage(attachment);
         String extractionType = image ? "image" : detectExtractionType(attachment);
-        String localPath = null;
-        String fileUri = null;
         List<AttachmentContextPart> parts = List.of();
         String note = null;
 
         if (isTextExtractable(attachment)) {
-            var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
-            localPath = localFile.toString();
-            fileUri = localFile.toUri().toString();
             parts = textExtractor.extractTextParts(attachment, localFile).stream()
                     .map(this::toContextPart)
                     .toList();
         } else if (image) {
-            note = "Image file. Use getAttachmentFile to access the original file.";
+            note = "Image file. Text context not available; use localPath/fileUri to access the original file.";
         } else {
-            note = "Binary file. Text context not available. Use getAttachmentFile to access the original file.";
+            note = "Binary file. Text context not available; use localPath/fileUri to access the original file.";
         }
 
         boolean textExtracted = parts.stream().anyMatch(AttachmentContextPart::textExtracted);
         boolean truncated = parts.stream().anyMatch(AttachmentContextPart::truncated);
 
-        return new AttachmentContextResult(
+        return new AttachmentResult(
                 attachment,
-                localPath,
-                fileUri,
+                localFile.toString(),
+                localFile.toUri().toString(),
+                localSize(localFile),
                 extractionType,
                 textExtracted,
                 truncated,

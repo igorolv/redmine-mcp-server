@@ -80,16 +80,18 @@ class AttachmentServiceTest {
         assertThat(service.isImage(att)).isFalse();
     }
 
-    // --- materializeFile / readContext ---
+    // --- getAttachment ---
 
     @Test
-    void materializeFileShouldReturnOriginalPath() throws Exception {
+    void getAttachmentShouldReturnOriginalPath() throws Exception {
         byte[] data = "original".getBytes();
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
+        when(extractor.getFileExtension("photo.png")).thenReturn("png");
+        when(extractor.isTextExtractable("photo.png", "image/png")).thenReturn(false);
         when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
 
-        var result = service.materializeFile(1, 20);
+        var result = service.getAttachment(1, 20);
 
         assertThat(result.attachment().id()).isEqualTo(20);
         assertThat(Path.of(result.localPath())).exists();
@@ -98,7 +100,7 @@ class AttachmentServiceTest {
     }
 
     @Test
-    void readContextShouldReturnExtractedParts() {
+    void getAttachmentShouldReturnExtractedParts() {
         byte[] data = "hello".getBytes();
         var att = attachment(20, "readme.txt", "text/plain");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
@@ -109,7 +111,7 @@ class AttachmentServiceTest {
                 .thenReturn(List.of(new DocumentTextExtractor.ExtractedTextPart(
                         null, "text", (long) data.length, "hello", null)));
 
-        var result = service.readContext(1, 20);
+        var result = service.getAttachment(1, 20);
 
         assertThat(result.textExtracted()).isTrue();
         assertThat(result.parts()).hasSize(1);
@@ -118,32 +120,35 @@ class AttachmentServiceTest {
     }
 
     @Test
-    void materializeFileShouldThrowAttachmentNotFound() {
+    void getAttachmentShouldThrowAttachmentNotFound() {
         when(client.getIssue(1)).thenReturn(issue(1, List.of()));
-        assertThatThrownBy(() -> service.materializeFile(1, 99))
+        assertThatThrownBy(() -> service.getAttachment(1, 99))
                 .isInstanceOf(AttachmentNotFoundException.class);
     }
 
     @Test
-    void readContextShouldReturnMetadataForImage() {
+    void getAttachmentShouldReturnMetadataForImage() {
+        byte[] data = new byte[]{1, 2, 3};
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(extractor.isTextExtractable("photo.png", "image/png")).thenReturn(false);
         when(extractor.getFileExtension("photo.png")).thenReturn("png");
+        when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
 
-        var result = service.readContext(1, 20);
+        var result = service.getAttachment(1, 20);
 
         assertThat(result.textExtracted()).isFalse();
         assertThat(result.parts()).isEmpty();
-        assertThat(result.note()).contains("getAttachmentFile");
+        assertThat(result.localPath()).endsWith("20__photo.png");
+        assertThat(result.fileUri()).startsWith("file:///");
     }
 
     @Test
-    void materializeFileShouldThrowWhenDownloadFails() {
+    void getAttachmentShouldThrowWhenDownloadFails() {
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(client.downloadAttachment(att.contentUrl())).thenReturn(null);
-        assertThatThrownBy(() -> service.materializeFile(1, 20))
+        assertThatThrownBy(() -> service.getAttachment(1, 20))
                 .isInstanceOf(AttachmentDownloadFailedException.class);
     }
 

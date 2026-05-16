@@ -25,63 +25,34 @@ public class AttachmentTools {
         this.errors = errors;
     }
 
-    @McpTool(description = "Download an attachment from Redmine into the local issue snapshot directory " +
-            "and return the original file path and file URI. " +
+    @McpTool(description = "Get an attachment from Redmine. Always downloads the original file into the local " +
+            "issue snapshot directory and returns localPath/fileUri. Also extracts text context into parts[] " +
+            "when supported: text files, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives. " +
+            "ZIP archives can produce one part per archive entry. Images and other binary files return " +
+            "metadata, localPath/fileUri, and a note without text parts. " +
             "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.")
-    public String getAttachmentFile(
+    public String getAttachment(
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId
     ) {
-        return getAttachmentFileInternal(issueId, attachmentId);
+        return getAttachmentInternal(issueId, attachmentId);
     }
 
-    private String getAttachmentFileInternal(int issueId, int attachmentId) {
-        log.info("Tool call: getAttachmentFile (attachmentId={}, issueId={})", attachmentId, issueId);
+    private String getAttachmentInternal(int issueId, int attachmentId) {
+        log.info("Tool call: getAttachment (attachmentId={}, issueId={})", attachmentId, issueId);
         long start = System.nanoTime();
         try {
-            var result = attachmentService.materializeFile(issueId, attachmentId);
-            ToolLogger.completed(log, "getAttachmentFile", start);
+            var result = attachmentService.getAttachment(issueId, attachmentId);
+            ToolLogger.completed(log, "getAttachment", start);
             return json.write(result);
         } catch (AttachmentNotFoundException e) {
-            ToolLogger.failed(log, "getAttachmentFile", start, e.getMessage());
+            ToolLogger.failed(log, "getAttachment", start, e.getMessage());
             return errors.notFound("attachment", "#" + attachmentId);
         } catch (IssueNotFoundException e) {
-            ToolLogger.failed(log, "getAttachmentFile", start, e.getMessage());
+            ToolLogger.failed(log, "getAttachment", start, e.getMessage());
             return errors.notFound("issue", "#" + issueId);
         } catch (AttachmentDownloadFailedException e) {
-            ToolLogger.failed(log, "getAttachmentFile", start, e.getMessage());
-            return errors.unavailable("attachment #" + attachmentId);
-        }
-    }
-
-    @McpTool(description = "Get text context extracted from an attachment. " +
-            "Supports text files (txt, log, xml, json, csv, etc.), " +
-            "PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives with supported files. " +
-            "Returns a structured parts array; ZIP archives can produce one part per archive entry. " +
-            "For images and other binary files returns metadata and a note; use getAttachmentFile for the original file. " +
-            "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.")
-    public String getAttachmentContext(
-            @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Attachment ID number") int attachmentId
-    ) {
-        return getAttachmentContextInternal(issueId, attachmentId);
-    }
-
-    private String getAttachmentContextInternal(int issueId, int attachmentId) {
-        log.info("Tool call: getAttachmentContext (attachmentId={}, issueId={})", attachmentId, issueId);
-        long start = System.nanoTime();
-        try {
-            var result = attachmentService.readContext(issueId, attachmentId);
-            ToolLogger.completed(log, "getAttachmentContext", start);
-            return json.write(result);
-        } catch (AttachmentNotFoundException e) {
-            ToolLogger.failed(log, "getAttachmentContext", start, e.getMessage());
-            return errors.notFound("attachment", "#" + attachmentId);
-        } catch (IssueNotFoundException e) {
-            ToolLogger.failed(log, "getAttachmentContext", start, e.getMessage());
-            return errors.notFound("issue", "#" + issueId);
-        } catch (AttachmentDownloadFailedException e) {
-            ToolLogger.failed(log, "getAttachmentContext", start, e.getMessage());
+            ToolLogger.failed(log, "getAttachment", start, e.getMessage());
             return errors.unavailable("attachment #" + attachmentId);
         }
     }
