@@ -51,16 +51,6 @@ public class AttachmentService {
         return Optional.ofNullable(client.getAttachment(attachmentId));
     }
 
-    public Optional<List<RedmineAttachment>> listForIssue(int issueId) {
-        var issue = client.getIssue(issueId);
-        if (issue == null) {
-            return Optional.empty();
-        }
-        snapshotIssue(issue);
-        var attachments = issue.attachments();
-        return Optional.of(attachments != null ? attachments : List.of());
-    }
-
     public RedmineAttachment findOrThrow(int attachmentId) {
         return find(attachmentId).orElseThrow(() -> new AttachmentNotFoundException(attachmentId));
     }

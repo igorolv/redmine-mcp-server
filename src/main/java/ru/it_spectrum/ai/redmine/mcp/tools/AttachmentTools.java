@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.model.AttachmentListResult;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.model.AttachmentSearchRequest;
@@ -34,27 +33,12 @@ public class AttachmentTools {
         this.errors = errors;
     }
 
-    @McpTool(description = "List all attachments for a specific Redmine issue. " +
-            "Returns attachment names, sizes, content types, and IDs that can be used with getAttachmentContent.")
-    public String listAttachments(
-            @McpToolParam(description = "Issue ID number") int issueId
-    ) {
-        log.info("Tool call: listAttachments (issueId={})", issueId);
-        long start = System.nanoTime();
-        var maybeAttachments = attachmentService.listForIssue(issueId);
-        ToolLogger.completed(log, "listAttachments", start);
-        if (maybeAttachments.isEmpty()) {
-            return errors.notFound("issue", "#" + issueId);
-        }
-        return json.write(new AttachmentListResult(issueId, maybeAttachments.get()));
-    }
-
     @McpTool(description = "Get the content of an attachment from Redmine. " +
             "Supports text files (txt, log, xml, json, csv, etc.), " +
             "PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives with supported files. " +
             "For images use getImageAttachment instead. " +
             "For other binary files returns only metadata. " +
-            "Use listAttachments first to get the attachment ID and pass the same issue ID.")
+            "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.")
     public String getAttachmentContent(
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId
@@ -83,7 +67,7 @@ public class AttachmentTools {
 
     @McpTool(description = "Download an image attachment from Redmine and return it for visual analysis. " +
             "Supports PNG, JPEG, GIF, BMP, WebP. Automatically resizes large images to save tokens. " +
-            "Use listAttachments first to get the attachment ID and pass the same issue ID.")
+            "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.")
     public McpSchema.CallToolResult getImageAttachment(
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId,

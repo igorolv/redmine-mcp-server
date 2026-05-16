@@ -47,7 +47,7 @@ class AttachmentServiceTest {
         service = new AttachmentService(client, extractor, snapshot);
     }
 
-    // --- find / listForIssue ---
+    // --- find ---
 
     @Test
     void findShouldReturnEmptyWhenAttachmentMissing() {
@@ -61,28 +61,6 @@ class AttachmentServiceTest {
         assertThatThrownBy(() -> service.findOrThrow(99))
                 .isInstanceOf(AttachmentNotFoundException.class)
                 .satisfies(e -> assertThat(((AttachmentNotFoundException) e).attachmentId()).isEqualTo(99));
-    }
-
-    @Test
-    void listForIssueShouldReturnEmptyWhenIssueMissing() {
-        when(client.getIssue(99)).thenReturn(null);
-        assertThat(service.listForIssue(99)).isEmpty();
-    }
-
-    @Test
-    void listForIssueShouldReturnEmptyListWhenNoAttachments() {
-        when(client.getIssue(1)).thenReturn(issue(1, null));
-        var result = service.listForIssue(1);
-        assertThat(result).isPresent();
-        assertThat(result.get()).isEmpty();
-    }
-
-    @Test
-    void listForIssueShouldReturnAttachments() {
-        var att = attachment(10, "spec.txt", "text/plain");
-        when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
-        assertThat(service.listForIssue(1)).hasValueSatisfying(list ->
-                assertThat(list).containsExactly(att));
     }
 
     // --- isImage ---

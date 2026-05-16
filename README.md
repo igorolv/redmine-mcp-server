@@ -37,7 +37,7 @@ AI-клиент запускает сервер как дочерний проц
 
 ## Инструменты
 
-Сервер экспортирует **38 read-only MCP tools**.
+Сервер экспортирует **37 read-only MCP tools**.
 
 ### Пользователь
 
@@ -75,8 +75,7 @@ AI-клиент запускает сервер как дочерний проц
 
 | Tool | Описание |
 |---|---|
-| `listAttachments` | Список вложений задачи с размерами и типами |
-| `getAttachmentContent` | Содержимое вложений: текстовые (txt, log, xml, json, csv и др.), PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx). Для изображений — `getImageAttachment` |
+| `getAttachmentContent` | Содержимое вложений: текстовые (txt, log, xml, json, csv и др.), PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx). ID вложений берите из `getIssue.attachments`. Для изображений — `getImageAttachment` |
 | `getImageAttachment` | Скачивание изображений (PNG, JPEG, GIF, BMP, WebP) с автоматическим ресайзом для визуального анализа AI |
 | `searchAttachmentContent` | Поиск текста по содержимому вложений задачи или проекта. Извлекает текст из PDF/DOCX/XLSX/PPTX/текстовых файлов, возвращает сниппеты с контекстом. Параметры: `query`, `issueId`, `projectId`, `limit` |
 | `getWikiPage` | Содержимое wiki-страницы проекта |

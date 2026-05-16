@@ -49,54 +49,6 @@ class AttachmentToolsTest {
         tools = new AttachmentTools(service, ToolJsonTestSupport.json(), ToolJsonTestSupport.errors());
     }
 
-    // --- listAttachments ---
-
-    @Test
-    void shouldListAttachments() {
-        var attachments = List.of(
-                new RedmineAttachment(10, "report.pdf", 150_000, "application/pdf",
-                        "http://redmine/download/10/report.pdf", "Monthly report",
-                        new IdName(1, "Alice"), "2025-03-01"),
-                new RedmineAttachment(11, "screenshot.png", 50_000, "image/png",
-                        "http://redmine/download/11/screenshot.png", null,
-                        new IdName(2, "Bob"), "2025-03-02")
-        );
-        var issue = issueWithAttachments(100, attachments);
-        when(client.getIssue(100)).thenReturn(issue);
-
-        String result = tools.listAttachments(100);
-
-        assertThat(result).contains("\"issueId\":100");
-        assertThat(result).contains("\"id\":10");
-        assertThat(result).contains("report.pdf");
-        assertThat(result).contains("application/pdf");
-        assertThat(result).contains("Monthly report");
-        assertThat(result).contains("\"id\":11");
-        assertThat(result).contains("screenshot.png");
-        assertThat(result).contains("image/png");
-    }
-
-    @Test
-    void shouldHandleIssueWithNoAttachments() {
-        var issue = issueWithAttachments(200, List.of());
-        when(client.getIssue(200)).thenReturn(issue);
-
-        String result = tools.listAttachments(200);
-
-        assertThat(result).contains("\"issueId\":200");
-        assertThat(result).contains("\"attachments\":[]");
-    }
-
-    @Test
-    void shouldHandleIssueNotFoundForAttachments() {
-        when(client.getIssue(999)).thenReturn(null);
-
-        String result = tools.listAttachments(999);
-
-        assertThat(result).contains("\"kind\":\"not_found\"");
-        assertThat(result).contains("issue #999 not found");
-    }
-
     // --- getImageAttachment ---
 
     @Test
@@ -346,6 +298,5 @@ class AttachmentToolsTest {
         );
     }
 }
-
 
 
