@@ -46,8 +46,7 @@ public class TikaTextFallbackParser implements DocumentParser {
     @Override
     public boolean applies(ParseInput in) {
         if (types.isImage(in.logicalName(), in.contentType())) return false;
-        if (types.isArchive(in.logicalName(), in.contentType())) return false;
-        return true;
+        return !types.isArchive(in.logicalName(), in.contentType());
     }
 
     @Override

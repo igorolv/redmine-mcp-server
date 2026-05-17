@@ -12,11 +12,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class ContextService {
@@ -197,7 +193,7 @@ public class ContextService {
         return content.parts().stream()
                 .filter(AttachmentContent.Part::textExtracted)
                 .map(AttachmentContent.Part::content)
-                .filter(value -> value != null)
+                .filter(Objects::nonNull)
                 .mapToInt(String::length)
                 .sum();
     }

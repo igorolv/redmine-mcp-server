@@ -66,12 +66,6 @@ public class FileTypeDetector {
         return IMAGE_EXTENSIONS.contains(ext) || ct.startsWith("image/");
     }
 
-    public boolean isTextExtractable(String filename, String contentType) {
-        return isDocument(filename, contentType)
-                || isArchive(filename, contentType)
-                || isPlainText(filename, contentType);
-    }
-
     public String detectExtractionType(String filename, String contentType) {
         String ext = getFileExtension(filename);
         String ct = nullToEmpty(contentType);

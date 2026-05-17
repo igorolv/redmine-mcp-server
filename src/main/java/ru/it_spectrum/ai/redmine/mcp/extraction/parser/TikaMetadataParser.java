@@ -45,8 +45,7 @@ public class TikaMetadataParser implements DocumentParser {
     public boolean applies(ParseInput in) {
         if (in.depth() != 0) return false;
         if (types.isArchive(in.logicalName(), in.contentType())) return false;
-        if (types.isPlainText(in.logicalName(), in.contentType())) return false;
-        return true;
+        return !types.isPlainText(in.logicalName(), in.contentType());
     }
 
     @Override

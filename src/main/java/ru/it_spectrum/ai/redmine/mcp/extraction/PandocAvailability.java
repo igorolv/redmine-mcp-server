@@ -70,7 +70,7 @@ public class PandocAvailability {
 
     /** Returns an instance that always reports pandoc as unavailable. Intended for tests. */
     public static PandocAvailability disabled() {
-        return new PandocAvailability((Path) null, null);
+        return new PandocAvailability(null, null);
     }
 
     public boolean isAvailable() {

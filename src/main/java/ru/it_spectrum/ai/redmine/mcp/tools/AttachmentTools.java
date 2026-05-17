@@ -46,13 +46,7 @@ public class AttachmentTools {
             var result = attachmentService.getAttachment(issueId, attachmentId);
             ToolLogger.completed(log, "getAttachment", start);
             return result;
-        } catch (AttachmentNotFoundException e) {
-            ToolLogger.failed(log, "getAttachment", start, e.getMessage());
-            throw e;
-        } catch (IssueNotFoundException e) {
-            ToolLogger.failed(log, "getAttachment", start, e.getMessage());
-            throw e;
-        } catch (AttachmentDownloadFailedException e) {
+        } catch (AttachmentNotFoundException | IssueNotFoundException | AttachmentDownloadFailedException e) {
             ToolLogger.failed(log, "getAttachment", start, e.getMessage());
             throw e;
         }

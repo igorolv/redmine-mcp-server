@@ -235,13 +235,6 @@ public class RedmineClient {
     }
 
     /**
-     * Global full-text search across all Redmine content (issues, wiki, news, etc).
-     */
-    public RedmineSearchResult search(String query, int offset, int limit) {
-        return search(query, null, Set.of(), true, offset, limit);
-    }
-
-    /**
      * Full-text search via /search.json, optionally scoped to a project and content types.
      */
     public RedmineSearchResult search(String query, String projectId, Set<SearchType> types,

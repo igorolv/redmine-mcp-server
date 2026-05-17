@@ -43,10 +43,6 @@ public class AttachmentService {
         return Optional.ofNullable(client.getAttachment(attachmentId));
     }
 
-    public List<ExtractedPart> extractParts(int issueId, RedmineAttachment attachment) {
-        return runPipeline(issueId, attachment);
-    }
-
     public AttachmentContent getAttachment(int issueId, int attachmentId) {
         var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
         return getAttachmentContent(issueId, attachment, properties.attachment().previewLimit());
@@ -120,10 +116,6 @@ public class AttachmentService {
     private List<ExtractedPart> runPipeline(int issueId, RedmineAttachment attachment, Path localFile) {
         Path workDir = issueSnapshot.attachmentExtractedDir(issueId, attachment.id());
         return pipeline.extract(localFile, attachment.filename(), attachment.contentType(), workDir);
-    }
-
-    private AttachmentContent.Part toContentPart(ExtractedPart part) {
-        return toContentPart(part, properties.attachment().previewLimit());
     }
 
     AttachmentContent.Part toContentPart(ExtractedPart part, int previewLimit) {
