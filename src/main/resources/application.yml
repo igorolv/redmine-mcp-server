@@ -13,10 +13,11 @@ spring:
 redmine-mcp:
   data-dir: ${REDMINE_MCP_DATA_DIR:${user.home}/.redmine-mcp-server}
   attachment:
-    preview-limit: ${REDMINE_MCP_ATTACHMENT_PREVIEW_LIMIT:100000}
+    per-part-chars: ${REDMINE_MCP_ATTACHMENT_PER_PART_CHARS:30000}
+    per-attachment-chars: ${REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS:50000}
   full-context:
-    attachment-text-limit: ${REDMINE_MCP_FULL_CONTEXT_ATTACHMENT_TEXT_LIMIT:10000}
-    total-attachment-text-limit: ${REDMINE_MCP_FULL_CONTEXT_TOTAL_ATTACHMENT_TEXT_LIMIT:30000}
+    per-attachment-chars: ${REDMINE_MCP_FULL_CONTEXT_PER_ATTACHMENT_CHARS:10000}
+    total-attachment-chars: ${REDMINE_MCP_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS:30000}
     max-siblings: ${REDMINE_MCP_FULL_CONTEXT_MAX_SIBLINGS:20}
     max-children: ${REDMINE_MCP_FULL_CONTEXT_MAX_CHILDREN:20}
     max-related: ${REDMINE_MCP_FULL_CONTEXT_MAX_RELATED:10}

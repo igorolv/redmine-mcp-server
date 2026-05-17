@@ -28,22 +28,34 @@ public class AttachmentTools {
             "when supported: text files, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives. " +
             "ZIP archives can produce one part per archive entry. Images and other binary files return " +
             "metadata, localPath/fileUri, and a note without text parts. " +
+            "Extracted text is capped by a total character budget shared across all parts (configurable " +
+            "default, override with maxChars) and by a per-part cap (override with partLimit). When text " +
+            "is cut, the affected part has truncated=true and the response has truncated=true. The full " +
+            "file is always available via localPath/fileUri regardless of text limits. " +
             "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public AttachmentContent getAttachment(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Attachment ID number") int attachmentId
+            @McpToolParam(description = "Attachment ID number") int attachmentId,
+            @McpToolParam(description = "Total character budget for extracted text across all parts. Uses configured default when omitted.", required = false) Integer maxChars,
+            @McpToolParam(description = "Per-part character cap for extracted text. Uses configured default when omitted.", required = false) Integer partLimit
     ) {
-        return getAttachmentInternal(issueId, attachmentId);
+        return getAttachmentInternal(issueId, attachmentId, maxChars, partLimit);
     }
 
-    private AttachmentContent getAttachmentInternal(int issueId, int attachmentId) {
-        log.info("Tool call: getAttachment (attachmentId={}, issueId={})", attachmentId, issueId);
+    public AttachmentContent getAttachment(int issueId, int attachmentId) {
+        return getAttachmentInternal(issueId, attachmentId, null, null);
+    }
+
+    private AttachmentContent getAttachmentInternal(int issueId, int attachmentId,
+                                                    Integer maxChars, Integer partLimit) {
+        log.info("Tool call: getAttachment (attachmentId={}, issueId={}, maxChars={}, partLimit={})",
+                attachmentId, issueId, maxChars, partLimit);
         long start = System.nanoTime();
         try {
-            var result = attachmentService.getAttachment(issueId, attachmentId);
+            var result = attachmentService.getAttachment(issueId, attachmentId, maxChars, partLimit);
             ToolLogger.completed(log, "getAttachment", start);
             return result;
         } catch (AttachmentNotFoundException | IssueNotFoundException | AttachmentDownloadFailedException e) {

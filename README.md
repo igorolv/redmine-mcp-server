@@ -144,9 +144,10 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 | `REDMINE_URL` | Базовый URL Redmine (например `https://redmine.example.com`) |
 | `REDMINE_API_KEY` | API-ключ пользователя Redmine |
 | `REDMINE_MCP_DATA_DIR` | Каталог локальных данных сервера; по умолчанию `~/.redmine-mcp-server` |
-| `REDMINE_MCP_ATTACHMENT_PREVIEW_LIMIT` | Лимит текста на `part` для `getAttachment`; по умолчанию `100000` символов |
-| `REDMINE_MCP_FULL_CONTEXT_ATTACHMENT_TEXT_LIMIT` | Лимит inline-текста на одно вложение в `getIssueFullContext`; по умолчанию `10000` символов |
-| `REDMINE_MCP_FULL_CONTEXT_TOTAL_ATTACHMENT_TEXT_LIMIT` | Суммарный лимит inline-текста вложений в `getIssueFullContext`; по умолчанию `30000` символов |
+| `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Лимит текста на один `part` (например, один файл внутри ZIP) для `getAttachment`; по умолчанию `30000` символов. Параметр `partLimit` инструмента переопределяет это значение. |
+| `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Суммарный лимит извлечённого текста на одно вложение в `getAttachment`; по умолчанию `50000` символов. Параметр `maxChars` инструмента переопределяет это значение. |
+| `REDMINE_MCP_FULL_CONTEXT_PER_ATTACHMENT_CHARS` | Лимит inline-текста на одно вложение в `getIssueFullContext`; по умолчанию `10000` символов |
+| `REDMINE_MCP_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS` | Суммарный лимит inline-текста по всем вложениям в `getIssueFullContext`; по умолчанию `30000` символов |
 
 ### Как получить `REDMINE_URL`
 

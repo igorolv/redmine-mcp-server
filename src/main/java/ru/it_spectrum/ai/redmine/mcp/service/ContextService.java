@@ -185,8 +185,8 @@ public class ContextService {
 
     private int nextAttachmentPreviewLimit(int totalAttachmentText) {
         var fullContext = properties.fullContext();
-        int remainingTotal = Math.max(0, fullContext.totalAttachmentTextLimit() - totalAttachmentText);
-        return Math.min(fullContext.attachmentTextLimit(), remainingTotal);
+        int remainingTotal = Math.max(0, fullContext.totalAttachmentChars() - totalAttachmentText);
+        return Math.min(fullContext.perAttachmentChars(), remainingTotal);
     }
 
     private int textContentLength(AttachmentContent content) {

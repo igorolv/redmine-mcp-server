@@ -324,7 +324,7 @@ class DocumentExtractionTest {
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("\"truncated\":true");
-        // Total output should be limited by the getAttachment preview limit.
+        // Total output should be limited by the configured per-attachment char budget.
         String contentPart = ToolJsonTestSupport.parse(result).get("parts").get(0).get("content").asText();
         assertThat(contentPart.length()).isLessThan(120_000);
     }

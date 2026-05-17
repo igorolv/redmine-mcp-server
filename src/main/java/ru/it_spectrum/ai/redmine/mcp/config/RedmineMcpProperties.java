@@ -16,9 +16,10 @@ public record RedmineMcpProperties(
         Extraction extraction
 ) {
     public static final String DEFAULT_DATA_DIR_NAME = ".redmine-mcp-server";
-    public static final int DEFAULT_ATTACHMENT_PREVIEW_LIMIT = 100_000;
-    public static final int DEFAULT_FULL_CONTEXT_ATTACHMENT_TEXT_LIMIT = 10_000;
-    public static final int DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_TEXT_LIMIT = 30_000;
+    public static final int DEFAULT_ATTACHMENT_PER_PART_CHARS = 30_000;
+    public static final int DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS = 50_000;
+    public static final int DEFAULT_FULL_CONTEXT_PER_ATTACHMENT_CHARS = 10_000;
+    public static final int DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS = 30_000;
     public static final int DEFAULT_FULL_CONTEXT_MAX_SIBLINGS = 20;
     public static final int DEFAULT_FULL_CONTEXT_MAX_CHILDREN = 20;
     public static final int DEFAULT_FULL_CONTEXT_MAX_RELATED = 10;
@@ -52,12 +53,12 @@ public record RedmineMcpProperties(
     public RedmineMcpProperties {
         attachment = attachment != null
                 ? attachment
-                : new AttachmentExtraction(DEFAULT_ATTACHMENT_PREVIEW_LIMIT);
+                : new AttachmentExtraction(DEFAULT_ATTACHMENT_PER_PART_CHARS, DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS);
         fullContext = fullContext != null
                 ? fullContext
                 : new FullContext(
-                        DEFAULT_FULL_CONTEXT_ATTACHMENT_TEXT_LIMIT,
-                        DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_TEXT_LIMIT,
+                        DEFAULT_FULL_CONTEXT_PER_ATTACHMENT_CHARS,
+                        DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS,
                         DEFAULT_FULL_CONTEXT_MAX_SIBLINGS,
                         DEFAULT_FULL_CONTEXT_MAX_CHILDREN,
                         DEFAULT_FULL_CONTEXT_MAX_RELATED,
@@ -98,18 +99,22 @@ public record RedmineMcpProperties(
     }
 
     public record AttachmentExtraction(
-            @DefaultValue("" + DEFAULT_ATTACHMENT_PREVIEW_LIMIT) int previewLimit
+            @DefaultValue("" + DEFAULT_ATTACHMENT_PER_PART_CHARS) int perPartChars,
+            @DefaultValue("" + DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS) int perAttachmentChars
     ) {
         public AttachmentExtraction {
-            if (previewLimit <= 0) {
-                previewLimit = DEFAULT_ATTACHMENT_PREVIEW_LIMIT;
+            if (perPartChars <= 0) {
+                perPartChars = DEFAULT_ATTACHMENT_PER_PART_CHARS;
+            }
+            if (perAttachmentChars <= 0) {
+                perAttachmentChars = DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS;
             }
         }
     }
 
     public record FullContext(
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_ATTACHMENT_TEXT_LIMIT) int attachmentTextLimit,
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_TEXT_LIMIT) int totalAttachmentTextLimit,
+            @DefaultValue("" + DEFAULT_FULL_CONTEXT_PER_ATTACHMENT_CHARS) int perAttachmentChars,
+            @DefaultValue("" + DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS) int totalAttachmentChars,
             @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_SIBLINGS) int maxSiblings,
             @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_CHILDREN) int maxChildren,
             @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_RELATED) int maxRelated,
@@ -117,11 +122,11 @@ public record RedmineMcpProperties(
             @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_NOTE_LENGTH) int maxNoteLength
     ) {
         public FullContext {
-            if (attachmentTextLimit < 0) {
-                attachmentTextLimit = DEFAULT_FULL_CONTEXT_ATTACHMENT_TEXT_LIMIT;
+            if (perAttachmentChars < 0) {
+                perAttachmentChars = DEFAULT_FULL_CONTEXT_PER_ATTACHMENT_CHARS;
             }
-            if (totalAttachmentTextLimit < 0) {
-                totalAttachmentTextLimit = DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_TEXT_LIMIT;
+            if (totalAttachmentChars < 0) {
+                totalAttachmentChars = DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS;
             }
             if (maxSiblings < 0) {
                 maxSiblings = DEFAULT_FULL_CONTEXT_MAX_SIBLINGS;

@@ -44,8 +44,15 @@ public class AttachmentService {
     }
 
     public AttachmentContent getAttachment(int issueId, int attachmentId) {
+        return getAttachment(issueId, attachmentId, null, null);
+    }
+
+    public AttachmentContent getAttachment(int issueId, int attachmentId,
+                                           Integer maxChars, Integer partLimit) {
         var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
-        return getAttachmentContent(issueId, attachment, properties.attachment().previewLimit());
+        int effectiveTotal = effectiveTotalBudget(maxChars);
+        int effectivePartLimit = effectivePartLimit(partLimit);
+        return getAttachmentContentWithinBudget(issueId, attachment, effectiveTotal, effectivePartLimit);
     }
 
     public AttachmentContent getAttachmentContent(int issueId, RedmineAttachment attachment, int previewLimit) {
@@ -58,14 +65,21 @@ public class AttachmentService {
 
     public AttachmentContent getAttachmentContentWithinTextBudget(int issueId, RedmineAttachment attachment,
                                                                   int textBudget) {
+        return getAttachmentContentWithinBudget(issueId, attachment, textBudget,
+                properties.attachment().perPartChars());
+    }
+
+    public AttachmentContent getAttachmentContentWithinBudget(int issueId, RedmineAttachment attachment,
+                                                              int textBudget, int partLimit) {
         var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
         var parts = new ArrayList<AttachmentContent.Part>();
         int remaining = Math.max(0, textBudget);
+        int effectivePartLimit = Math.max(0, partLimit);
 
         for (var extracted : runPipeline(issueId, attachment, localFile)) {
             int partBudget = extracted.textExtracted()
-                    ? remaining
-                    : properties.attachment().previewLimit();
+                    ? Math.min(effectivePartLimit, remaining)
+                    : effectivePartLimit;
             var part = toContentPart(extracted, partBudget);
             parts.add(part);
             if (part.textExtracted() && part.content() != null) {
@@ -73,6 +87,22 @@ public class AttachmentService {
             }
         }
         return buildAttachmentContent(attachment, localFile, parts);
+    }
+
+    private int effectiveTotalBudget(Integer requested) {
+        int configured = properties.attachment().perAttachmentChars();
+        if (requested == null) {
+            return configured;
+        }
+        return Math.max(0, requested);
+    }
+
+    private int effectivePartLimit(Integer requested) {
+        int configured = properties.attachment().perPartChars();
+        if (requested == null) {
+            return configured;
+        }
+        return Math.max(0, requested);
     }
 
     private AttachmentContent buildAttachmentContent(RedmineAttachment attachment, Path localFile,

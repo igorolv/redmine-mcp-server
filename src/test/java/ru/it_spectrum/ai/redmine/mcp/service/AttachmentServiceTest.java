@@ -93,9 +93,9 @@ class AttachmentServiceTest {
     }
 
     @Test
-    void getAttachmentShouldUseConfiguredDefaultPreviewLimit() {
+    void getAttachmentShouldCapSinglePartByConfiguredPerPartChars() {
         byte[] data = "original".getBytes();
-        String text = "x".repeat(100_001);
+        String text = "x".repeat(60_000);
         var att = attachment(20, "large.txt", "text/plain");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
@@ -108,8 +108,54 @@ class AttachmentServiceTest {
 
         assertThat(result.truncated()).isTrue();
         assertThat(result.parts().getFirst().content())
-                .startsWith("x".repeat(100_000))
-                .contains("total length: 100001 chars");
+                .startsWith("x".repeat(30_000))
+                .contains("total length: 60000 chars");
+    }
+
+    @Test
+    void getAttachmentShouldCapMultiPartByConfiguredPerAttachmentChars() {
+        byte[] data = "original".getBytes();
+        String text = "x".repeat(30_000);
+        var att = attachment(20, "archive.zip", "application/zip");
+        when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
+        when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
+        when(pipeline.extract(any(Path.class), eq("archive.zip"), eq("application/zip"), any(Path.class)))
+                .thenReturn(List.of(
+                        new ExtractedPart("a.txt", "archive.zip", "text", "PlainTextParser",
+                                (long) text.length(), text, null, null, null),
+                        new ExtractedPart("b.txt", "archive.zip", "text", "PlainTextParser",
+                                (long) text.length(), text, null, null, null),
+                        new ExtractedPart("c.txt", "archive.zip", "text", "PlainTextParser",
+                                (long) text.length(), text, null, null, null)));
+
+        var result = service.getAttachment(1, 20);
+
+        assertThat(result.truncated()).isTrue();
+        // First two parts get their full per-part budget (30K each = 60K, capped to per-attachment 50K).
+        assertThat(result.parts().get(0).content()).hasSize(30_000);
+        assertThat(result.parts().get(1).content()).startsWith("x".repeat(20_000));
+        // Third part is fully starved.
+        assertThat(result.parts().get(2).truncated()).isTrue();
+    }
+
+    @Test
+    void getAttachmentShouldHonorExplicitMaxCharsAndPartLimit() {
+        byte[] data = "original".getBytes();
+        String text = "x".repeat(60_000);
+        var att = attachment(20, "large.txt", "text/plain");
+        when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
+        when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
+        when(pipeline.extract(any(Path.class), eq("large.txt"), eq("text/plain"), any(Path.class)))
+                .thenReturn(List.of(new ExtractedPart(
+                        null, null, "text", "PlainTextParser", (long) data.length,
+                        text, "/tmp/large.txt", "file:///tmp/large.txt", null)));
+
+        var result = service.getAttachment(1, 20, 2_000, 1_000);
+
+        assertThat(result.truncated()).isTrue();
+        assertThat(result.parts().getFirst().content())
+                .startsWith("x".repeat(1_000))
+                .contains("total length: 60000 chars");
     }
 
     @Test
