@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(description = "Materialised attachment: the original file has been downloaded to local storage and (when supported) its text content extracted into `parts`. ZIP archives produce one part per archive entry; images and binary files come back with `parts=[]` and a `note` explaining how to access the original file.")
+@Schema(description = "Materialised attachment: the original file has been downloaded to local storage and parsed into LLM-ready `parts`. ZIP/DOCX containers can produce nested parts; images and binaries return file-reference parts with localPath/fileUri.")
 public record AttachmentContent(
         @Schema(description = "Attachment metadata.", requiredMode = Schema.RequiredMode.REQUIRED)
         Attachment attachment,
@@ -20,7 +20,7 @@ public record AttachmentContent(
         boolean textExtracted,
         @Schema(description = "True when at least one part's text was cut to fit response size limits.", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean truncated,
-        @Schema(description = "Extracted text segments. Empty for images and unsupported binary formats.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Extracted parser output. Text parts carry content; images and unsupported binaries carry localPath/fileUri and an explanatory note.", requiredMode = Schema.RequiredMode.REQUIRED)
         List<Part> parts,
         @Schema(description = "Free-text note explaining the result, typically present when text extraction was skipped.")
         String note

@@ -75,7 +75,8 @@ public class TikaMetadataParser implements DocumentParser {
                 content,
                 in.file().toString(),
                 in.file().toUri().toString(),
-                null
+                null,
+                false
         ));
     }
 

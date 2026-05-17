@@ -10,7 +10,6 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionPipeline;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
-import ru.it_spectrum.ai.redmine.mcp.extraction.TextNormalizer;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -43,50 +42,24 @@ public class AttachmentService {
         return Optional.ofNullable(client.getAttachment(attachmentId));
     }
 
-    public boolean isTextExtractable(RedmineAttachment attachment) {
-        return types.isTextExtractable(attachment.filename(), attachment.contentType());
-    }
-
-    public String detectExtractionType(RedmineAttachment attachment) {
-        return types.detectExtractionType(attachment.filename(), attachment.contentType());
-    }
-
-    public String fileExtension(RedmineAttachment attachment) {
-        return types.getFileExtension(attachment.filename());
-    }
-
-    public boolean isImage(RedmineAttachment attachment) {
-        return types.isImage(attachment.filename(), attachment.contentType());
-    }
-
-    public Optional<String> extractText(int issueId, RedmineAttachment attachment) {
-        if (!isTextExtractable(attachment)) {
-            return Optional.empty();
-        }
-        var parts = runPipeline(issueId, attachment);
-        return Optional.ofNullable(flattenToText(parts));
+    public List<ExtractedPart> extractParts(int issueId, RedmineAttachment attachment) {
+        return runPipeline(issueId, attachment);
     }
 
     public AttachmentContent getAttachment(int issueId, int attachmentId) {
         var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
         var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
-        boolean image = isImage(attachment);
-        String extractionType = image ? "image" : detectExtractionType(attachment);
-        List<AttachmentContent.Part> parts = List.of();
-        String note = null;
-
-        if (isTextExtractable(attachment)) {
-            parts = runPipeline(issueId, attachment, localFile).stream()
-                    .map(this::toContentPart)
-                    .toList();
-        } else if (image) {
-            note = "Image file. Text context not available; use localPath/fileUri to access the original file.";
-        } else {
-            note = "Binary file. Text context not available; use localPath/fileUri to access the original file.";
-        }
+        boolean image = types.isImage(attachment.filename(), attachment.contentType());
+        String extractionType = image
+                ? "image"
+                : types.detectExtractionType(attachment.filename(), attachment.contentType());
+        List<AttachmentContent.Part> parts = runPipeline(issueId, attachment, localFile).stream()
+                .map(this::toContentPart)
+                .toList();
 
         boolean textExtracted = parts.stream().anyMatch(AttachmentContent.Part::textExtracted);
         boolean truncated = parts.stream().anyMatch(AttachmentContent.Part::truncated);
+        String note = textExtracted ? null : noTextNote(image);
 
         return new AttachmentContent(
                 Attachment.from(attachment),
@@ -120,32 +93,16 @@ public class AttachmentService {
         return pipeline.extract(localFile, attachment.filename(), attachment.contentType(), workDir);
     }
 
-    private static String flattenToText(List<ExtractedPart> parts) {
-        var textParts = parts.stream().filter(ExtractedPart::textExtracted).toList();
-        if (textParts.isEmpty()) return null;
-        if (textParts.size() == 1 && textParts.getFirst().name() == null) {
-            return textParts.getFirst().content();
-        }
-        var sb = new StringBuilder();
-        for (var part : textParts) {
-            sb.append("\n--- %s ---\n".formatted(part.name()));
-            sb.append(part.content()).append("\n");
-        }
-        return TextNormalizer.normalize(sb.toString());
-    }
-
-    private String truncatePreview(String text) {
-        if (text.length() <= PREVIEW_LIMIT) return text;
-        return text.substring(0, PREVIEW_LIMIT)
-                + "\n\n... (truncated, total length: %d chars)".formatted(text.length());
-    }
-
     private AttachmentContent.Part toContentPart(ExtractedPart part) {
+        return toContentPart(part, PREVIEW_LIMIT);
+    }
+
+    AttachmentContent.Part toContentPart(ExtractedPart part, int previewLimit) {
         String content = part.content();
         boolean truncated = false;
         if (content != null) {
-            truncated = content.length() > PREVIEW_LIMIT;
-            content = truncatePreview(content);
+            truncated = content.length() > previewLimit;
+            content = truncatePreview(content, previewLimit);
         }
 
         return new AttachmentContent.Part(
@@ -161,6 +118,19 @@ public class AttachmentService {
                 part.note(),
                 part.size()
         );
+    }
+
+    private String truncatePreview(String text, int previewLimit) {
+        if (text.length() <= previewLimit) return text;
+        return text.substring(0, previewLimit)
+                + "\n\n... (truncated, total length: %d chars)".formatted(text.length());
+    }
+
+    private String noTextNote(boolean image) {
+        if (image) {
+            return "Image file. Text context not available; use localPath/fileUri to access the file.";
+        }
+        return "No text content was extracted. Use localPath/fileUri on the returned parts to inspect the file.";
     }
 
     private long localSize(Path localFile) {

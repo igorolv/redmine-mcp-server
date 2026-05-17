@@ -10,9 +10,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionTestPipelines;
+import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
@@ -40,7 +42,7 @@ class IssueFullContextToolTest {
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
         var service = ExtractionTestPipelines.newAttachmentService(client, snapshot);
         var issueService = new IssueService(client);
-        tools = new IssueTools(issueService, new ContextService(client, service, issueService));
+        tools = new IssueTools(issueService, new ContextService(client, service, issueService, new FileTypeDetector()));
     }
 
     // ── getIssueFullContext ──────────────────────────────────────────
@@ -215,6 +217,28 @@ class IssueFullContextToolTest {
             assertThat(result).contains("\"relationType\":\"relates\"");
         }
 
+        @Test
+        void shouldIncludeDocumentParts() throws Exception {
+            var attachment = attachment(301, "notes.txt", "text/plain", "Important incident context".length());
+            var issue = issueBuilder(123, "Investigate incident")
+                    .attachments(List.of(attachment))
+                    .build();
+
+            when(client.getIssue(123)).thenReturn(issue);
+            when(client.downloadAttachment(attachment.contentUrl()))
+                    .thenReturn("Important incident context".getBytes());
+
+            var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(123));
+            var root = new ObjectMapper().readTree(result);
+            var document = root.get("documents").get(0);
+
+            assertThat(document.has("text")).isFalse();
+            assertThat(document.get("parts")).hasSize(1);
+            assertThat(document.get("parts").get(0).get("producer").asText()).isEqualTo("PlainTextParser");
+            assertThat(document.get("parts").get(0).get("content").asText()).contains("Important incident context");
+            assertThat(document.get("textExtracted").asBoolean()).isTrue();
+        }
+
     }
 
     // ── Test helpers ────────────────────────────────────────────────
@@ -235,6 +259,7 @@ class IssueFullContextToolTest {
         private List<RedmineIssue.Relation> relations;
         private List<RedmineIssue.Journal> journals;
         private List<RedmineIssue.CustomField> customFields;
+        private List<RedmineAttachment> attachments;
 
         IssueBuilder(int id, String subject) {
             this.id = id;
@@ -249,6 +274,7 @@ class IssueFullContextToolTest {
         IssueBuilder relations(List<RedmineIssue.Relation> r) { this.relations = r; return this; }
         IssueBuilder journals(List<RedmineIssue.Journal> j) { this.journals = j; return this; }
         IssueBuilder customFields(List<RedmineIssue.CustomField> c) { this.customFields = c; return this; }
+        IssueBuilder attachments(List<RedmineAttachment> a) { this.attachments = a; return this; }
 
         RedmineIssue build() {
             return new RedmineIssue(id,
@@ -258,7 +284,7 @@ class IssueFullContextToolTest {
                     null, null, subject, description,
                     null, null, 0, null, null, false,
                     "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
-                    customFields, null, journals, relations, children);
+                    customFields, attachments, journals, relations, children);
         }
     }
 
@@ -283,5 +309,17 @@ class IssueFullContextToolTest {
                 "2025-03-15T10:00:00Z", null);
     }
 
-}
+    private static RedmineAttachment attachment(int id, String filename, String contentType, long size) {
+        return new RedmineAttachment(
+                id,
+                filename,
+                size,
+                contentType,
+                "http://redmine.example.com/attachments/download/" + id + "/" + filename,
+                null,
+                new IdName(1, "Test User"),
+                "2025-01-01T00:00:00Z"
+        );
+    }
 
+}

@@ -63,7 +63,7 @@ class AttachmentToolsTest {
     }
 
     @Test
-    void shouldReturnImageContextAsMetadataOnly() {
+    void shouldReturnImageContextAsFilePart() throws Exception {
         byte[] data = new byte[]{1, 2, 3};
         var attachment = attachment(21, "big.png", "image/png", data.length);
 
@@ -71,10 +71,13 @@ class AttachmentToolsTest {
         when(client.downloadAttachment(attachment.contentUrl())).thenReturn(data);
 
         var result = ToolJsonTestSupport.stringify(tools.getAttachment(100, 21));
+        var json = ToolJsonTestSupport.parse(result);
 
         assertThat(result).contains("big.png");
-        assertThat(result).contains("\"parts\":[]");
-        assertThat(result).contains("\"textExtracted\":false");
+        assertThat(json.get("parts")).hasSizeGreaterThanOrEqualTo(1);
+        assertThat(result).contains("\"extractionType\":\"image\"");
+        assertThat(result).contains("\"producer\":\"ImagePassthroughParser\"");
+        assertThat(json.get("textExtracted").asBoolean()).isFalse();
         assertThat(result).contains("localPath");
         assertThat(result).contains("fileUri");
     }

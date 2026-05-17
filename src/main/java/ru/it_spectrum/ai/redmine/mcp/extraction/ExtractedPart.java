@@ -18,22 +18,31 @@ public record ExtractedPart(
         String content,
         String localPath,
         String fileUri,
-        String note
+        String note,
+        boolean textExtracted
 ) {
 
-    public boolean textExtracted() {
-        return content != null;
+    public ExtractedPart(String name,
+                         String parent,
+                         String extractionType,
+                         String producer,
+                         Long size,
+                         String content,
+                         String localPath,
+                         String fileUri,
+                         String note) {
+        this(name, parent, extractionType, producer, size, content, localPath, fileUri, note, content != null);
     }
 
     /** Builder-style copy that sets {@code producer} if not already set. */
     public ExtractedPart withProducerIfAbsent(String producer) {
         return this.producer != null ? this : new ExtractedPart(
-                name, parent, extractionType, producer, size, content, localPath, fileUri, note);
+                name, parent, extractionType, producer, size, content, localPath, fileUri, note, textExtracted);
     }
 
     /** Builder-style copy that sets {@code parent} if not already set. */
     public ExtractedPart withParentIfAbsent(String parent) {
         return this.parent != null ? this : new ExtractedPart(
-                name, parent, extractionType, producer, size, content, localPath, fileUri, note);
+                name, parent, extractionType, producer, size, content, localPath, fileUri, note, textExtracted);
     }
 }

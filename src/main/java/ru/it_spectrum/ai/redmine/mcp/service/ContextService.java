@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.Attachment;
+import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextIssue;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextRole;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextStats;
@@ -10,13 +11,14 @@ import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
+import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 public class ContextService {
@@ -28,16 +30,18 @@ public class ContextService {
     private static final int MAX_TOTAL_DOC_TEXT = 30_000;
     private static final int MAX_RECENT_NOTES = 10;
     private static final int MAX_NOTE_LENGTH = 500;
-    private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
 
     private final RedmineClient client;
     private final AttachmentService attachmentService;
     private final IssueService issueService;
+    private final FileTypeDetector types;
 
-    public ContextService(RedmineClient client, AttachmentService attachmentService, IssueService issueService) {
+    public ContextService(RedmineClient client, AttachmentService attachmentService,
+                          IssueService issueService, FileTypeDetector types) {
         this.client = client;
         this.attachmentService = attachmentService;
         this.issueService = issueService;
+        this.types = types;
     }
 
     public Optional<IssueFullContext> getIssueFullContext(int issueId) {
@@ -175,31 +179,81 @@ public class ContextService {
     private void collectDocumentExcerpts(RedmineIssue sourceIssue, String source,
                                          int sourceIssueId, List<DocumentExcerpt> documents) {
         if (sourceIssue.attachments() == null) return;
-        int totalDocText = documents.stream().mapToInt(d -> d.text().length()).sum();
+        int totalDocText = documents.stream().mapToInt(this::textContentLength).sum();
         for (var att : sourceIssue.attachments()) {
             if (documents.size() >= MAX_INLINE_DOCS || totalDocText >= MAX_TOTAL_DOC_TEXT) break;
 
-            String ext = attachmentService.fileExtension(att);
-            if (IMAGE_EXTENSIONS.contains(ext)) continue;
-            if (!attachmentService.isTextExtractable(att)) continue;
+            if (types.isImage(att.filename(), att.contentType())) continue;
 
-            String text = attachmentService.extractText(sourceIssueId, att).orElse(null);
-            if (text == null || text.isBlank()) continue;
+            List<ExtractedPart> extractedParts = attachmentService.extractParts(sourceIssueId, att);
+            if (extractedParts.isEmpty() || extractedParts.stream().noneMatch(ExtractedPart::textExtracted)) continue;
 
             int allowedLength = Math.min(MAX_DOC_TEXT_LENGTH, MAX_TOTAL_DOC_TEXT - totalDocText);
             if (allowedLength <= 0) break;
 
-            String truncatedText = truncate(text, allowedLength);
+            PartExcerpt partExcerpt = buildPartExcerpt(extractedParts, allowedLength);
+            if (!partExcerpt.textExtracted()) continue;
+
             documents.add(new DocumentExcerpt(
                     Attachment.from(att),
                     source,
                     sourceIssueId,
-                    attachmentService.detectExtractionType(att),
-                    truncatedText,
-                    text.length() > allowedLength
+                    detectExcerptType(partExcerpt.parts()),
+                    partExcerpt.parts(),
+                    true,
+                    partExcerpt.truncated()
             ));
-            totalDocText += truncatedText.length();
+            totalDocText += partExcerpt.textLength();
         }
+    }
+
+    private PartExcerpt buildPartExcerpt(List<ExtractedPart> extractedParts, int textBudget) {
+        var parts = new ArrayList<AttachmentContent.Part>();
+        boolean truncated = false;
+        boolean textExtracted = false;
+        int textLength = 0;
+        int remaining = textBudget;
+
+        for (var extracted : extractedParts) {
+            int partBudget = extracted.textExtracted() ? Math.max(0, remaining) : AttachmentService.PREVIEW_LIMIT;
+            var part = attachmentService.toContentPart(extracted, partBudget);
+            parts.add(part);
+
+            if (!part.textExtracted()) {
+                continue;
+            }
+
+            textExtracted = true;
+            if (part.content() == null || remaining <= 0) {
+                if (extracted.content() != null && remaining <= 0) truncated = true;
+                continue;
+            }
+
+            remaining -= Math.min(remaining, part.content().length());
+            textLength += part.content().length();
+            truncated = truncated || part.truncated();
+        }
+
+        return new PartExcerpt(parts, textExtracted, textLength, truncated);
+    }
+
+    private String detectExcerptType(List<AttachmentContent.Part> parts) {
+        var textTypes = parts.stream()
+                .filter(AttachmentContent.Part::textExtracted)
+                .map(AttachmentContent.Part::extractionType)
+                .distinct()
+                .toList();
+        if (textTypes.isEmpty()) return "none";
+        return textTypes.size() == 1 ? textTypes.getFirst() : "mixed";
+    }
+
+    private int textContentLength(DocumentExcerpt document) {
+        return document.parts().stream()
+                .filter(AttachmentContent.Part::textExtracted)
+                .map(AttachmentContent.Part::content)
+                .filter(content -> content != null)
+                .mapToInt(String::length)
+                .sum();
     }
 
     private void addContextIssue(Map<Integer, ContextIssueBuilder> contextIssues,
@@ -223,6 +277,10 @@ public class ContextService {
         private ContextIssue build() {
             return new ContextIssue(Issue.from(issue), List.copyOf(roles));
         }
+    }
+
+    private record PartExcerpt(List<AttachmentContent.Part> parts, boolean textExtracted,
+                               int textLength, boolean truncated) {
     }
 
 }

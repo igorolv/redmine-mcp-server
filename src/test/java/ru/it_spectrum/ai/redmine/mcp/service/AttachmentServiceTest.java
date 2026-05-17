@@ -53,26 +53,6 @@ class AttachmentServiceTest {
         assertThat(service.find(99)).isEmpty();
     }
 
-    // --- isImage ---
-
-    @Test
-    void isImageShouldDetectByExtension() {
-        var att = attachment(1, "photo.png", "application/octet-stream");
-        assertThat(service.isImage(att)).isTrue();
-    }
-
-    @Test
-    void isImageShouldDetectByContentType() {
-        var att = attachment(1, "blob", "image/jpeg");
-        assertThat(service.isImage(att)).isTrue();
-    }
-
-    @Test
-    void isImageShouldReturnFalseForDocument() {
-        var att = attachment(1, "report.pdf", "application/pdf");
-        assertThat(service.isImage(att)).isFalse();
-    }
-
     // --- getAttachment ---
 
     @Test
@@ -81,6 +61,8 @@ class AttachmentServiceTest {
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
+        when(pipeline.extract(any(Path.class), eq("photo.png"), eq("image/png"), any(Path.class)))
+                .thenReturn(List.of());
 
         var result = service.getAttachment(1, 20);
 
@@ -122,11 +104,17 @@ class AttachmentServiceTest {
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
+        when(pipeline.extract(any(Path.class), eq("photo.png"), eq("image/png"), any(Path.class)))
+                .thenReturn(List.of(new ExtractedPart(
+                        null, null, "image", "ImagePassthroughParser", (long) data.length,
+                        null, "/tmp/photo.png", "file:///tmp/photo.png",
+                        "Image file. Use localPath/fileUri to access the original.")));
 
         var result = service.getAttachment(1, 20);
 
         assertThat(result.textExtracted()).isFalse();
-        assertThat(result.parts()).isEmpty();
+        assertThat(result.parts()).hasSize(1);
+        assertThat(result.parts().getFirst().extractionType()).isEqualTo("image");
         assertThat(result.localPath()).endsWith("20__photo.png");
         assertThat(result.fileUri()).startsWith("file:///");
     }

@@ -184,7 +184,7 @@ public class IssueTools {
             "Returns: the issue with description, " +
             "interpreted history timeline with status durations, " +
             "nearby context issues with explicit roles (parent, sibling, child, related), " +
-            "supported text/document attachments extracted inline (text, PDF, DOCX, XLSX, PPTX, ZIP), " +
+            "supported attachments extracted inline as parser parts (text, PDF, DOCX, XLSX, PPTX, ZIP, images, metadata), " +
             "recent discussion notes, and truncation flags. Ideal first call when investigating a task.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
