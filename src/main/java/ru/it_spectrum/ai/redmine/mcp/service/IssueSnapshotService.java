@@ -29,8 +29,7 @@ public class IssueSnapshotService {
     public IssueSnapshotService(RedmineClient client, ObjectMapper mapper, RedmineMcpProperties properties) {
         this.client = client;
         this.mapper = mapper;
-        Path dataDir = resolveDataDir(properties.dataDir());
-        this.issuesDir = dataDir.resolve("issues");
+        this.issuesDir = properties.resolvedDataDir().resolve("issues");
     }
 
     public void snapshotIssue(RedmineIssue issue) {
@@ -136,14 +135,6 @@ public class IssueSnapshotService {
         } catch (AtomicMoveNotSupportedException e) {
             Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING);
         }
-    }
-
-    private Path resolveDataDir(String configuredDataDir) {
-        String value = configuredDataDir;
-        if (value == null || value.isBlank()) {
-            value = Path.of(System.getProperty("user.home"), ".redmine-mcp-server").toString();
-        }
-        return Path.of(value).toAbsolutePath().normalize();
     }
 
     private String localFilename(RedmineAttachment attachment) {

@@ -31,7 +31,7 @@ public class AnalysisTools {
             description = "Get an aggregated summary of a Redmine project. " +
             "Returns total open/closed counts, plus breakdowns by status, tracker, priority, and assignee " +
             "for analyzed open issues; overdue count; estimated vs spent hours. " +
-            "Optionally filter by version/milestone. Analysis scans up to 500 open issues and reports truncation.",
+            "Optionally filter by version/milestone. Analysis scans up to the configured issue budget and reports truncation.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -50,7 +50,7 @@ public class AnalysisTools {
             description = "Get workload analysis for a user: open issues grouped by project and priority, " +
             "overdue count, estimated vs spent hours, and top issues by priority. " +
             "Defaults to the current authenticated user if no userId is provided. " +
-            "Analysis scans up to 500 open issues and reports truncation.",
+            "Analysis scans up to the configured issue budget and reports truncation.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -73,7 +73,7 @@ public class AnalysisTools {
     @McpTool(
             description = "Get a changelog for a specific version/milestone: issues grouped by tracker, " +
             "with status and summary. Shows both open and closed issues for the version. " +
-            "Analysis scans up to 500 issues and reports truncation.",
+            "Analysis scans up to the configured issue budget and reports truncation.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -119,8 +119,8 @@ public class AnalysisTools {
     )
     public StaleIssues getStaleIssues(
             @McpToolParam(description = "Project identifier") String projectId,
-            @McpToolParam(description = "Minimum days since last update, default 30", required = false) Integer daysSinceUpdate,
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit
+            @McpToolParam(description = "Minimum days since last update, uses configured default when omitted", required = false) Integer daysSinceUpdate,
+            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit
     ) {
         log.info("Tool call: getStaleIssues (projectId={}, daysSinceUpdate={}, limit={})",
                 projectId, daysSinceUpdate, limit);
@@ -133,7 +133,7 @@ public class AnalysisTools {
     @McpTool(
             description = "Assess release risks for a version/milestone: identifies open blockers, " +
             "overdue issues, high-priority unresolved issues, and unassigned tasks. " +
-            "Provides a risk score summary. Analysis scans up to 500 open issues and reports truncation.",
+            "Provides a risk score summary. Analysis scans up to the configured issue budget and reports truncation.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -152,7 +152,7 @@ public class AnalysisTools {
             description = "Compare two versions/milestones: shows issues unique to each version, " +
             "shared issues, and status completion percentages. " +
             "Useful for understanding scope changes between releases. " +
-            "Analysis scans up to 500 issues per version and reports truncation.",
+            "Analysis scans up to the configured issue budget per version and reports truncation.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

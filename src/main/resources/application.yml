@@ -17,6 +17,44 @@ redmine-mcp:
   full-context:
     attachment-text-limit: ${REDMINE_MCP_FULL_CONTEXT_ATTACHMENT_TEXT_LIMIT:10000}
     total-attachment-text-limit: ${REDMINE_MCP_FULL_CONTEXT_TOTAL_ATTACHMENT_TEXT_LIMIT:30000}
+    max-siblings: ${REDMINE_MCP_FULL_CONTEXT_MAX_SIBLINGS:20}
+    max-children: ${REDMINE_MCP_FULL_CONTEXT_MAX_CHILDREN:20}
+    max-related: ${REDMINE_MCP_FULL_CONTEXT_MAX_RELATED:10}
+    max-recent-notes: ${REDMINE_MCP_FULL_CONTEXT_MAX_RECENT_NOTES:10}
+    max-note-length: ${REDMINE_MCP_FULL_CONTEXT_MAX_NOTE_LENGTH:500}
+  pagination:
+    default-limit: ${REDMINE_MCP_PAGINATION_DEFAULT_LIMIT:25}
+    default-offset: ${REDMINE_MCP_PAGINATION_DEFAULT_OFFSET:0}
+    members-default-limit: ${REDMINE_MCP_PAGINATION_MEMBERS_DEFAULT_LIMIT:100}
+  tree:
+    default-depth: ${REDMINE_MCP_TREE_DEFAULT_DEPTH:2}
+    max-depth: ${REDMINE_MCP_TREE_MAX_DEPTH:5}
+    max-issues: ${REDMINE_MCP_TREE_MAX_ISSUES:50}
+  analysis:
+    max-pages: ${REDMINE_MCP_ANALYSIS_MAX_PAGES:5}
+    page-size: ${REDMINE_MCP_ANALYSIS_PAGE_SIZE:100}
+    top-issues-limit: ${REDMINE_MCP_ANALYSIS_TOP_ISSUES_LIMIT:10}
+    max-blocker-depth: ${REDMINE_MCP_ANALYSIS_MAX_BLOCKER_DEPTH:10}
+    max-blocker-issues: ${REDMINE_MCP_ANALYSIS_MAX_BLOCKER_ISSUES:30}
+    stale-issues:
+      default-days-since-update: ${REDMINE_MCP_ANALYSIS_STALE_ISSUES_DEFAULT_DAYS_SINCE_UPDATE:30}
+      default-limit: ${REDMINE_MCP_ANALYSIS_STALE_ISSUES_DEFAULT_LIMIT:25}
+      max-limit: ${REDMINE_MCP_ANALYSIS_STALE_ISSUES_MAX_LIMIT:100}
+  extraction:
+    pandoc:
+      enabled: ${REDMINE_MCP_EXTRACTION_PANDOC_ENABLED:true}
+      probe-timeout-seconds: ${REDMINE_MCP_EXTRACTION_PANDOC_PROBE_TIMEOUT_SECONDS:2}
+      conversion-timeout-seconds: ${REDMINE_MCP_EXTRACTION_PANDOC_CONVERSION_TIMEOUT_SECONDS:30}
+    limits:
+      max-depth: ${REDMINE_MCP_EXTRACTION_LIMITS_MAX_DEPTH:1}
+      max-total-parts: ${REDMINE_MCP_EXTRACTION_LIMITS_MAX_TOTAL_PARTS:100}
+      max-total-bytes: ${REDMINE_MCP_EXTRACTION_LIMITS_MAX_TOTAL_BYTES:52428800}
+      max-entry-bytes: ${REDMINE_MCP_EXTRACTION_LIMITS_MAX_ENTRY_BYTES:10485760}
+    zip:
+      max-entries-per-archive: ${REDMINE_MCP_EXTRACTION_ZIP_MAX_ENTRIES_PER_ARCHIVE:100}
+    tika:
+      body-limit-bytes: ${REDMINE_MCP_EXTRACTION_TIKA_BODY_LIMIT_BYTES:5242880}
+      metadata-max-fields: ${REDMINE_MCP_EXTRACTION_TIKA_METADATA_MAX_FIELDS:40}
 
 redmine:
   url: ${REDMINE_URL:}

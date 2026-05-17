@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssueSummaries;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
@@ -34,7 +35,8 @@ class IssueToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new IssueTools(new IssueService(client), contextService);
+        var properties = TestRedmineMcpProperties.defaults();
+        tools = new IssueTools(new IssueService(client, properties), contextService, properties);
     }
 
     // --- getMyIssues ---

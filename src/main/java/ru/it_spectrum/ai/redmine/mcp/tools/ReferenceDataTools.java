@@ -7,6 +7,7 @@ import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.QueryPage;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.ReferenceDataService;
 
 import java.util.List;
@@ -17,9 +18,11 @@ public class ReferenceDataTools {
     private static final Logger log = LoggerFactory.getLogger(ReferenceDataTools.class);
 
     private final ReferenceDataService referenceDataService;
+    private final RedmineMcpProperties properties;
 
-    public ReferenceDataTools(ReferenceDataService referenceDataService) {
+    public ReferenceDataTools(ReferenceDataService referenceDataService, RedmineMcpProperties properties) {
         this.referenceDataService = referenceDataService;
+        this.properties = properties;
     }
 
     @McpTool(
@@ -102,13 +105,13 @@ public class ReferenceDataTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public QueryPage listQueries(
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         log.info("Tool call: listQueries (limit={}, offset={})", limit, offset);
         long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 25;
-        int actualOffset = offset != null ? offset : 0;
+        int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
+        int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
         var result = referenceDataService.listQueries(actualOffset, actualLimit);
         ToolLogger.completed(log, "listQueries", start);

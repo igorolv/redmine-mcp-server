@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.DocumentParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
@@ -28,12 +29,13 @@ import java.nio.file.Files;
 public class TikaTextFallbackParser implements DocumentParser {
 
     private static final Logger log = LoggerFactory.getLogger(TikaTextFallbackParser.class);
-    private static final int BODY_LIMIT_BYTES = 5 * 1024 * 1024;
 
     private final FileTypeDetector types;
+    private final int bodyLimitBytes;
 
-    public TikaTextFallbackParser(FileTypeDetector types) {
+    public TikaTextFallbackParser(FileTypeDetector types, RedmineMcpProperties properties) {
         this.types = types;
+        this.bodyLimitBytes = properties.extraction().tika().bodyLimitBytes();
     }
 
     @Override
@@ -54,7 +56,7 @@ public class TikaTextFallbackParser implements DocumentParser {
 
         String text;
         try (InputStream is = Files.newInputStream(in.file())) {
-            var handler = new BodyContentHandler(BODY_LIMIT_BYTES);
+            var handler = new BodyContentHandler(bodyLimitBytes);
             new AutoDetectParser().parse(is, handler, new Metadata(),
                     new org.apache.tika.parser.ParseContext());
             text = handler.toString().strip();

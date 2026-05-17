@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.xml.sax.helpers.DefaultHandler;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.DocumentParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
@@ -31,12 +32,13 @@ import java.util.Arrays;
 public class TikaMetadataParser implements DocumentParser {
 
     private static final Logger log = LoggerFactory.getLogger(TikaMetadataParser.class);
-    private static final int MAX_FIELDS = 40;
 
     private final FileTypeDetector types;
+    private final int maxFields;
 
-    public TikaMetadataParser(FileTypeDetector types) {
+    public TikaMetadataParser(FileTypeDetector types, RedmineMcpProperties properties) {
         this.types = types;
+        this.maxFields = properties.extraction().tika().metadataMaxFields();
     }
 
     @Override
@@ -91,12 +93,12 @@ public class TikaMetadataParser implements DocumentParser {
             String value = metadata.get(name);
             if (value == null || value.isBlank()) continue;
             total++;
-            if (count >= MAX_FIELDS) continue;
+            if (count >= maxFields) continue;
             sb.append(name).append(": ").append(value).append('\n');
             count++;
         }
-        if (total > MAX_FIELDS) {
-            sb.append("... (").append(total - MAX_FIELDS).append(" more fields omitted)\n");
+        if (total > maxFields) {
+            sb.append("... (").append(total - maxFields).append(" more fields omitted)\n");
         }
         return sb.toString().strip();
     }

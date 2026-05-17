@@ -6,11 +6,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -100,7 +100,8 @@ class IssueSnapshotServiceTest {
     }
 
     private IssueSnapshotService service() {
-        return new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
+        return new IssueSnapshotService(client, new ObjectMapper(),
+                TestRedmineMcpProperties.withDataDir(dataDir));
     }
 
     private static RedmineAttachment attachment(int id, String filename, long size) {

@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueHistory;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssueSummaries;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
@@ -33,7 +34,7 @@ class IssueServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new IssueService(client);
+        service = new IssueService(client, TestRedmineMcpProperties.defaults());
     }
 
     // --- find / findOrThrow ---

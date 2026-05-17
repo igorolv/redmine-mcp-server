@@ -10,6 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.api.IssuePage;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueTree;
 import ru.it_spectrum.ai.redmine.mcp.api.MyIssues;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
@@ -24,10 +25,12 @@ public class IssueTools {
 
     private final IssueService issueService;
     private final ContextService contextService;
+    private final RedmineMcpProperties properties;
 
-    public IssueTools(IssueService issueService, ContextService contextService) {
+    public IssueTools(IssueService issueService, ContextService contextService, RedmineMcpProperties properties) {
         this.issueService = issueService;
         this.contextService = contextService;
+        this.properties = properties;
     }
 
     @McpTool(
@@ -49,14 +52,14 @@ public class IssueTools {
             @McpToolParam(description = "Saved query ID to apply (optional). Use listQueries to find available queries.", required = false) Integer queryId,
             @McpToolParam(description = "Custom field filters in query-string form, e.g. 'cf_10=rtk&cf_3=502167' (optional)", required = false) String customFieldFilters,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc' (optional)", required = false) String sort,
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         log.info("Tool call: listIssues (projectId={}, statusId={}, trackerId={}, assignedToId={}, priorityId={}, versionId={}, queryId={}, customFieldFilters={}, sort={}, limit={}, offset={})",
                 projectId, statusId, trackerId, assignedToId, priorityId, versionId, queryId, customFieldFilters, sort, limit, offset);
         long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 25;
-        int actualOffset = offset != null ? offset : 0;
+        int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
+        int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
         Map<String, String> parsedCustomFieldFilters;
         try {
             parsedCustomFieldFilters = issueService.parseCustomFieldFilters(customFieldFilters);
@@ -88,13 +91,13 @@ public class IssueTools {
     public IssuePage searchIssues(
             @McpToolParam(description = "Search query text") String query,
             @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         log.info("Tool call: searchIssues (query={}, projectId={}, limit={}, offset={})", query, projectId, limit, offset);
         long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 25;
-        int actualOffset = offset != null ? offset : 0;
+        int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
+        int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
         var result = issueService.searchIssues(query, projectId, actualOffset, actualLimit);
         ToolLogger.completed(log, "searchIssues", start);
@@ -112,14 +115,14 @@ public class IssueTools {
             @McpToolParam(description = "Project identifier to filter by (optional)", required = false) String projectId,
             @McpToolParam(description = "Status filter: open (default), closed, * (all), or numeric status ID (optional)", required = false) String statusId,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc' (optional)", required = false) String sort,
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         log.info("Tool call: getMyIssues (projectId={}, statusId={}, sort={}, limit={}, offset={})",
                 projectId, statusId, sort, limit, offset);
         long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 25;
-        int actualOffset = offset != null ? offset : 0;
+        int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
+        int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
         var maybeResult = issueService.getMyIssues(projectId, statusId, sort, actualOffset, actualLimit);
         if (maybeResult.isEmpty()) {
@@ -141,7 +144,7 @@ public class IssueTools {
     )
     public IssueTree getIssueTree(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "How deep to traverse children, default 2, max 5", required = false) Integer depth
+            @McpToolParam(description = "How deep to traverse children, uses configured default and max when omitted", required = false) Integer depth
     ) {
         log.info("Tool call: getIssueTree (issueId={}, depth={})", issueId, depth);
         long start = System.nanoTime();

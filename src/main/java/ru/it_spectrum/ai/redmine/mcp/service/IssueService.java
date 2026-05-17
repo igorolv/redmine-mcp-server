@@ -11,6 +11,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.User;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -24,10 +25,6 @@ import java.util.Set;
 
 @Service
 public class IssueService {
-
-    public static final int MAX_TREE_DEPTH = 5;
-    public static final int MAX_TREE_ISSUES = 50;
-    public static final int DEFAULT_TREE_DEPTH = 2;
 
     private static final Map<String, String> FIELD_NAMES = Map.ofEntries(
             Map.entry("status_id", "Status"),
@@ -47,9 +44,11 @@ public class IssueService {
     );
 
     private final RedmineClient client;
+    private final RedmineMcpProperties properties;
 
-    public IssueService(RedmineClient client) {
+    public IssueService(RedmineClient client, RedmineMcpProperties properties) {
         this.client = client;
+        this.properties = properties;
     }
 
     // --- Basic lookup ---
@@ -124,8 +123,8 @@ public class IssueService {
 
     public IssueTree getTree(int issueId, Integer depth, IssueFetchContext ctx) {
         int actualDepth = depth != null
-                ? Math.min(Math.max(depth, 0), MAX_TREE_DEPTH)
-                : DEFAULT_TREE_DEPTH;
+                ? Math.min(Math.max(depth, 0), properties.tree().maxDepth())
+                : properties.tree().defaultDepth();
 
         var visited = new HashSet<Integer>();
         var fetchCount = new int[]{0};
@@ -137,7 +136,7 @@ public class IssueService {
 
         var ancestors = new ArrayList<RedmineIssue>();
         RedmineIssue current = root;
-        while (current.parent() != null && fetchCount[0] < MAX_TREE_ISSUES) {
+        while (current.parent() != null && fetchCount[0] < properties.tree().maxIssues()) {
             var parent = fetchForTree(current.parent().id(), visited, fetchCount, ctx);
             if (parent == null) {
                 break;
@@ -152,7 +151,7 @@ public class IssueService {
         var relations = root.relations() != null
                 ? root.relations().stream().map(Issue.Relation::from).toList()
                 : List.<Issue.Relation>of();
-        boolean limitReached = fetchCount[0] >= MAX_TREE_ISSUES;
+        boolean limitReached = fetchCount[0] >= properties.tree().maxIssues();
         return new IssueTree(
                 Issue.from(root),
                 ancestors.stream().map(Issue::from).toList(),
@@ -229,7 +228,7 @@ public class IssueService {
 
     private RedmineIssue fetchForTree(int issueId, Set<Integer> visited, int[] fetchCount,
                                       IssueFetchContext ctx) {
-        if (!visited.add(issueId) || fetchCount[0] >= MAX_TREE_ISSUES) {
+        if (!visited.add(issueId) || fetchCount[0] >= properties.tree().maxIssues()) {
             return null;
         }
         fetchCount[0]++;
@@ -266,7 +265,7 @@ public class IssueService {
             return;
         }
         for (var child : parentIssue.children()) {
-            if (fetchCount[0] >= MAX_TREE_ISSUES) {
+            if (fetchCount[0] >= properties.tree().maxIssues()) {
                 break;
             }
             var fullChild = fetchForTree(child.id(), visited, fetchCount, ctx);

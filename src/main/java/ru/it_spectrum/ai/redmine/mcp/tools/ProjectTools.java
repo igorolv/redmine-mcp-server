@@ -9,6 +9,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.MembershipPage;
 import ru.it_spectrum.ai.redmine.mcp.api.Project;
 import ru.it_spectrum.ai.redmine.mcp.api.ProjectPage;
 import ru.it_spectrum.ai.redmine.mcp.api.Version;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.ProjectService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 
@@ -20,9 +21,11 @@ public class ProjectTools {
     private static final Logger log = LoggerFactory.getLogger(ProjectTools.class);
 
     private final ProjectService projectService;
+    private final RedmineMcpProperties properties;
 
-    public ProjectTools(ProjectService projectService) {
+    public ProjectTools(ProjectService projectService, RedmineMcpProperties properties) {
         this.projectService = projectService;
+        this.properties = properties;
     }
 
     @McpTool(
@@ -32,13 +35,13 @@ public class ProjectTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public ProjectPage listProjects(
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         log.info("Tool call: listProjects (limit={}, offset={})", limit, offset);
         long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 25;
-        int actualOffset = offset != null ? offset : 0;
+        int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
+        int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
         var result = projectService.listProjects(actualOffset, actualLimit);
         ToolLogger.completed(log, "listProjects", start);
@@ -73,13 +76,13 @@ public class ProjectTools {
     )
     public MembershipPage listProjectMembers(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
-            @McpToolParam(description = "Maximum number of results, default 100", required = false) Integer limit,
+            @McpToolParam(description = "Maximum number of results, uses configured members default when omitted", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         log.info("Tool call: listProjectMembers (projectId={}, limit={}, offset={})", projectId, limit, offset);
         long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 100;
-        int actualOffset = offset != null ? offset : 0;
+        int actualLimit = limit != null ? limit : properties.pagination().membersDefaultLimit();
+        int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
         var result = projectService.listMembers(projectId, actualOffset, actualLimit);
         ToolLogger.completed(log, "listProjectMembers", start);

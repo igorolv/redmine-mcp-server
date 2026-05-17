@@ -1,7 +1,9 @@
 package ru.it_spectrum.ai.redmine.mcp.extraction;
 
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
+
 /**
- * Per-pipeline safety limits. Defaults mirror the legacy archive limits.
+ * Per-pipeline safety limits.
  */
 public record ExtractionLimits(
         int maxDepth,
@@ -10,12 +12,12 @@ public record ExtractionLimits(
         long maxEntryBytes
 ) {
 
-    public static ExtractionLimits defaults() {
+    public static ExtractionLimits from(RedmineMcpProperties.Limits properties) {
         return new ExtractionLimits(
-                1,
-                100,
-                50L * 1024 * 1024,
-                10L * 1024 * 1024
+                properties.maxDepth(),
+                properties.maxTotalParts(),
+                properties.maxTotalBytes(),
+                properties.maxEntryBytes()
         );
     }
 }

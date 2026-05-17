@@ -7,6 +7,7 @@ import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.SearchResult;
 import ru.it_spectrum.ai.redmine.mcp.api.WikiPage;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
 
@@ -18,9 +19,11 @@ public class WikiTools {
     private static final Logger log = LoggerFactory.getLogger(WikiTools.class);
 
     private final WikiService wikiService;
+    private final RedmineMcpProperties properties;
 
-    public WikiTools(WikiService wikiService) {
+    public WikiTools(WikiService wikiService, RedmineMcpProperties properties) {
         this.wikiService = wikiService;
+        this.properties = properties;
     }
 
     @McpTool(
@@ -71,14 +74,14 @@ public class WikiTools {
     public SearchResult searchWikiPages(
             @McpToolParam(description = "Search query text") String query,
             @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         log.info("Tool call: searchWikiPages (query={}, projectId={}, limit={}, offset={})",
                 query, projectId, limit, offset);
         long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 25;
-        int actualOffset = offset != null ? offset : 0;
+        int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
+        int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
         var result = wikiService.searchPages(query, projectId, actualOffset, actualLimit);
         ToolLogger.completed(log, "searchWikiPages", start);

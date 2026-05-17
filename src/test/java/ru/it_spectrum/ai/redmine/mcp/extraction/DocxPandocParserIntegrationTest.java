@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.io.TempDir;
-import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.BinaryFallbackParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxPandocParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.ImagePassthroughParser;
@@ -34,19 +34,17 @@ class DocxPandocParserIntegrationTest {
     void shouldEmitMarkdownPartForDocx() throws Exception {
         Path docx = writeDocx(tmp.resolve("report.docx"), "Hello from pandoc test.");
         var types = new FileTypeDetector();
-        var pandoc = new PandocAvailability(
-                new RedmineMcpProperties(tmp.toString()),
-                new ExtractionProperties(new ExtractionProperties.Pandoc(true))
-        );
+        var properties = TestRedmineMcpProperties.withDataDir(tmp);
+        var pandoc = new PandocAvailability(properties);
         assertThat(pandoc.isAvailable())
                 .as("pandoc detection failed despite @EnabledIf check")
                 .isTrue();
 
         var pipeline = new ExtractionPipeline(List.of(
-                new DocxPandocParser(types, pandoc),
+                new DocxPandocParser(types, pandoc, properties),
                 new ImagePassthroughParser(types),
                 new BinaryFallbackParser(types)
-        ));
+        ), properties);
         Path workDir = Files.createDirectories(tmp.resolve("work"));
         List<ExtractedPart> parts = pipeline.extract(docx, "report.docx", null, workDir);
 

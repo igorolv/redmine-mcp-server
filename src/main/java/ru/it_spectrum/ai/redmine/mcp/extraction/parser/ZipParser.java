@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.DocumentParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
@@ -25,12 +26,12 @@ public class ZipParser implements DocumentParser {
 
     private static final Logger log = LoggerFactory.getLogger(ZipParser.class);
 
-    private static final int MAX_ENTRIES_PER_ARCHIVE = 100;
-
     private final FileTypeDetector types;
+    private final int maxEntriesPerArchive;
 
-    public ZipParser(FileTypeDetector types) {
+    public ZipParser(FileTypeDetector types, RedmineMcpProperties properties) {
         this.types = types;
+        this.maxEntriesPerArchive = properties.extraction().zip().maxEntriesPerArchive();
     }
 
     @Override
@@ -67,9 +68,9 @@ public class ZipParser implements DocumentParser {
                 }
 
                 entries++;
-                if (entries > MAX_ENTRIES_PER_ARCHIVE) {
+                if (entries > maxEntriesPerArchive) {
                     sink.emit(stubPart("...", "zip-entry",
-                            "skipped remaining entries (limit: %d)".formatted(MAX_ENTRIES_PER_ARCHIVE)));
+                            "skipped remaining entries (limit: %d)".formatted(maxEntriesPerArchive)));
                     break;
                 }
 

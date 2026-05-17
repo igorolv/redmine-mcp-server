@@ -7,11 +7,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionPipeline;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
@@ -41,8 +41,9 @@ class AttachmentServiceTest {
 
     @BeforeEach
     void setUp() {
-        var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
-        service = new AttachmentService(client, pipeline, new FileTypeDetector(), snapshot);
+        var properties = TestRedmineMcpProperties.withDataDir(dataDir);
+        var snapshot = new IssueSnapshotService(client, new ObjectMapper(), properties);
+        service = new AttachmentService(client, pipeline, new FileTypeDetector(), snapshot, properties);
     }
 
     // --- find ---

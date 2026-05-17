@@ -1,5 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.extraction;
 
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.BinaryFallbackParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxEmbeddedExtractor;
@@ -30,26 +31,28 @@ public final class ExtractionTestPipelines {
     }
 
     public static ExtractionPipeline defaultPipeline(FileTypeDetector types) {
+        var properties = TestRedmineMcpProperties.defaults();
         return new ExtractionPipeline(List.of(
                 new PlainTextParser(types),
                 new PdfTextParser(types),
                 new DocxTextParser(types),
-                new DocxPandocParser(types, PandocAvailability.disabled()),
+                new DocxPandocParser(types, PandocAvailability.disabled(), properties),
                 new DocxMediaExtractor(types),
                 new DocxEmbeddedExtractor(types),
                 new XlsxTextParser(types),
                 new PptxTextParser(types),
-                new ZipParser(types),
+                new ZipParser(types, properties),
                 new ImagePassthroughParser(types),
-                new TikaMetadataParser(types),
-                new TikaTextFallbackParser(types),
+                new TikaMetadataParser(types, properties),
+                new TikaTextFallbackParser(types, properties),
                 new BinaryFallbackParser(types)
-        ));
+        ), properties);
     }
 
     public static AttachmentService newAttachmentService(RedmineClient client, IssueSnapshotService snapshot) {
+        var properties = TestRedmineMcpProperties.defaults();
         var types = defaultFileTypeDetector();
         var pipeline = defaultPipeline(types);
-        return new AttachmentService(client, pipeline, types, snapshot);
+        return new AttachmentService(client, pipeline, types, snapshot, properties);
     }
 }

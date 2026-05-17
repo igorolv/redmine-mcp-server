@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchType;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
@@ -30,7 +31,7 @@ class WikiToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new WikiTools(new WikiService(client));
+        tools = new WikiTools(new WikiService(client), TestRedmineMcpProperties.defaults());
     }
 
     // --- getWikiPage ---

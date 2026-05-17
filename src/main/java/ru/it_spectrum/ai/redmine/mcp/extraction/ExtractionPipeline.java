@@ -3,6 +3,7 @@ package ru.it_spectrum.ai.redmine.mcp.extraction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -24,9 +25,11 @@ public class ExtractionPipeline {
     private static final Logger log = LoggerFactory.getLogger(ExtractionPipeline.class);
 
     private final List<DocumentParser> parsers;
+    private final RedmineMcpProperties properties;
 
-    public ExtractionPipeline(List<DocumentParser> parsers) {
+    public ExtractionPipeline(List<DocumentParser> parsers, RedmineMcpProperties properties) {
         this.parsers = List.copyOf(parsers);
+        this.properties = properties;
     }
 
     /**
@@ -35,7 +38,7 @@ public class ExtractionPipeline {
      * and as the Part name when nested).
      */
     public List<ExtractedPart> extract(Path file, String logicalName, String contentType, Path workDir) {
-        var ctx = ParseContext.defaults();
+        var ctx = ParseContext.from(properties.extraction());
         var collected = new ArrayList<ExtractedPart>();
         var input = new ParseInput(file, logicalName, null, contentType, workDir, 0, ctx);
         runOnInput(input, collected);

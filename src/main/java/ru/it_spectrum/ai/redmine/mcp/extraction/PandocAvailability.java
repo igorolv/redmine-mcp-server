@@ -33,21 +33,22 @@ import java.util.concurrent.TimeUnit;
 public class PandocAvailability {
 
     private static final Logger log = LoggerFactory.getLogger(PandocAvailability.class);
-    private static final int PROBE_TIMEOUT_SECONDS = 2;
 
     private final Path executable;
     private final String version;
+    private final int probeTimeoutSeconds;
 
     @Autowired
-    public PandocAvailability(RedmineMcpProperties baseProps, ExtractionProperties extractionProps) {
-        if (!extractionProps.pandoc().enabled()) {
+    public PandocAvailability(RedmineMcpProperties properties) {
+        this.probeTimeoutSeconds = properties.extraction().pandoc().probeTimeoutSeconds();
+        if (!properties.extraction().pandoc().enabled()) {
             this.executable = null;
             this.version = null;
             log.info("Pandoc extraction disabled via redmine-mcp.extraction.pandoc.enabled=false");
             return;
         }
 
-        Path dataDir = resolveDataDir(baseProps.dataDir());
+        Path dataDir = properties.resolvedDataDir();
         var detected = detect(dataDir);
         if (detected.isPresent()) {
             this.executable = detected.get().path();
@@ -64,6 +65,7 @@ public class PandocAvailability {
     private PandocAvailability(Path executable, String version) {
         this.executable = executable;
         this.version = version;
+        this.probeTimeoutSeconds = RedmineMcpProperties.DEFAULT_PANDOC_PROBE_TIMEOUT_SECONDS;
     }
 
     /** Returns an instance that always reports pandoc as unavailable. Intended for tests. */
@@ -83,7 +85,7 @@ public class PandocAvailability {
         return Optional.ofNullable(version);
     }
 
-    private static Optional<Detected> detect(Path dataDir) {
+    private Optional<Detected> detect(Path dataDir) {
         var fromPath = probe(Path.of("pandoc"));
         if (fromPath.isPresent()) return fromPath;
 
@@ -102,11 +104,11 @@ public class PandocAvailability {
         return Optional.empty();
     }
 
-    private static Optional<Detected> probe(Path candidate) {
+    private Optional<Detected> probe(Path candidate) {
         try {
             var pb = new ProcessBuilder(candidate.toString(), "--version").redirectErrorStream(true);
             var process = pb.start();
-            if (!process.waitFor(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+            if (!process.waitFor(probeTimeoutSeconds, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 return Optional.empty();
             }
@@ -122,14 +124,6 @@ public class PandocAvailability {
             }
             return Optional.empty();
         }
-    }
-
-    private static Path resolveDataDir(String configured) {
-        String value = configured;
-        if (value == null || value.isBlank()) {
-            value = Path.of(System.getProperty("user.home"), ".redmine-mcp-server").toString();
-        }
-        return Path.of(value).toAbsolutePath().normalize();
     }
 
     private record Detected(Path path, String version) {

@@ -7,6 +7,7 @@ import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.MyTimeEntries;
 import ru.it_spectrum.ai.redmine.mcp.api.TimeEntryPage;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
 import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryService;
 
@@ -16,9 +17,11 @@ public class TimeEntryTools {
     private static final Logger log = LoggerFactory.getLogger(TimeEntryTools.class);
 
     private final TimeEntryService timeEntryService;
+    private final RedmineMcpProperties properties;
 
-    public TimeEntryTools(TimeEntryService timeEntryService) {
+    public TimeEntryTools(TimeEntryService timeEntryService, RedmineMcpProperties properties) {
         this.timeEntryService = timeEntryService;
+        this.properties = properties;
     }
 
     @McpTool(
@@ -34,14 +37,14 @@ public class TimeEntryTools {
             @McpToolParam(description = "User ID to filter by (optional)", required = false) Integer userId,
             @McpToolParam(description = "From date, YYYY-MM-DD (optional)", required = false) String from,
             @McpToolParam(description = "To date, YYYY-MM-DD (optional)", required = false) String to,
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         log.info("Tool call: listTimeEntries (projectId={}, issueId={}, userId={}, from={}, to={}, limit={}, offset={})",
                 projectId, issueId, userId, from, to, limit, offset);
         long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 25;
-        int actualOffset = offset != null ? offset : 0;
+        int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
+        int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
         var result = timeEntryService.list(projectId, issueId, userId, from, to, actualOffset, actualLimit);
         ToolLogger.completed(log, "listTimeEntries", start);
@@ -61,14 +64,14 @@ public class TimeEntryTools {
             @McpToolParam(description = "Issue ID to filter by (optional)", required = false) Integer issueId,
             @McpToolParam(description = "From date, YYYY-MM-DD (optional)", required = false) String from,
             @McpToolParam(description = "To date, YYYY-MM-DD (optional)", required = false) String to,
-            @McpToolParam(description = "Maximum number of results, default 25", required = false) Integer limit,
+            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
             @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
     ) {
         log.info("Tool call: getMyTimeEntries (projectId={}, issueId={}, from={}, to={}, limit={}, offset={})",
                 projectId, issueId, from, to, limit, offset);
         long start = System.nanoTime();
-        int actualLimit = limit != null ? limit : 25;
-        int actualOffset = offset != null ? offset : 0;
+        int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
+        int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
         var result = timeEntryService.getMyTimeEntries(projectId, issueId, from, to, actualOffset, actualLimit);
         if (result.isEmpty()) {

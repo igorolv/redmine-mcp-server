@@ -1,6 +1,5 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.Attachment;
 import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
@@ -28,7 +27,6 @@ public class AttachmentService {
     private final IssueSnapshotService issueSnapshot;
     private final RedmineMcpProperties properties;
 
-    @Autowired
     public AttachmentService(RedmineClient client,
                              ExtractionPipeline pipeline,
                              FileTypeDetector types,
@@ -39,13 +37,6 @@ public class AttachmentService {
         this.types = types;
         this.issueSnapshot = issueSnapshot;
         this.properties = properties;
-    }
-
-    public AttachmentService(RedmineClient client,
-                             ExtractionPipeline pipeline,
-                             FileTypeDetector types,
-                             IssueSnapshotService issueSnapshot) {
-        this(client, pipeline, types, issueSnapshot, new RedmineMcpProperties(null));
     }
 
     public Optional<RedmineAttachment> find(int attachmentId) {

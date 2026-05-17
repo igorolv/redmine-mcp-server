@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.DocumentParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
@@ -34,14 +35,15 @@ import java.util.concurrent.TimeUnit;
 public class DocxPandocParser implements DocumentParser {
 
     private static final Logger log = LoggerFactory.getLogger(DocxPandocParser.class);
-    private static final int PANDOC_TIMEOUT_SECONDS = 30;
 
     private final FileTypeDetector types;
     private final PandocAvailability pandoc;
+    private final int conversionTimeoutSeconds;
 
-    public DocxPandocParser(FileTypeDetector types, PandocAvailability pandoc) {
+    public DocxPandocParser(FileTypeDetector types, PandocAvailability pandoc, RedmineMcpProperties properties) {
         this.types = types;
         this.pandoc = pandoc;
+        this.conversionTimeoutSeconds = properties.extraction().pandoc().conversionTimeoutSeconds();
     }
 
     @Override
@@ -109,10 +111,10 @@ public class DocxPandocParser implements DocumentParser {
                 "-o", mdOut.toString()
         );
         var process = new ProcessBuilder(cmd).redirectErrorStream(true).start();
-        boolean finished = process.waitFor(PANDOC_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        boolean finished = process.waitFor(conversionTimeoutSeconds, TimeUnit.SECONDS);
         if (!finished) {
             process.destroyForcibly();
-            throw new IOException("pandoc timed out after " + PANDOC_TIMEOUT_SECONDS + "s");
+            throw new IOException("pandoc timed out after " + conversionTimeoutSeconds + "s");
         }
         if (process.exitValue() != 0) {
             String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);

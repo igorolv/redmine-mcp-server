@@ -18,6 +18,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -36,15 +37,12 @@ import java.util.stream.Collectors;
 
 @Service
 public class AnalysisService {
-    private static final int MAX_PAGES = 5;
-    private static final int PAGE_SIZE = 100;
-    private static final int MAX_BLOCKER_DEPTH = 10;
-    private static final int MAX_BLOCKER_ISSUES = 30;
-
     private final RedmineClient client;
+    private final RedmineMcpProperties properties;
 
-    public AnalysisService(RedmineClient client) {
+    public AnalysisService(RedmineClient client, RedmineMcpProperties properties) {
         this.client = client;
+        this.properties = properties;
     }
 
     public ProjectSummary getProjectSummary(String projectId, Integer versionId) {
@@ -132,7 +130,7 @@ public class AnalysisService {
                                 i -> priorityOrder.getOrDefault(name(i.priority()), 0))
                         .reversed()
                         .thenComparing(i -> i.dueDate() != null ? i.dueDate() : "9999"))
-                .limit(10)
+                .limit(properties.analysis().topIssuesLimit())
                 .map(IssueSummary::from)
                 .toList();
 
@@ -199,8 +197,13 @@ public class AnalysisService {
     }
 
     public StaleIssues getStaleIssues(String projectId, Integer daysSinceUpdate, Integer limit) {
-        int minDays = daysSinceUpdate != null ? daysSinceUpdate : 30;
-        int actualLimit = limit != null ? Math.min(Math.max(limit, 1), 100) : 25;
+        var staleProperties = properties.analysis().staleIssues();
+        int minDays = daysSinceUpdate != null
+                ? daysSinceUpdate
+                : staleProperties.defaultDaysSinceUpdate();
+        int actualLimit = limit != null
+                ? Math.min(Math.max(limit, 1), staleProperties.maxLimit())
+                : staleProperties.defaultLimit();
 
         var page = client.listIssues(projectId, "open", null, null,
                 null, null, "updated_on:asc", null, 0, actualLimit);
@@ -311,19 +314,20 @@ public class AnalysisService {
         var all = new ArrayList<RedmineIssueSummary>();
         int offset = 0;
         int total = 0;
-        for (int page = 0; page < MAX_PAGES; page++) {
+        int pageSize = properties.analysis().pageSize();
+        for (int page = 0; page < properties.analysis().maxPages(); page++) {
             var result = client.listIssues(projectId, statusId, null, assignedToId,
-                    null, versionId, null, null, offset, PAGE_SIZE);
+                    null, versionId, null, null, offset, pageSize);
             all.addAll(result.issues());
             total = result.totalCount();
-            if (offset + PAGE_SIZE >= total) break;
-            offset += PAGE_SIZE;
+            if (offset + pageSize >= total) break;
+            offset += pageSize;
         }
         return new IssuesBatch(all, total);
     }
 
     private RedmineIssue fetchBlockerIssue(int issueId, Set<Integer> visited, int[] fetchCount) {
-        if (!visited.add(issueId) || fetchCount[0] >= MAX_BLOCKER_ISSUES) {
+        if (!visited.add(issueId) || fetchCount[0] >= properties.analysis().maxBlockerIssues()) {
             return null;
         }
         fetchCount[0]++;
@@ -333,7 +337,7 @@ public class AnalysisService {
     private void collectBlockers(RedmineIssue issue, boolean upstream,
                                  Set<Integer> visited, int[] fetchCount,
                                  List<BlockerChain.Node> result, int depth) {
-        if (issue.relations() == null || depth >= MAX_BLOCKER_DEPTH) return;
+        if (issue.relations() == null || depth >= properties.analysis().maxBlockerDepth()) return;
 
         for (var rel : issue.relations()) {
             if (!"blocks".equals(rel.relationType())) continue;

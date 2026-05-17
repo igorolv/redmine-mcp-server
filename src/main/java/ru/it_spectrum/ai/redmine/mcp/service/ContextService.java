@@ -20,12 +20,6 @@ import java.util.Optional;
 
 @Service
 public class ContextService {
-    private static final int MAX_SIBLINGS = 20;
-    private static final int MAX_CHILDREN = 20;
-    private static final int MAX_RELATED = 10;
-    private static final int MAX_RECENT_NOTES = 10;
-    private static final int MAX_NOTE_LENGTH = 500;
-
     private final RedmineClient client;
     private final AttachmentService attachmentService;
     private final IssueService issueService;
@@ -37,11 +31,6 @@ public class ContextService {
         this.attachmentService = attachmentService;
         this.issueService = issueService;
         this.properties = properties;
-    }
-
-    public ContextService(RedmineClient client, AttachmentService attachmentService,
-                          IssueService issueService) {
-        this(client, attachmentService, issueService, new RedmineMcpProperties(null));
     }
 
     public Optional<IssueFullContext> getIssueFullContext(int issueId) {
@@ -70,11 +59,11 @@ public class ContextService {
             long siblingsTotal = parent.children().stream()
                     .filter(child -> child.id() != issueId)
                     .count();
-            siblingsTruncated = siblingsTotal > MAX_SIBLINGS;
+            siblingsTruncated = siblingsTotal > properties.fullContext().maxSiblings();
             int siblingAttempts = 0;
             for (var child : parent.children()) {
                 if (child.id() == issueId) continue;
-                if (siblingAttempts >= MAX_SIBLINGS) break;
+                if (siblingAttempts >= properties.fullContext().maxSiblings()) break;
                 siblingAttempts++;
                 var sibling = client.getIssue(child.id());
                 if (sibling != null) {
@@ -85,11 +74,12 @@ public class ContextService {
             }
         }
 
-        boolean childrenTruncated = issue.children() != null && issue.children().size() > MAX_CHILDREN;
+        boolean childrenTruncated = issue.children() != null
+                                    && issue.children().size() > properties.fullContext().maxChildren();
         if (issue.children() != null) {
             int childAttempts = 0;
             for (var child : issue.children()) {
-                if (childAttempts >= MAX_CHILDREN) break;
+                if (childAttempts >= properties.fullContext().maxChildren()) break;
                 childAttempts++;
                 var childIssue = client.getIssue(child.id());
                 if (childIssue != null) {
@@ -100,12 +90,13 @@ public class ContextService {
             }
         }
 
-        boolean relatedTruncated = issue.relations() != null && issue.relations().size() > MAX_RELATED;
+        boolean relatedTruncated = issue.relations() != null
+                                   && issue.relations().size() > properties.fullContext().maxRelated();
         if (issue.relations() != null && !issue.relations().isEmpty()) {
             int relCount = 0;
 
             for (var rel : issue.relations()) {
-                if (relCount >= MAX_RELATED) break;
+                if (relCount >= properties.fullContext().maxRelated()) break;
                 int relatedId = rel.issueId() == issueId ? rel.issueToId() : rel.issueId();
                 String relType = formatRelationType(rel, issueId);
                 var related = client.getIssue(relatedId);
@@ -130,10 +121,11 @@ public class ContextService {
                     .filter(j -> j.notes() != null && !j.notes().isBlank())
                     .toList();
             if (!notes.isEmpty()) {
-                int startIdx = Math.max(0, notes.size() - MAX_RECENT_NOTES);
+                int startIdx = Math.max(0, notes.size() - properties.fullContext().maxRecentNotes());
                 recentNotes = notes.subList(startIdx, notes.size()).stream()
                         .map(j -> new RedmineIssue.Journal(j.id(), j.user(),
-                                truncate(j.notes(), MAX_NOTE_LENGTH), j.createdOn(), j.details()))
+                                truncate(j.notes(), properties.fullContext().maxNoteLength()),
+                                j.createdOn(), j.details()))
                         .map(Issue.Journal::from)
                         .toList();
             }

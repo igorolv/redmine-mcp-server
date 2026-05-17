@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchType;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineSearchResult;
@@ -28,7 +29,7 @@ class SearchToolsTest {
 
     @BeforeEach
     void setUp() {
-        tools = new SearchTools(new SearchService(client));
+        tools = new SearchTools(new SearchService(client), TestRedmineMcpProperties.defaults());
     }
 
     @Test
