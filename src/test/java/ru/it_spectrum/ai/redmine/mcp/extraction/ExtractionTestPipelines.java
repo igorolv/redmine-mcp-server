@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.extraction;
 
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.BinaryFallbackParser;
+import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxPandocParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxTextParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.ImagePassthroughParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.PdfTextParser;
@@ -29,6 +30,7 @@ public final class ExtractionTestPipelines {
                 new PlainTextParser(types),
                 new PdfTextParser(types),
                 new DocxTextParser(types),
+                new DocxPandocParser(types, PandocAvailability.disabled()),
                 new XlsxTextParser(types),
                 new PptxTextParser(types),
                 new ZipParser(types),
