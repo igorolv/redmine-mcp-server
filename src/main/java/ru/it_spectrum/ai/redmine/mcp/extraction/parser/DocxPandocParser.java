@@ -16,14 +16,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 /**
  * Converts a DOCX to GitHub-Flavoured Markdown via the {@code pandoc} executable and emits the
  * markdown as a {@code docx-markdown} Part. Embedded media is written to
- * {@code <workDir>/docx/<hash>/media/} and submitted back to the pipeline so the
- * {@link ImagePassthroughParser} can expose each image as a Part with its own
- * {@code localPath}/{@code fileUri}.
+ * {@code <workDir>/docx/<hash>/media/} via {@code --extract-media} so the markdown's image
+ * references stay valid on disk; the media files themselves are exposed as Parts by
+ * {@link DocxMediaExtractor} (which runs unconditionally), not by this parser.
  *
  * <p>Runs alongside {@link DocxTextParser} — both parsers emit independent Parts for the same
  * DOCX (POI plain text + pandoc markdown). Output is cached at
@@ -63,7 +62,6 @@ public class DocxPandocParser implements DocumentParser {
                 runPandoc(in.file(), mdFile, mediaDir);
             }
             emitMarkdownPart(in, mdFile, sink);
-            submitMedia(mediaDir, sink);
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
@@ -96,17 +94,6 @@ public class DocxPandocParser implements DocumentParser {
                 mdFile.toUri().toString(),
                 null
         ));
-    }
-
-    private void submitMedia(Path mediaDir, ParseSink sink) throws IOException {
-        if (!Files.isDirectory(mediaDir)) return;
-        try (Stream<Path> stream = Files.walk(mediaDir)) {
-            var files = stream.filter(Files::isRegularFile).sorted().toList();
-            for (var media : files) {
-                String childName = mediaDir.relativize(media).toString().replace('\\', '/');
-                sink.processNow(media, childName, null);
-            }
-        }
     }
 
     private void runPandoc(Path docx, Path mdOut, Path mediaDir) throws IOException, InterruptedException {

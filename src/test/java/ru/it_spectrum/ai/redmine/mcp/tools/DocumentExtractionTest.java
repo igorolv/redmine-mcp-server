@@ -24,6 +24,9 @@ import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionTestPipelines;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Path;
 import java.util.List;
@@ -103,6 +106,23 @@ class DocumentExtractionTest {
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("Hello from Word document");
         assertThat(result).contains("Second paragraph");
+    }
+
+    @Test
+    void shouldExtractEmbeddedImageFromDocx() throws Exception {
+        byte[] docxBytes = generateDocxWithEmbeddedImage("Doc with picture.");
+        var attachment = attachment(20, "with-image.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docxBytes.length);
+
+        stubIssueAttachment(attachment);
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(docxBytes);
+
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(ISSUE_ID, 20));
+
+        assertThat(result).contains("Doc with picture.");
+        assertThat(result).contains("\"extractionType\":\"image\"");
+        assertThat(result).contains("\"producer\":\"ImagePassthroughParser\"");
+        assertThat(result).contains("\"parent\":\"with-image.docx\"");
     }
 
     @Test
@@ -363,6 +383,25 @@ class DocumentExtractionTest {
             doc.write(baos);
             return baos.toByteArray();
         }
+    }
+
+    private static byte[] generateDocxWithEmbeddedImage(String text) throws Exception {
+        try (var doc = new XWPFDocument()) {
+            doc.createParagraph().createRun().setText(text);
+            try (var pic = new ByteArrayInputStream(generateTinyPng())) {
+                doc.addPictureData(pic, XWPFDocument.PICTURE_TYPE_PNG);
+            }
+            var baos = new ByteArrayOutputStream();
+            doc.write(baos);
+            return baos.toByteArray();
+        }
+    }
+
+    private static byte[] generateTinyPng() throws Exception {
+        var img = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        var baos = new ByteArrayOutputStream();
+        ImageIO.write(img, "png", baos);
+        return baos.toByteArray();
     }
 
     private static byte[] generateDocxWithTable(String[][] data) throws Exception {
