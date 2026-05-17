@@ -1,37 +1,41 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.Attachment;
 import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
-import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
+import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionPipeline;
+import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
+import ru.it_spectrum.ai.redmine.mcp.extraction.TextNormalizer;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 public class AttachmentService {
 
     public static final int PREVIEW_LIMIT = 50_000;
 
-    private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "webp");
-
     private final RedmineClient client;
-    private final DocumentTextExtractor textExtractor;
+    private final ExtractionPipeline pipeline;
+    private final FileTypeDetector types;
     private final IssueSnapshotService issueSnapshot;
 
     @Autowired
-    public AttachmentService(RedmineClient client, DocumentTextExtractor textExtractor,
+    public AttachmentService(RedmineClient client,
+                             ExtractionPipeline pipeline,
+                             FileTypeDetector types,
                              IssueSnapshotService issueSnapshot) {
         this.client = client;
-        this.textExtractor = textExtractor;
+        this.pipeline = pipeline;
+        this.types = types;
         this.issueSnapshot = issueSnapshot;
     }
 
@@ -40,29 +44,27 @@ public class AttachmentService {
     }
 
     public boolean isTextExtractable(RedmineAttachment attachment) {
-        return textExtractor.isTextExtractable(attachment.filename(), attachment.contentType());
+        return types.isTextExtractable(attachment.filename(), attachment.contentType());
     }
 
     public String detectExtractionType(RedmineAttachment attachment) {
-        return textExtractor.detectExtractionType(attachment);
+        return types.detectExtractionType(attachment.filename(), attachment.contentType());
     }
 
     public String fileExtension(RedmineAttachment attachment) {
-        return textExtractor.getFileExtension(attachment.filename());
+        return types.getFileExtension(attachment.filename());
     }
 
     public boolean isImage(RedmineAttachment attachment) {
-        String ext = fileExtension(attachment);
-        String contentType = attachment.contentType() != null ? attachment.contentType() : "";
-        return (ext != null && IMAGE_EXTENSIONS.contains(ext)) || contentType.startsWith("image/");
+        return types.isImage(attachment.filename(), attachment.contentType());
     }
 
     public Optional<String> extractText(int issueId, RedmineAttachment attachment) {
         if (!isTextExtractable(attachment)) {
             return Optional.empty();
         }
-        var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
-        return Optional.ofNullable(textExtractor.extractText(attachment, localFile));
+        var parts = runPipeline(issueId, attachment);
+        return Optional.ofNullable(flattenToText(parts));
     }
 
     public AttachmentContent getAttachment(int issueId, int attachmentId) {
@@ -74,7 +76,7 @@ public class AttachmentService {
         String note = null;
 
         if (isTextExtractable(attachment)) {
-            parts = textExtractor.extractTextParts(attachment, localFile).stream()
+            parts = runPipeline(issueId, attachment, localFile).stream()
                     .map(this::toContentPart)
                     .toList();
         } else if (image) {
@@ -99,7 +101,38 @@ public class AttachmentService {
         );
     }
 
+    public void snapshotIssue(RedmineIssue issue) {
+        if (issue == null) {
+            return;
+        }
+        issueSnapshot.snapshotIssue(issue, RedmineClient.fullIssueSource(issue.id()));
+    }
+
     // --- Internal ---
+
+    private List<ExtractedPart> runPipeline(int issueId, RedmineAttachment attachment) {
+        var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
+        return runPipeline(issueId, attachment, localFile);
+    }
+
+    private List<ExtractedPart> runPipeline(int issueId, RedmineAttachment attachment, Path localFile) {
+        Path workDir = issueSnapshot.attachmentExtractedDir(issueId, attachment.id());
+        return pipeline.extract(localFile, attachment.filename(), attachment.contentType(), workDir);
+    }
+
+    private static String flattenToText(List<ExtractedPart> parts) {
+        var textParts = parts.stream().filter(ExtractedPart::textExtracted).toList();
+        if (textParts.isEmpty()) return null;
+        if (textParts.size() == 1 && textParts.getFirst().name() == null) {
+            return textParts.getFirst().content();
+        }
+        var sb = new StringBuilder();
+        for (var part : textParts) {
+            sb.append("\n--- %s ---\n".formatted(part.name()));
+            sb.append(part.content()).append("\n");
+        }
+        return TextNormalizer.normalize(sb.toString());
+    }
 
     private String truncatePreview(String text) {
         if (text.length() <= PREVIEW_LIMIT) return text;
@@ -107,7 +140,7 @@ public class AttachmentService {
                 + "\n\n... (truncated, total length: %d chars)".formatted(text.length());
     }
 
-    private AttachmentContent.Part toContentPart(DocumentTextExtractor.ExtractedTextPart part) {
+    private AttachmentContent.Part toContentPart(ExtractedPart part) {
         String content = part.content();
         boolean truncated = false;
         if (content != null) {
@@ -124,13 +157,6 @@ public class AttachmentService {
                 part.note(),
                 part.size()
         );
-    }
-
-    public void snapshotIssue(RedmineIssue issue) {
-        if (issue == null) {
-            return;
-        }
-        issueSnapshot.snapshotIssue(issue, RedmineClient.fullIssueSource(issue.id()));
     }
 
     private long localSize(Path localFile) {
@@ -156,5 +182,4 @@ public class AttachmentService {
         }
         throw new AttachmentNotFoundException(attachmentId);
     }
-
 }

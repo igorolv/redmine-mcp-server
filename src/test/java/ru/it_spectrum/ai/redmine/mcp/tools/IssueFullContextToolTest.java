@@ -8,15 +8,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
-import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
-import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
+import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionTestPipelines;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
+import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -39,8 +38,7 @@ class IssueFullContextToolTest {
     @BeforeEach
     void setUp() {
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
-        var service = new AttachmentService(client,
-                new DocumentTextExtractor(), snapshot);
+        var service = ExtractionTestPipelines.newAttachmentService(client, snapshot);
         var issueService = new IssueService(client);
         tools = new IssueTools(issueService, new ContextService(client, service, issueService));
     }

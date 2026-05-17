@@ -8,7 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
-import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
+import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,7 +30,7 @@ class Issue4202DocxIntegrationTest {
     private AttachmentTools attachmentTools;
 
     @Autowired
-    private DocumentTextExtractor textExtractor;
+    private FileTypeDetector fileTypes;
 
     @Test
     void shouldParseFirstDocxAttachmentFromIssue4202ViaProjectMethods() throws Exception {
@@ -127,7 +127,7 @@ class Issue4202DocxIntegrationTest {
 
     private RedmineAttachment findFirstDocxAttachment(RedmineIssue issue) {
         var attachment = issue.attachments().stream()
-                .filter(att -> "docx".equals(textExtractor.getFileExtension(att.filename()))
+                .filter(att -> "docx".equals(fileTypes.getFileExtension(att.filename()))
                         || (att.contentType() != null && att.contentType().contains("wordprocessingml")))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Issue #%d has no DOCX attachment".formatted(ISSUE_ID)));
@@ -142,7 +142,7 @@ class Issue4202DocxIntegrationTest {
     private RedmineAttachment findFirstImageAttachment(RedmineIssue issue) {
         var attachment = issue.attachments().stream()
                 .filter(att -> {
-                    String ext = textExtractor.getFileExtension(att.filename());
+                    String ext = fileTypes.getFileExtension(att.filename());
                     String contentType = att.contentType() != null ? att.contentType() : "";
                     return "png".equals(ext) || contentType.startsWith("image/");
                 })

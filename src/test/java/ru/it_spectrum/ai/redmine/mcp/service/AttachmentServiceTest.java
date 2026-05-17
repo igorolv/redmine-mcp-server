@@ -7,18 +7,22 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.it_spectrum.ai.redmine.mcp.client.DocumentTextExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
+import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
+import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionPipeline;
+import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 
 import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,7 +32,7 @@ class AttachmentServiceTest {
     private RedmineClient client;
 
     @Mock
-    private DocumentTextExtractor extractor;
+    private ExtractionPipeline pipeline;
 
     @TempDir
     private Path dataDir;
@@ -38,7 +42,7 @@ class AttachmentServiceTest {
     @BeforeEach
     void setUp() {
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
-        service = new AttachmentService(client, extractor, snapshot);
+        service = new AttachmentService(client, pipeline, new FileTypeDetector(), snapshot);
     }
 
     // --- find ---
@@ -53,21 +57,18 @@ class AttachmentServiceTest {
 
     @Test
     void isImageShouldDetectByExtension() {
-        when(extractor.getFileExtension("photo.png")).thenReturn("png");
         var att = attachment(1, "photo.png", "application/octet-stream");
         assertThat(service.isImage(att)).isTrue();
     }
 
     @Test
     void isImageShouldDetectByContentType() {
-        when(extractor.getFileExtension("blob")).thenReturn("");
         var att = attachment(1, "blob", "image/jpeg");
         assertThat(service.isImage(att)).isTrue();
     }
 
     @Test
     void isImageShouldReturnFalseForDocument() {
-        when(extractor.getFileExtension("report.pdf")).thenReturn("pdf");
         var att = attachment(1, "report.pdf", "application/pdf");
         assertThat(service.isImage(att)).isFalse();
     }
@@ -79,8 +80,6 @@ class AttachmentServiceTest {
         byte[] data = "original".getBytes();
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
-        when(extractor.getFileExtension("photo.png")).thenReturn("png");
-        when(extractor.isTextExtractable("photo.png", "image/png")).thenReturn(false);
         when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
 
         var result = service.getAttachment(1, 20);
@@ -96,12 +95,9 @@ class AttachmentServiceTest {
         byte[] data = "hello".getBytes();
         var att = attachment(20, "readme.txt", "text/plain");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
-        when(extractor.isTextExtractable("readme.txt", "text/plain")).thenReturn(true);
-        when(extractor.detectExtractionType(att)).thenReturn("text");
         when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
-        when(extractor.extractTextParts(att, Path.of(dataDir.toString(), "issues", "1", "attachments", "20__readme.txt")))
-                .thenReturn(List.of(new DocumentTextExtractor.ExtractedTextPart(
-                        null, "text", (long) data.length, "hello", null)));
+        when(pipeline.extract(any(Path.class), eq("readme.txt"), eq("text/plain"), any(Path.class)))
+                .thenReturn(List.of(new ExtractedPart(null, "text", (long) data.length, "hello", null)));
 
         var result = service.getAttachment(1, 20);
 
@@ -123,8 +119,6 @@ class AttachmentServiceTest {
         byte[] data = new byte[]{1, 2, 3};
         var att = attachment(20, "photo.png", "image/png");
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
-        when(extractor.isTextExtractable("photo.png", "image/png")).thenReturn(false);
-        when(extractor.getFileExtension("photo.png")).thenReturn("png");
         when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
 
         var result = service.getAttachment(1, 20);
@@ -173,8 +167,4 @@ class AttachmentServiceTest {
                 null, attachments, null, null, null
         );
     }
-
 }
-
-
-

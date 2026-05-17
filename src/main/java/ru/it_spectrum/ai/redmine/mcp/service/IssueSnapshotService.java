@@ -66,9 +66,8 @@ public class IssueSnapshotService {
     }
 
     public Path materializeAttachment(int issueId, RedmineAttachment attachment) {
-        String issueSegment = String.valueOf(issueId);
-        Path attachmentsDir = issueDirectory(issueSegment).resolve("attachments");
-        Path extractedDir = issueDirectory(issueSegment).resolve("extracted").resolve(String.valueOf(attachment.id()));
+        Path attachmentsDir = issueDirectory(issueId).resolve("attachments");
+        Path extractedDir = attachmentExtractedDir(issueId, attachment.id());
         Path target = attachmentsDir.resolve(localFilename(attachment));
 
         try {
@@ -94,6 +93,11 @@ public class IssueSnapshotService {
 
     public Path issueDirectory(int issueId) {
         return issueDirectory(String.valueOf(issueId));
+    }
+
+    /** Per-attachment scratch dir for extraction parsers (intermediate ZIP entries, pandoc output, etc.). */
+    public Path attachmentExtractedDir(int issueId, int attachmentId) {
+        return issueDirectory(issueId).resolve("extracted").resolve(String.valueOf(attachmentId));
     }
 
     public Path issueDirectory(String issueSegment) {
