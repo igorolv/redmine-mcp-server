@@ -13,6 +13,10 @@ import java.util.List;
  * it runs every applicable PRIMARY parser, then every applicable FALLBACK parser.
  * Parsers may recursively process children via {@link ParseSink#processNow},
  * keeping output order deterministic.
+ *
+ * <p>The pipeline back-fills {@code producer} (parser class simple name) and {@code parent}
+ * (parent input's logical name) on every emitted Part, so parsers can leave those fields
+ * {@code null}.</p>
  */
 @Service
 public class ExtractionPipeline {
@@ -33,7 +37,7 @@ public class ExtractionPipeline {
     public List<ExtractedPart> extract(Path file, String logicalName, String contentType, Path workDir) {
         var ctx = ParseContext.defaults();
         var collected = new ArrayList<ExtractedPart>();
-        var input = new ParseInput(file, logicalName, contentType, workDir, 0, ctx);
+        var input = new ParseInput(file, logicalName, null, contentType, workDir, 0, ctx);
         runOnInput(input, collected);
         return collected;
     }
@@ -57,12 +61,15 @@ public class ExtractionPipeline {
         }
     }
 
-    private void runParserSafely(DocumentParser parser, ParseInput input, ParseSink sink) {
+    private void runParserSafely(DocumentParser parser, ParseInput input, InputSink sink) {
+        sink.currentProducer = parser.getClass().getSimpleName();
         try {
             parser.parse(input, sink);
         } catch (Exception e) {
             log.warn("Parser {} failed for {}: {}",
                     parser.getClass().getSimpleName(), input.logicalName(), e.getMessage());
+        } finally {
+            sink.currentProducer = null;
         }
     }
 
@@ -72,6 +79,7 @@ public class ExtractionPipeline {
         private int textPartsForThisInput;
         private int partsForThisInput;
         private boolean primaryApplied;
+        private String currentProducer;
 
         InputSink(ParseInput input, List<ExtractedPart> collected) {
             this.input = input;
@@ -83,17 +91,20 @@ public class ExtractionPipeline {
             if (collected.size() >= input.ctx().limits().maxTotalParts()) {
                 return;
             }
-            collected.add(part);
+            var enriched = part
+                    .withProducerIfAbsent(currentProducer)
+                    .withParentIfAbsent(input.parentLogicalName());
+            collected.add(enriched);
             partsForThisInput++;
-            if (part.textExtracted()) {
+            if (enriched.textExtracted()) {
                 textPartsForThisInput++;
             }
         }
 
         @Override
         public void processNow(Path childFile, String childLogicalName, String contentType) {
-            var child = new ParseInput(childFile, childLogicalName, contentType,
-                    input.workDir(), input.depth() + 1, input.ctx());
+            var child = new ParseInput(childFile, childLogicalName, input.logicalName(),
+                    contentType, input.workDir(), input.depth() + 1, input.ctx());
             runOnInput(child, collected);
         }
 

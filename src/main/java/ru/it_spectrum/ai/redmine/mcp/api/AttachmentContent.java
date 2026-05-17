@@ -30,14 +30,22 @@ public record AttachmentContent(
     public record Part(
             @Schema(description = "Logical name of the part (file name within a ZIP, or the attachment file name).", requiredMode = Schema.RequiredMode.REQUIRED)
             String name,
+            @Schema(description = "Logical name of the part this one was extracted from (e.g. the enclosing ZIP file). Null for parts produced directly from the top-level attachment.")
+            String parent,
             @Schema(description = "Detected document kind for this specific part.", requiredMode = Schema.RequiredMode.REQUIRED)
             String extractionType,
+            @Schema(description = "Identifier of the parser that produced this part (e.g. `PlainTextParser`, `ZipParser`). Useful for debugging which extractor handled the file.")
+            String producer,
             @Schema(description = "True when text was successfully extracted for this part.", requiredMode = Schema.RequiredMode.REQUIRED)
             boolean textExtracted,
             @Schema(description = "True when this part's text was cut to fit the response size limit.", requiredMode = Schema.RequiredMode.REQUIRED)
             boolean truncated,
             @Schema(description = "Extracted text, null when extraction was skipped or failed.")
             String content,
+            @Schema(description = "Absolute filesystem path to the file this part refers to (the source file itself, or an artefact extracted to disk). Null when no underlying file exists (e.g. a manifest-only stub).")
+            String localPath,
+            @Schema(description = "RFC 3986 `file://` URI matching `localPath`. Null when `localPath` is null.")
+            String fileUri,
             @Schema(description = "Free-text note about this part, typically present when extraction was skipped.")
             String note,
             @Schema(description = "Size of the part's source in bytes, when available.")

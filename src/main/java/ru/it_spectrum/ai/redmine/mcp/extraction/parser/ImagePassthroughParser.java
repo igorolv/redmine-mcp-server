@@ -11,37 +11,26 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 /**
- * Final FALLBACK: if no PRIMARY parser produced anything for a nested file (e.g. an image
- * unpacked from a ZIP), emit a stub Part so the LLM can still see the entry. Mirrors the
- * legacy {@code "skipped, not text-extractable"} note used by the old in-archive flow.
+ * Emits an "image" Part with a localPath/fileUri reference for image files. Fires for nested
+ * images (e.g. an image extracted from a ZIP or a DOCX media folder) — top-level image
+ * attachments are gated by {@code AttachmentService} and never reach the pipeline.
  */
 @Component
-public class BinaryFallbackParser implements DocumentParser {
+public class ImagePassthroughParser implements DocumentParser {
 
     private final FileTypeDetector types;
 
-    public BinaryFallbackParser(FileTypeDetector types) {
+    public ImagePassthroughParser(FileTypeDetector types) {
         this.types = types;
     }
 
     @Override
-    public Phase phase() {
-        return Phase.FALLBACK;
-    }
-
-    @Override
     public boolean applies(ParseInput in) {
-        // Top-level non-text attachments are handled by AttachmentService directly; pipeline
-        // is only invoked for "is text-extractable" inputs at depth 0. So this fallback is
-        // effectively for nested entries.
-        return true;
+        return types.isImage(in.logicalName(), in.contentType());
     }
 
     @Override
     public void parse(ParseInput in, ParseSink sink) {
-        if (sink.emittedCount() > 0 || sink.primaryApplied()) {
-            return;
-        }
         long size;
         try {
             size = Files.size(in.file());
@@ -51,13 +40,13 @@ public class BinaryFallbackParser implements DocumentParser {
         sink.emit(new ExtractedPart(
                 in.emitName(),
                 null,
-                types.detectExtractionType(in.logicalName(), in.contentType()),
+                "image",
                 null,
                 size,
                 null,
                 in.file().toString(),
                 in.file().toUri().toString(),
-                "skipped, not text-extractable"
+                "Image file. Use localPath/fileUri to access the original."
         ));
     }
 }

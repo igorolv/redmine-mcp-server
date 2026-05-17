@@ -39,9 +39,13 @@ public class PlainTextParser implements DocumentParser {
             String text = TextNormalizer.normalize(Files.readString(in.file(), StandardCharsets.UTF_8));
             sink.emit(new ExtractedPart(
                     in.emitName(),
+                    null,
                     "text",
+                    null,
                     size,
                     text,
+                    in.file().toString(),
+                    in.file().toUri().toString(),
                     null
             ));
         } catch (IOException e) {

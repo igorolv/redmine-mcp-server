@@ -97,7 +97,9 @@ class AttachmentServiceTest {
         when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
         when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
         when(pipeline.extract(any(Path.class), eq("readme.txt"), eq("text/plain"), any(Path.class)))
-                .thenReturn(List.of(new ExtractedPart(null, "text", (long) data.length, "hello", null)));
+                .thenReturn(List.of(new ExtractedPart(
+                        null, null, "text", "PlainTextParser", (long) data.length,
+                        "hello", "/tmp/readme.txt", "file:///tmp/readme.txt", null)));
 
         var result = service.getAttachment(1, 20);
 

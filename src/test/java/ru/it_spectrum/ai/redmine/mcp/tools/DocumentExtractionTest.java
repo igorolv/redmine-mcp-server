@@ -260,7 +260,10 @@ class DocumentExtractionTest {
         assertThat(result).contains("\"name\":\"schema/order.xsd\"");
         assertThat(result).contains("\"name\":\"docs/decision.docx\"");
         assertThat(result).contains("\"name\":\"images/screenshot.png\"");
-        assertThat(result).contains("skipped, not text-extractable");
+        assertThat(result).contains("Image file. Use localPath/fileUri to access the original.");
+        assertThat(result).contains("\"extractionType\":\"image\"");
+        assertThat(result).contains("\"producer\":\"ImagePassthroughParser\"");
+        assertThat(result).contains("\"parent\":\"bundle.zip\"");
         assertThat(result).contains("feature: archive extraction");
         assertThat(result).contains("<xs:element name=\\\"orderId\\\" type=\\\"xs:string\\\"/>");
         assertThat(result).contains("Architecture decision from Word document");

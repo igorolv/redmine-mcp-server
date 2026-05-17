@@ -48,9 +48,13 @@ public abstract class AbstractDocumentParser implements DocumentParser {
 
         sink.emit(new ExtractedPart(
                 input.emitName(),
+                null,
                 extractionType(),
+                null,
                 size,
                 TextNormalizer.normalize(text),
+                input.file().toString(),
+                input.file().toUri().toString(),
                 null
         ));
     }

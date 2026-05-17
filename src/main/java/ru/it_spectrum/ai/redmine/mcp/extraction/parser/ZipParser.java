@@ -121,7 +121,7 @@ public class ZipParser implements DocumentParser {
     }
 
     private ExtractedPart stubPart(String name, String extractionType, String note) {
-        return new ExtractedPart(name, extractionType, null, null, note);
+        return new ExtractedPart(name, null, extractionType, null, null, null, null, null, note);
     }
 
     private ExtractedPart failurePart(ParseInput input, String note) {
@@ -131,7 +131,8 @@ public class ZipParser implements DocumentParser {
         } catch (IOException ignored) {
             size = 0;
         }
-        return new ExtractedPart(input.logicalName(), "zip", size, null, note);
+        return new ExtractedPart(input.logicalName(), null, "zip", null, size, null,
+                input.file().toString(), input.file().toUri().toString(), note);
     }
 
     private static String normalizeEntryName(String entryName) {

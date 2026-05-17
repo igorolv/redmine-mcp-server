@@ -150,10 +150,14 @@ public class AttachmentService {
 
         return new AttachmentContent.Part(
                 part.name(),
+                part.parent(),
                 part.extractionType(),
+                part.producer(),
                 part.textExtracted(),
                 truncated,
                 content,
+                part.localPath(),
+                part.fileUri(),
                 part.note(),
                 part.size()
         );
