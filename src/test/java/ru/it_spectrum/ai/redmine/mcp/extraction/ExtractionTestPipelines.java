@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.extraction;
 
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.BinaryFallbackParser;
+import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxEmbeddedExtractor;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxMediaExtractor;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxPandocParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxTextParser;
@@ -9,6 +10,8 @@ import ru.it_spectrum.ai.redmine.mcp.extraction.parser.ImagePassthroughParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.PdfTextParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.PlainTextParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.PptxTextParser;
+import ru.it_spectrum.ai.redmine.mcp.extraction.parser.TikaMetadataParser;
+import ru.it_spectrum.ai.redmine.mcp.extraction.parser.TikaTextFallbackParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.XlsxTextParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.ZipParser;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
@@ -33,10 +36,13 @@ public final class ExtractionTestPipelines {
                 new DocxTextParser(types),
                 new DocxPandocParser(types, PandocAvailability.disabled()),
                 new DocxMediaExtractor(types),
+                new DocxEmbeddedExtractor(types),
                 new XlsxTextParser(types),
                 new PptxTextParser(types),
                 new ZipParser(types),
                 new ImagePassthroughParser(types),
+                new TikaMetadataParser(types),
+                new TikaTextFallbackParser(types),
                 new BinaryFallbackParser(types)
         ));
     }

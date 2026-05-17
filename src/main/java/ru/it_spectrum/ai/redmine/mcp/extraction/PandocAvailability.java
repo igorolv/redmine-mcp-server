@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.extraction;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
@@ -37,6 +38,7 @@ public class PandocAvailability {
     private final Path executable;
     private final String version;
 
+    @Autowired
     public PandocAvailability(RedmineMcpProperties baseProps, ExtractionProperties extractionProps) {
         if (!extractionProps.pandoc().enabled()) {
             this.executable = null;

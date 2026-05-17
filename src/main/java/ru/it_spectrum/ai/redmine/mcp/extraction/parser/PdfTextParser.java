@@ -3,6 +3,7 @@ package ru.it_spectrum.ai.redmine.mcp.extraction.parser;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ParseInput;
@@ -10,6 +11,7 @@ import ru.it_spectrum.ai.redmine.mcp.extraction.ParseInput;
 import java.io.InputStream;
 
 @Component
+@Order(200)
 public class PdfTextParser extends AbstractDocumentParser {
 
     private final FileTypeDetector types;

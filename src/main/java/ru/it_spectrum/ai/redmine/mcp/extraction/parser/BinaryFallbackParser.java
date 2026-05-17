@@ -1,5 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.extraction.parser;
 
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.extraction.DocumentParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
@@ -16,6 +17,7 @@ import java.nio.file.Files;
  * legacy {@code "skipped, not text-extractable"} note used by the old in-archive flow.
  */
 @Component
+@Order(9999)
 public class BinaryFallbackParser implements DocumentParser {
 
     private final FileTypeDetector types;

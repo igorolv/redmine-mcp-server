@@ -24,6 +24,8 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation(libs.poi.ooxml)
     implementation(libs.pdfbox)
+    implementation(libs.tika.core)
+    implementation(libs.tika.parsers.standard)
 
     testImplementation(libs.spring.boot.starter.test)
 }

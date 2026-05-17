@@ -5,6 +5,7 @@ import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ParseInput;
@@ -13,6 +14,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 
 @Component
+@Order(500)
 public class PptxTextParser extends AbstractDocumentParser {
 
     private final FileTypeDetector types;

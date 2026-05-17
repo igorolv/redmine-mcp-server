@@ -1,5 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.extraction.parser;
 
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.extraction.DocumentParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
@@ -16,6 +17,7 @@ import java.nio.file.Files;
  * attachments are gated by {@code AttachmentService} and never reach the pipeline.
  */
 @Component
+@Order(700)
 public class ImagePassthroughParser implements DocumentParser {
 
     private final FileTypeDetector types;

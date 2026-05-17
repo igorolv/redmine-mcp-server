@@ -1,7 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.extraction.parser;
 
+import org.apache.poi.openxml4j.opc.PackagePart;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFPictureData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -18,23 +18,20 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Extracts embedded media (images, etc.) from a DOCX via POI's {@code getAllPictures()} and
- * submits each file back to the pipeline so {@link ImagePassthroughParser} (or
- * {@link BinaryFallbackParser}) can expose it as its own Part with a {@code localPath}.
- *
- * <p>Runs unconditionally — independent of pandoc — so media is always extracted whenever
- * a DOCX is parsed. Media is written to {@code <workDir>/docx-media/<hash>/}; existing files
- * with matching size are not overwritten.</p>
+ * Pulls embedded OLE objects and attached files out of a DOCX
+ * ({@code word/embeddings/oleObject*.bin}, embedded {@code .xlsx}/{@code .pptx}, etc.) and
+ * submits each one back through the pipeline so it gets processed by whatever parser knows
+ * its format ({@link XlsxTextParser}, {@link BinaryFallbackParser}, Tika fallback, …).
  */
 @Component
-@Order(320)
-public class DocxMediaExtractor implements DocumentParser {
+@Order(330)
+public class DocxEmbeddedExtractor implements DocumentParser {
 
-    private static final Logger log = LoggerFactory.getLogger(DocxMediaExtractor.class);
+    private static final Logger log = LoggerFactory.getLogger(DocxEmbeddedExtractor.class);
 
     private final FileTypeDetector types;
 
-    public DocxMediaExtractor(FileTypeDetector types) {
+    public DocxEmbeddedExtractor(FileTypeDetector types) {
         this.types = types;
     }
 
@@ -47,25 +44,30 @@ public class DocxMediaExtractor implements DocumentParser {
 
     @Override
     public void parse(ParseInput in, ParseSink sink) {
-        Path mediaDir = in.workDir().resolve("docx-media").resolve(hashSegment(in.logicalName()));
+        Path embeddedDir = in.workDir().resolve("docx").resolve(hashSegment(in.logicalName())).resolve("embedded");
         try {
-            Files.createDirectories(mediaDir);
+            Files.createDirectories(embeddedDir);
             try (InputStream is = Files.newInputStream(in.file());
                  XWPFDocument doc = new XWPFDocument(is)) {
-                List<XWPFPictureData> pictures = doc.getAllPictures();
-                for (var pic : pictures) {
-                    String name = sanitize(pic.getFileName());
+                List<PackagePart> embedded = doc.getAllEmbeddedParts();
+                for (var part : embedded) {
+                    String name = basename(part.getPartName().getName());
                     if (name.isEmpty()) continue;
-                    Path target = mediaDir.resolve(name);
-                    byte[] data = pic.getData();
+                    byte[] data;
+                    try (InputStream partIn = part.getInputStream()) {
+                        data = partIn.readAllBytes();
+                    }
+                    Path target = embeddedDir.resolve(name);
                     if (!isMaterialized(target, data.length)) {
                         Files.write(target, data);
                     }
-                    sink.processNow(target, name, null);
+                    sink.processNow(target, name, part.getContentType());
                 }
             }
-        } catch (IOException | RuntimeException e) {
-            log.warn("Failed to extract media from DOCX {}: {}", in.logicalName(), e.getMessage());
+        } catch (IOException
+                 | org.apache.poi.openxml4j.exceptions.OpenXML4JException
+                 | RuntimeException e) {
+            log.warn("Failed to extract embedded parts from DOCX {}: {}", in.logicalName(), e.getMessage());
         }
     }
 
@@ -73,11 +75,11 @@ public class DocxMediaExtractor implements DocumentParser {
         return Files.isRegularFile(file) && Files.size(file) == expectedSize;
     }
 
-    private static String sanitize(String name) {
-        if (name == null) return "";
-        int slash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
-        String basename = slash >= 0 ? name.substring(slash + 1) : name;
-        return basename.replaceAll("[\\p{Cntrl}<>:\"|?*]", "_").strip();
+    private static String basename(String partName) {
+        if (partName == null) return "";
+        int slash = partName.lastIndexOf('/');
+        String base = slash >= 0 ? partName.substring(slash + 1) : partName;
+        return base.replaceAll("[\\p{Cntrl}<>:\"|?*]", "_").strip();
     }
 
     private static String hashSegment(String logicalName) {

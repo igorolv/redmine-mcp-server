@@ -3,6 +3,7 @@ spring-boot = "4.0.0"
 spring-ai = "2.0.0-M3"
 poi = "5.4.0"
 pdfbox = "3.0.5"
+tika = "3.2.0"
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
@@ -14,3 +15,5 @@ spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-star
 spring-ai-mcp-server = { module = "org.springframework.ai:spring-ai-starter-mcp-server", version.ref = "spring-ai" }
 poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
+tika-core = { module = "org.apache.tika:tika-core", version.ref = "tika" }
+tika-parsers-standard = { module = "org.apache.tika:tika-parsers-standard-package", version.ref = "tika" }

@@ -4,6 +4,7 @@ import org.apache.poi.xwpf.usermodel.IBodyElement;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ParseInput;
@@ -11,6 +12,7 @@ import ru.it_spectrum.ai.redmine.mcp.extraction.ParseInput;
 import java.io.InputStream;
 
 @Component
+@Order(300)
 public class DocxTextParser extends AbstractDocumentParser {
 
     private final FileTypeDetector types;

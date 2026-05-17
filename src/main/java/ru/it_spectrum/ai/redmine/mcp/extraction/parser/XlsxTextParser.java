@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.extraction.parser;
 
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ParseInput;
@@ -10,6 +11,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 
 @Component
+@Order(400)
 public class XlsxTextParser extends AbstractDocumentParser {
 
     private final FileTypeDetector types;

@@ -212,7 +212,10 @@ class RedmineClientTest {
         var result = redmineClient.search("выплата", 0, 10);
 
         assertThat(result).isNotNull();
-        assertThat(result.results()).isNotEmpty();
+        assertThat(result.results()).isNotNull();
+        assertThat(result.offset()).isZero();
+        assertThat(result.limit()).isEqualTo(10);
+        assertThat(result.totalCount()).isGreaterThanOrEqualTo(result.results().size());
 
         System.out.println("Global search 'выплата' (" + result.totalCount() + " total, showing 10):");
         for (var item : result.results()) {

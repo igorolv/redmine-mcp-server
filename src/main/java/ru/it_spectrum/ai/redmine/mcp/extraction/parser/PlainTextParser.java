@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.extraction.parser;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.extraction.DocumentParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
@@ -15,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 @Component
+@Order(100)
 public class PlainTextParser implements DocumentParser {
 
     private static final Logger log = LoggerFactory.getLogger(PlainTextParser.class);
