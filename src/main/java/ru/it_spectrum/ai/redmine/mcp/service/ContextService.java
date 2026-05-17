@@ -1,18 +1,16 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.api.Attachment;
 import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
+import ru.it_spectrum.ai.redmine.mcp.api.ContextAttachment;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextIssue;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextRole;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextStats;
-import ru.it_spectrum.ai.redmine.mcp.api.DocumentExcerpt;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
-import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
-import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -25,23 +23,25 @@ public class ContextService {
     private static final int MAX_SIBLINGS = 20;
     private static final int MAX_CHILDREN = 20;
     private static final int MAX_RELATED = 10;
-    private static final int MAX_INLINE_DOCS = 3;
-    private static final int MAX_DOC_TEXT_LENGTH = 10_000;
-    private static final int MAX_TOTAL_DOC_TEXT = 30_000;
     private static final int MAX_RECENT_NOTES = 10;
     private static final int MAX_NOTE_LENGTH = 500;
 
     private final RedmineClient client;
     private final AttachmentService attachmentService;
     private final IssueService issueService;
-    private final FileTypeDetector types;
+    private final RedmineMcpProperties properties;
 
     public ContextService(RedmineClient client, AttachmentService attachmentService,
-                          IssueService issueService, FileTypeDetector types) {
+                          IssueService issueService, RedmineMcpProperties properties) {
         this.client = client;
         this.attachmentService = attachmentService;
         this.issueService = issueService;
-        this.types = types;
+        this.properties = properties;
+    }
+
+    public ContextService(RedmineClient client, AttachmentService attachmentService,
+                          IssueService issueService) {
+        this(client, attachmentService, issueService, new RedmineMcpProperties(null));
     }
 
     public Optional<IssueFullContext> getIssueFullContext(int issueId) {
@@ -118,10 +118,10 @@ public class ContextService {
             }
         }
 
-        var documents = new ArrayList<DocumentExcerpt>();
-        collectDocumentExcerpts(issue, "issue", issue.id(), documents);
+        var attachments = new ArrayList<ContextAttachment>();
+        int totalAttachmentText = collectContextAttachments(issue, "issue", issue.id(), attachments, 0);
         if (parent != null) {
-            collectDocumentExcerpts(parent, "parent", parent.id(), documents);
+            collectContextAttachments(parent, "parent", parent.id(), attachments, totalAttachmentText);
         }
 
         List<Issue.Journal> recentNotes = List.of();
@@ -151,7 +151,7 @@ public class ContextService {
                 contextIssues.values().stream()
                         .map(ContextIssueBuilder::build)
                         .toList(),
-                documents,
+                attachments,
                 recentNotes,
                 stats
         ));
@@ -176,82 +176,36 @@ public class ContextService {
         return text.substring(0, maxLength) + "... (truncated)";
     }
 
-    private void collectDocumentExcerpts(RedmineIssue sourceIssue, String source,
-                                         int sourceIssueId, List<DocumentExcerpt> documents) {
-        if (sourceIssue.attachments() == null) return;
-        int totalDocText = documents.stream().mapToInt(this::textContentLength).sum();
+    private int collectContextAttachments(RedmineIssue sourceIssue, String source,
+                                          int sourceIssueId, List<ContextAttachment> attachments,
+                                          int totalAttachmentText) {
+        if (sourceIssue.attachments() == null) return totalAttachmentText;
+
         for (var att : sourceIssue.attachments()) {
-            if (documents.size() >= MAX_INLINE_DOCS || totalDocText >= MAX_TOTAL_DOC_TEXT) break;
-
-            if (types.isImage(att.filename(), att.contentType())) continue;
-
-            List<ExtractedPart> extractedParts = attachmentService.extractParts(sourceIssueId, att);
-            if (extractedParts.isEmpty() || extractedParts.stream().noneMatch(ExtractedPart::textExtracted)) continue;
-
-            int allowedLength = Math.min(MAX_DOC_TEXT_LENGTH, MAX_TOTAL_DOC_TEXT - totalDocText);
-            if (allowedLength <= 0) break;
-
-            PartExcerpt partExcerpt = buildPartExcerpt(extractedParts, allowedLength);
-            if (!partExcerpt.textExtracted()) continue;
-
-            documents.add(new DocumentExcerpt(
-                    Attachment.from(att),
+            int previewLimit = nextAttachmentPreviewLimit(totalAttachmentText);
+            AttachmentContent content = attachmentService.getAttachmentContentWithinTextBudget(
+                    sourceIssueId, att, previewLimit);
+            attachments.add(new ContextAttachment(
                     source,
                     sourceIssueId,
-                    detectExcerptType(partExcerpt.parts()),
-                    partExcerpt.parts(),
-                    true,
-                    partExcerpt.truncated()
+                    content
             ));
-            totalDocText += partExcerpt.textLength();
+            totalAttachmentText += textContentLength(content);
         }
+        return totalAttachmentText;
     }
 
-    private PartExcerpt buildPartExcerpt(List<ExtractedPart> extractedParts, int textBudget) {
-        var parts = new ArrayList<AttachmentContent.Part>();
-        boolean truncated = false;
-        boolean textExtracted = false;
-        int textLength = 0;
-        int remaining = textBudget;
-
-        for (var extracted : extractedParts) {
-            int partBudget = extracted.textExtracted() ? Math.max(0, remaining) : AttachmentService.PREVIEW_LIMIT;
-            var part = attachmentService.toContentPart(extracted, partBudget);
-            parts.add(part);
-
-            if (!part.textExtracted()) {
-                continue;
-            }
-
-            textExtracted = true;
-            if (part.content() == null || remaining <= 0) {
-                if (extracted.content() != null && remaining <= 0) truncated = true;
-                continue;
-            }
-
-            remaining -= Math.min(remaining, part.content().length());
-            textLength += part.content().length();
-            truncated = truncated || part.truncated();
-        }
-
-        return new PartExcerpt(parts, textExtracted, textLength, truncated);
+    private int nextAttachmentPreviewLimit(int totalAttachmentText) {
+        var fullContext = properties.fullContext();
+        int remainingTotal = Math.max(0, fullContext.totalAttachmentTextLimit() - totalAttachmentText);
+        return Math.min(fullContext.attachmentTextLimit(), remainingTotal);
     }
 
-    private String detectExcerptType(List<AttachmentContent.Part> parts) {
-        var textTypes = parts.stream()
-                .filter(AttachmentContent.Part::textExtracted)
-                .map(AttachmentContent.Part::extractionType)
-                .distinct()
-                .toList();
-        if (textTypes.isEmpty()) return "none";
-        return textTypes.size() == 1 ? textTypes.getFirst() : "mixed";
-    }
-
-    private int textContentLength(DocumentExcerpt document) {
-        return document.parts().stream()
+    private int textContentLength(AttachmentContent content) {
+        return content.parts().stream()
                 .filter(AttachmentContent.Part::textExtracted)
                 .map(AttachmentContent.Part::content)
-                .filter(content -> content != null)
+                .filter(value -> value != null)
                 .mapToInt(String::length)
                 .sum();
     }
@@ -278,9 +232,4 @@ public class ContextService {
             return new ContextIssue(Issue.from(issue), List.copyOf(roles));
         }
     }
-
-    private record PartExcerpt(List<AttachmentContent.Part> parts, boolean textExtracted,
-                               int textLength, boolean truncated) {
-    }
-
 }

@@ -12,6 +12,11 @@ spring:
 # Top-level server data directory. Runtime logs are written under this directory.
 redmine-mcp:
   data-dir: ${REDMINE_MCP_DATA_DIR:${user.home}/.redmine-mcp-server}
+  attachment:
+    preview-limit: ${REDMINE_MCP_ATTACHMENT_PREVIEW_LIMIT:100000}
+  full-context:
+    attachment-text-limit: ${REDMINE_MCP_FULL_CONTEXT_ATTACHMENT_TEXT_LIMIT:10000}
+    total-attachment-text-limit: ${REDMINE_MCP_FULL_CONTEXT_TOTAL_ATTACHMENT_TEXT_LIMIT:30000}
 
 redmine:
   url: ${REDMINE_URL:}

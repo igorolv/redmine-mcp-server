@@ -14,7 +14,6 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionTestPipelines;
-import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
@@ -42,7 +41,7 @@ class IssueFullContextToolTest {
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), new RedmineMcpProperties(dataDir.toString()));
         var service = ExtractionTestPipelines.newAttachmentService(client, snapshot);
         var issueService = new IssueService(client);
-        tools = new IssueTools(issueService, new ContextService(client, service, issueService, new FileTypeDetector()));
+        tools = new IssueTools(issueService, new ContextService(client, service, issueService));
     }
 
     // ── getIssueFullContext ──────────────────────────────────────────
@@ -230,13 +229,63 @@ class IssueFullContextToolTest {
 
             var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(123));
             var root = new ObjectMapper().readTree(result);
-            var document = root.get("documents").get(0);
+            var attachmentContext = root.get("attachments").get(0);
+            var content = attachmentContext.get("content");
 
-            assertThat(document.has("text")).isFalse();
-            assertThat(document.get("parts")).hasSize(1);
-            assertThat(document.get("parts").get(0).get("producer").asText()).isEqualTo("PlainTextParser");
-            assertThat(document.get("parts").get(0).get("content").asText()).contains("Important incident context");
-            assertThat(document.get("textExtracted").asBoolean()).isTrue();
+            assertThat(attachmentContext.get("source").asText()).isEqualTo("issue");
+            assertThat(attachmentContext.get("sourceIssueId").asInt()).isEqualTo(123);
+            assertThat(content.has("text")).isFalse();
+            assertThat(content.get("parts")).hasSize(1);
+            assertThat(content.get("parts").get(0).get("producer").asText()).isEqualTo("PlainTextParser");
+            assertThat(content.get("parts").get(0).get("content").asText()).contains("Important incident context");
+            assertThat(content.get("textExtracted").asBoolean()).isTrue();
+        }
+
+        @Test
+        void shouldIncludeImageAttachmentsAsLinks() throws Exception {
+            var attachment = attachment(302, "screenshot.png", "image/png", 3);
+            var issue = issueBuilder(123, "Investigate incident")
+                    .attachments(List.of(attachment))
+                    .build();
+
+            when(client.getIssue(123)).thenReturn(issue);
+            when(client.downloadAttachment(attachment.contentUrl()))
+                    .thenReturn(new byte[]{1, 2, 3});
+
+            var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(123));
+            var root = new ObjectMapper().readTree(result);
+            var content = root.get("attachments").get(0).get("content");
+            var part = content.get("parts").get(0);
+
+            assertThat(content.get("textExtracted").asBoolean()).isFalse();
+            assertThat(content.get("extractionType").asText()).isEqualTo("image");
+            assertThat(part.get("extractionType").asText()).isEqualTo("image");
+            assertThat(part.get("localPath").asText()).endsWith("302__screenshot.png");
+            assertThat(part.get("fileUri").asText()).startsWith("file:///");
+        }
+
+        @Test
+        void shouldIncludeMoreThanThreeAttachments() throws Exception {
+            var attachments = List.of(
+                    attachment(301, "a.txt", "text/plain", 1),
+                    attachment(302, "b.txt", "text/plain", 1),
+                    attachment(303, "c.txt", "text/plain", 1),
+                    attachment(304, "d.txt", "text/plain", 1)
+            );
+            var issue = issueBuilder(123, "Investigate incident")
+                    .attachments(attachments)
+                    .build();
+
+            when(client.getIssue(123)).thenReturn(issue);
+            for (var attachment : attachments) {
+                when(client.downloadAttachment(attachment.contentUrl()))
+                        .thenReturn(attachment.filename().getBytes());
+            }
+
+            var result = ToolJsonTestSupport.stringify(tools.getIssueFullContext(123));
+            var root = new ObjectMapper().readTree(result);
+
+            assertThat(root.get("attachments")).hasSize(4);
         }
 
     }

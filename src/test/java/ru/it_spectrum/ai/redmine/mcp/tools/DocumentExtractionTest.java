@@ -312,7 +312,7 @@ class DocumentExtractionTest {
 
     @Test
     void shouldTruncateLargeTextContent() throws Exception {
-        String longText = "x".repeat(60_000);
+        String longText = "x".repeat(120_000);
         byte[] textBytes = longText.getBytes();
         var attachment = attachment(11, "huge.txt", "text/plain", textBytes.length);
 
@@ -323,9 +323,9 @@ class DocumentExtractionTest {
 
         assertThat(result).contains("\"textExtracted\":true");
         assertThat(result).contains("\"truncated\":true");
-        // Total output should be limited — the extracted text part must be <= 50000 + truncation message
+        // Total output should be limited by the getAttachment preview limit.
         String contentPart = ToolJsonTestSupport.parse(result).get("parts").get(0).get("content").asText();
-        assertThat(contentPart.length()).isLessThan(60_000);
+        assertThat(contentPart.length()).isLessThan(120_000);
     }
 
     // --- Attachment not found ---

@@ -92,6 +92,26 @@ class AttachmentServiceTest {
     }
 
     @Test
+    void getAttachmentShouldUseConfiguredDefaultPreviewLimit() {
+        byte[] data = "original".getBytes();
+        String text = "x".repeat(100_001);
+        var att = attachment(20, "large.txt", "text/plain");
+        when(client.getIssue(1)).thenReturn(issue(1, List.of(att)));
+        when(client.downloadAttachment(att.contentUrl())).thenReturn(data);
+        when(pipeline.extract(any(Path.class), eq("large.txt"), eq("text/plain"), any(Path.class)))
+                .thenReturn(List.of(new ExtractedPart(
+                        null, null, "text", "PlainTextParser", (long) data.length,
+                        text, "/tmp/large.txt", "file:///tmp/large.txt", null)));
+
+        var result = service.getAttachment(1, 20);
+
+        assertThat(result.truncated()).isTrue();
+        assertThat(result.parts().getFirst().content())
+                .startsWith("x".repeat(100_000))
+                .contains("total length: 100001 chars");
+    }
+
+    @Test
     void getAttachmentShouldThrowAttachmentNotFound() {
         when(client.getIssue(1)).thenReturn(issue(1, List.of()));
         assertThatThrownBy(() -> service.getAttachment(1, 99))

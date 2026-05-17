@@ -7,6 +7,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionPipeline;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
@@ -14,28 +15,37 @@ import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class AttachmentService {
 
-    public static final int PREVIEW_LIMIT = 50_000;
-
     private final RedmineClient client;
     private final ExtractionPipeline pipeline;
     private final FileTypeDetector types;
     private final IssueSnapshotService issueSnapshot;
+    private final RedmineMcpProperties properties;
 
     @Autowired
     public AttachmentService(RedmineClient client,
                              ExtractionPipeline pipeline,
                              FileTypeDetector types,
-                             IssueSnapshotService issueSnapshot) {
+                             IssueSnapshotService issueSnapshot,
+                             RedmineMcpProperties properties) {
         this.client = client;
         this.pipeline = pipeline;
         this.types = types;
         this.issueSnapshot = issueSnapshot;
+        this.properties = properties;
+    }
+
+    public AttachmentService(RedmineClient client,
+                             ExtractionPipeline pipeline,
+                             FileTypeDetector types,
+                             IssueSnapshotService issueSnapshot) {
+        this(client, pipeline, types, issueSnapshot, new RedmineMcpProperties(null));
     }
 
     public Optional<RedmineAttachment> find(int attachmentId) {
@@ -48,14 +58,42 @@ public class AttachmentService {
 
     public AttachmentContent getAttachment(int issueId, int attachmentId) {
         var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
+        return getAttachmentContent(issueId, attachment, properties.attachment().previewLimit());
+    }
+
+    public AttachmentContent getAttachmentContent(int issueId, RedmineAttachment attachment, int previewLimit) {
         var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
+        var parts = runPipeline(issueId, attachment, localFile).stream()
+                .map(part -> toContentPart(part, previewLimit))
+                .toList();
+        return buildAttachmentContent(attachment, localFile, parts);
+    }
+
+    public AttachmentContent getAttachmentContentWithinTextBudget(int issueId, RedmineAttachment attachment,
+                                                                  int textBudget) {
+        var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
+        var parts = new ArrayList<AttachmentContent.Part>();
+        int remaining = Math.max(0, textBudget);
+
+        for (var extracted : runPipeline(issueId, attachment, localFile)) {
+            int partBudget = extracted.textExtracted()
+                    ? remaining
+                    : properties.attachment().previewLimit();
+            var part = toContentPart(extracted, partBudget);
+            parts.add(part);
+            if (part.textExtracted() && part.content() != null) {
+                remaining -= Math.min(remaining, part.content().length());
+            }
+        }
+        return buildAttachmentContent(attachment, localFile, parts);
+    }
+
+    private AttachmentContent buildAttachmentContent(RedmineAttachment attachment, Path localFile,
+                                                     List<AttachmentContent.Part> parts) {
         boolean image = types.isImage(attachment.filename(), attachment.contentType());
         String extractionType = image
                 ? "image"
                 : types.detectExtractionType(attachment.filename(), attachment.contentType());
-        List<AttachmentContent.Part> parts = runPipeline(issueId, attachment, localFile).stream()
-                .map(this::toContentPart)
-                .toList();
 
         boolean textExtracted = parts.stream().anyMatch(AttachmentContent.Part::textExtracted);
         boolean truncated = parts.stream().anyMatch(AttachmentContent.Part::truncated);
@@ -94,7 +132,7 @@ public class AttachmentService {
     }
 
     private AttachmentContent.Part toContentPart(ExtractedPart part) {
-        return toContentPart(part, PREVIEW_LIMIT);
+        return toContentPart(part, properties.attachment().previewLimit());
     }
 
     AttachmentContent.Part toContentPart(ExtractedPart part, int previewLimit) {

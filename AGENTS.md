@@ -118,7 +118,7 @@ The current implementation exposes **31 read-only MCP tools** across user, proje
 | `getStaleIssues` | Open issues not updated for N days, sorted by staleness. Params: `projectId`, `daysSinceUpdate` (default 30), `limit` |
 | `getReleaseRisks` | Risk assessment: open blockers, overdue, high-priority, unassigned issues for a version. Scans up to 500 open issues and reports truncation. Params: `projectId`, `versionId` |
 | `compareVersions` | Diff between two versions: unique issues, shared issues, completion percentages. Scans up to 500 issues per version and reports truncation. Params: `projectId`, `versionId1`, `versionId2` |
-| `getIssueFullContext` | Full task context in one call: description, interpreted history with status durations, unified surrounding issues list with roles (`parent`, `sibling`, `child`, `related`), supported text/document attachments extracted inline (text, PDF, DOCX, XLSX, PPTX, ZIP), recent notes, and truncation flags. Params: `issueId` |
+| `getIssueFullContext` | Full task context in one call: description, interpreted history with status durations, unified surrounding issues list with roles (`parent`, `sibling`, `child`, `related`), issue and parent attachments in the same shape as `getAttachment` with inline text budgets and image `localPath`/`fileUri` links, recent notes, and truncation flags. Params: `issueId` |
 
 All tools are **read-only**. No data in Redmine is modified.
 

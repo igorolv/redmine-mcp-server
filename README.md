@@ -113,7 +113,7 @@ AI-клиент запускает сервер как дочерний проц
 
 | Tool | Описание |
 |---|---|
-| `getIssueFullContext` | Полный контекст задачи одним вызовом: описание, интерпретированная история с длительностью статусов, единый список окружающих задач с ролями (`parent`, `sibling`, `child`, `related`), поддержанные текстовые/документные вложения с inline-извлечением (text, PDF, DOCX, XLSX, PPTX, ZIP), последние комментарии и флаги усечения. Параметры: `issueId` |
+| `getIssueFullContext` | Полный контекст задачи одним вызовом: описание, интерпретированная история с длительностью статусов, единый список окружающих задач с ролями (`parent`, `sibling`, `child`, `related`), вложения задачи и parent-задачи в формате `getAttachment` с inline-бюджетами для текста и ссылками `localPath`/`fileUri` для изображений, последние комментарии и флаги усечения. Параметры: `issueId` |
 
 Все инструменты **read-only** — данные в Redmine не изменяются.
 
@@ -137,13 +137,16 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 
 ## Настройка
 
-Серверу нужны две переменные окружения:
+Серверу нужны `REDMINE_URL` и `REDMINE_API_KEY`; остальные переменные опциональны:
 
 | Переменная | Описание |
 |---|---|
 | `REDMINE_URL` | Базовый URL Redmine (например `https://redmine.example.com`) |
 | `REDMINE_API_KEY` | API-ключ пользователя Redmine |
 | `REDMINE_MCP_DATA_DIR` | Каталог локальных данных сервера; по умолчанию `~/.redmine-mcp-server` |
+| `REDMINE_MCP_ATTACHMENT_PREVIEW_LIMIT` | Лимит текста на `part` для `getAttachment`; по умолчанию `100000` символов |
+| `REDMINE_MCP_FULL_CONTEXT_ATTACHMENT_TEXT_LIMIT` | Лимит inline-текста на одно вложение в `getIssueFullContext`; по умолчанию `10000` символов |
+| `REDMINE_MCP_FULL_CONTEXT_TOTAL_ATTACHMENT_TEXT_LIMIT` | Суммарный лимит inline-текста вложений в `getIssueFullContext`; по умолчанию `30000` символов |
 
 ### Как получить `REDMINE_URL`
 
