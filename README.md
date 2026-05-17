@@ -117,12 +117,23 @@ AI-клиент запускает сервер как дочерний проц
 
 Все инструменты **read-only** — данные в Redmine не изменяются.
 
+## MCP-промпты
+
+Сервер также экспортирует **2 MCP prompts** для типовых сценариев расследования инцидентов:
+
+| Prompt | Описание |
+|---|---|
+| `incident-brief` | Быстрый обзор инцидента: получает задачу через `getIssue`, скачивает все вложения через `getAttachment` с коротким preview и формирует краткий Markdown-отчёт |
+| `investigate-incident` | Глубокое расследование: использует `getIssueFullContext`, при необходимости догружает полные тексты вложений, строит цепочку блокировок и дерево задачи, затем формирует структурированный аналитический отчёт |
+
 ## Стек
 
-- Java 25, Spring Boot 4.0, Spring AI MCP (stdio transport)
+- Java 25, Spring Boot 4.0.0, Spring AI MCP 2.0.0-M6 (stdio transport)
 - Apache PDFBox 3.0.5 — извлечение текста из PDF
-- Apache POI 5.4 — извлечение текста из Word, Excel, PowerPoint
-- Gradle 9.3.1 с version catalog
+- Apache POI 5.4.0 — извлечение текста из Word, Excel, PowerPoint
+- Apache Tika 3.2.0 (core + parsers-standard) — fallback-парсер и извлечение метаданных
+- Pandoc (опционально, внешний бинарь) — улучшенное преобразование DOCX в текст/markdown, когда доступен в `PATH`; при отсутствии сервер использует POI
+- Gradle 9.3.1 с version catalog (`gradle/libs.versions.toml`)
 
 ## Сборка
 
@@ -148,6 +159,35 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 | `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Суммарный лимит извлечённого текста на одно вложение в `getAttachment`; по умолчанию `50000` символов. Параметр `maxChars` инструмента переопределяет это значение. |
 | `REDMINE_MCP_FULL_CONTEXT_PER_ATTACHMENT_CHARS` | Лимит inline-текста на одно вложение в `getIssueFullContext`; по умолчанию `10000` символов |
 | `REDMINE_MCP_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS` | Суммарный лимит inline-текста по всем вложениям в `getIssueFullContext`; по умолчанию `30000` символов |
+| `REDMINE_MCP_FULL_CONTEXT_MAX_SIBLINGS` | Максимум sibling-задач в `getIssueFullContext`; по умолчанию `20` |
+| `REDMINE_MCP_FULL_CONTEXT_MAX_CHILDREN` | Максимум дочерних задач в `getIssueFullContext`; по умолчанию `20` |
+| `REDMINE_MCP_FULL_CONTEXT_MAX_RELATED` | Максимум связанных задач в `getIssueFullContext`; по умолчанию `10` |
+| `REDMINE_MCP_FULL_CONTEXT_MAX_RECENT_NOTES` | Максимум последних комментариев в `getIssueFullContext`; по умолчанию `10` |
+| `REDMINE_MCP_FULL_CONTEXT_MAX_NOTE_LENGTH` | Максимальная длина одного комментария в `getIssueFullContext`; по умолчанию `500` символов |
+| `REDMINE_MCP_PAGINATION_DEFAULT_LIMIT` | Лимит страницы по умолчанию для list/search-инструментов; по умолчанию `25` |
+| `REDMINE_MCP_PAGINATION_DEFAULT_OFFSET` | Offset по умолчанию для list/search-инструментов; по умолчанию `0` |
+| `REDMINE_MCP_PAGINATION_MEMBERS_DEFAULT_LIMIT` | Лимит страницы по умолчанию для `listProjectMembers`; по умолчанию `100` |
+| `REDMINE_MCP_TREE_DEFAULT_DEPTH` | Глубина по умолчанию для `getIssueTree`; по умолчанию `2` |
+| `REDMINE_MCP_TREE_MAX_DEPTH` | Максимальная глубина `getIssueTree`; по умолчанию `5` |
+| `REDMINE_MCP_TREE_MAX_ISSUES` | Максимум задач, загружаемых `getIssueTree`; по умолчанию `50` |
+| `REDMINE_MCP_ANALYSIS_MAX_PAGES` | Максимум страниц Redmine, читаемых аналитическими инструментами; по умолчанию `5` |
+| `REDMINE_MCP_ANALYSIS_PAGE_SIZE` | Размер страницы Redmine для аналитических инструментов; по умолчанию `100` |
+| `REDMINE_MCP_ANALYSIS_TOP_ISSUES_LIMIT` | Максимум задач в top-списках аналитических ответов; по умолчанию `10` |
+| `REDMINE_MCP_ANALYSIS_MAX_BLOCKER_DEPTH` | Максимальная глубина обхода для `getBlockerChain`; по умолчанию `10` |
+| `REDMINE_MCP_ANALYSIS_MAX_BLOCKER_ISSUES` | Максимум задач, загружаемых `getBlockerChain`; по умолчанию `30` |
+| `REDMINE_MCP_ANALYSIS_STALE_ISSUES_DEFAULT_DAYS_SINCE_UPDATE` | Значение `daysSinceUpdate` по умолчанию для `getStaleIssues`; по умолчанию `30` |
+| `REDMINE_MCP_ANALYSIS_STALE_ISSUES_DEFAULT_LIMIT` | Лимит результатов по умолчанию для `getStaleIssues`; по умолчанию `25` |
+| `REDMINE_MCP_ANALYSIS_STALE_ISSUES_MAX_LIMIT` | Максимальный лимит результатов для `getStaleIssues`; по умолчанию `100` |
+| `REDMINE_MCP_EXTRACTION_PANDOC_ENABLED` | Включает использование Pandoc для DOCX, если бинарь найден в `PATH`; по умолчанию `true` |
+| `REDMINE_MCP_EXTRACTION_PANDOC_PROBE_TIMEOUT_SECONDS` | Таймаут проверки доступности Pandoc при старте; по умолчанию `2` секунды |
+| `REDMINE_MCP_EXTRACTION_PANDOC_CONVERSION_TIMEOUT_SECONDS` | Таймаут одного преобразования DOCX через Pandoc; по умолчанию `30` секунд |
+| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_DEPTH` | Максимальная глубина рекурсивной обработки вложенных документов и архивов; по умолчанию `1` |
+| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_TOTAL_PARTS` | Максимум текстовых/метаданных частей за одно извлечение; по умолчанию `100` |
+| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_TOTAL_BYTES` | Суммарный лимит прочитанных данных за одно извлечение; по умолчанию `52428800` байт |
+| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_ENTRY_BYTES` | Лимит одного entry внутри архива; по умолчанию `10485760` байт |
+| `REDMINE_MCP_EXTRACTION_ZIP_MAX_ENTRIES_PER_ARCHIVE` | Максимум записей в одном ZIP-архиве; по умолчанию `100` |
+| `REDMINE_MCP_EXTRACTION_TIKA_BODY_LIMIT_BYTES` | Лимит тела, передаваемого Tika fallback-парсеру; по умолчанию `5242880` байт |
+| `REDMINE_MCP_EXTRACTION_TIKA_METADATA_MAX_FIELDS` | Максимум полей метаданных Tika в ответе; по умолчанию `40` |
 
 ### Как получить `REDMINE_URL`
 
@@ -246,7 +286,9 @@ AI-клиент получает ровно те данные, которые з
 
 | Область | Лимит |
 |---|---|
-| Каждая текстовая часть `getAttachment.parts[]` | до 50 000 символов, дальше текст обрезается |
+| Каждая текстовая часть `getAttachment.parts[]` | до 30 000 символов по умолчанию, дальше текст обрезается |
+| Одно вложение в `getAttachment` суммарно | до 50 000 символов по умолчанию |
+| Вложения в `getIssueFullContext` | до 10 000 символов на вложение и до 30 000 символов суммарно по умолчанию |
 | ZIP-глубина | 1 уровень |
 | ZIP-файлы | до 100 записей |
 | ZIP-файл внутри архива | до 10 MB |
@@ -299,29 +341,54 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 ```
 ├── src/main/java/ru/it_spectrum/ai/redmine/mcp/
 │   ├── RedmineMcpServerApplication.java   — точка входа Spring Boot
+│   ├── api/                                — стабильный MCP wire format: records, возвращаемые tools/services
+│   │   ├── Issue.java
+│   │   ├── IssueFullContext.java
+│   │   ├── AttachmentContent.java
+│   │   ├── Project.java
+│   │   └── ...                             — DTO ответов инструментов и аналитики
+│   ├── client/
+│   │   ├── RedmineClient.java              — обёртка над Redmine REST API
+│   │   └── model/                          — raw DTO Redmine REST API, не экспортируются напрямую в MCP
+│   │       ├── RedmineIssue.java
+│   │       ├── RedmineAttachment.java
+│   │       ├── RedmineProject.java
+│   │       └── ...
 │   ├── config/
 │   │   ├── RedmineClientProperties.java   — url + apiKey из env
-│   │   └── RedmineConfig.java             — RestClient с автодобавлением http://
-│   ├── client/
-│   │   ├── RedmineClient.java             — обёртка над Redmine REST API
-│   │   └── DocumentTextExtractor.java     — извлечение текста из PDF/DOCX/XLSX/PPTX/ZIP
-│   ├── model/
-│   │   ├── IdName.java                    — пара id/name (проект, статус, и т.д.)
-│   │   ├── RedmineAttachment.java         — вложение
-│   │   ├── RedmineIssue.java              — задача + Journal + Relation
-│   │   ├── RedmineMembership.java         — участник проекта
-│   │   ├── RedmineProject.java            — проект
-│   │   ├── RedmineQuery.java              — сохранённый запрос (фильтр)
-│   │   ├── RedmineSearchResult.java       — результат поиска
-│   │   ├── RedmineTimeEntry.java          — запись трудозатрат
-│   │   ├── RedmineUser.java               — пользователь
-│   │   ├── RedmineVersion.java            — версия/майлстоун
-│   │   └── RedmineWikiPage.java           — wiki-страница
+│   │   ├── RedmineMcpProperties.java      — все runtime-настройки redmine-mcp.*
+│   │   ├── RedmineConfig.java             — RestClient
+│   │   ├── McpServerConfig.java           — stdio MCP customizer с immediateExecution(true)
+│   │   └── JsonConfig.java                — ObjectMapper для MCP JSON
+│   ├── extraction/
+│   │   ├── ExtractionPipeline.java        — document-to-text pipeline
+│   │   ├── DocumentParser.java            — интерфейс парсеров
+│   │   ├── FileTypeDetector.java          — определение типа файла
+│   │   ├── PandocAvailability.java        — проба внешнего pandoc при старте
+│   │   └── parser/
+│   │       ├── PlainTextParser.java       — txt/log/csv/json/xml
+│   │       ├── PdfTextParser.java         — PDF через PDFBox
+│   │       ├── DocxTextParser.java        — DOCX через POI
+│   │       ├── DocxPandocParser.java      — DOCX через Pandoc, если доступен
+│   │       ├── XlsxTextParser.java        — XLSX через POI
+│   │       ├── PptxTextParser.java        — PPTX через POI
+│   │       ├── ZipParser.java             — ZIP с bounded recursion
+│   │       ├── ImagePassthroughParser.java
+│   │       ├── TikaTextFallbackParser.java
+│   │       ├── TikaMetadataParser.java
+│   │       └── BinaryFallbackParser.java
+│   ├── service/
+│   │   ├── IssueService.java              — бизнес-логика задач и mapping client.model -> api
+│   │   ├── ContextService.java            — полный контекст задачи
+│   │   ├── AttachmentService.java         — snapshot, скачивание и извлечение вложений
+│   │   ├── IssueSnapshotService.java      — локальные снимки issue и вложений
+│   │   ├── AnalysisService.java           — аналитика, риски, blocker chain
+│   │   └── ...                            — сервисы проектов, wiki, поиска, справочников, трудозатрат
 │   └── tools/
 │       ├── AnalysisTools.java             — 7 MCP-инструментов аналитики и анализа рисков
 │       ├── AttachmentTools.java           — 1 MCP-инструмент для файлов и контекста вложений
-│       ├── ContextTools.java              — 1 MCP-инструмент для контекста задачи
-│       ├── IssueTools.java                — 6 MCP-инструментов для задач
+│       ├── IncidentPrompts.java           — 2 MCP-промпта для расследования инцидентов
+│       ├── IssueTools.java                — 6 MCP-инструментов для задач, включая `getIssueFullContext`
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
 │       ├── ReferenceDataTools.java        — 6 MCP-инструментов для справочников
 │       ├── SearchTools.java               — 1 MCP-инструмент для глобального поиска
