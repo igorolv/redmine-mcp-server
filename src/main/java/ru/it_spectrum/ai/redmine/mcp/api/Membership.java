@@ -7,9 +7,9 @@ import java.util.List;
 
 @Schema(description = "Project membership entry: either a single user or a group, together with the roles they hold in the project. Exactly one of `user` and `group` is set.")
 public record Membership(
-        @Schema(description = "User member, when this entry represents an individual.")
+        @Schema(description = "User member, when this entry represents an individual.", nullable = true)
         Ref user,
-        @Schema(description = "Group member, when this entry represents a group.")
+        @Schema(description = "Group member, when this entry represents a group.", nullable = true)
         Ref group,
         @Schema(description = "Roles the user or group holds in the project (Developer, Reporter, ...).", requiredMode = Schema.RequiredMode.REQUIRED)
         List<Ref> roles

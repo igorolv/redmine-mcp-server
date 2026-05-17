@@ -14,8 +14,8 @@ public record IssueHistory(
 
     @Schema(description = "Kind of timeline entry.")
     public enum Kind {
-        @Schema(description = "Issue was created.") CREATED,
-        @Schema(description = "Issue was updated (fields changed and/or a note was added).") UPDATED
+        @Schema(description = "Issue was created.", nullable = true) CREATED,
+        @Schema(description = "Issue was updated (fields changed and/or a note was added).", nullable = true) UPDATED
     }
 
     @Schema(description = "Single timeline event — either issue creation or a later update.")
@@ -28,7 +28,7 @@ public record IssueHistory(
             String actor,
             @Schema(description = "Field-level changes recorded with this entry; empty when the entry only carries a note.", requiredMode = Schema.RequiredMode.REQUIRED)
             List<FieldChange> changes,
-            @Schema(description = "Free-text note attached to the entry, when present.")
+            @Schema(description = "Free-text note attached to the entry, when present.", nullable = true)
             String note
     ) {
     }
@@ -37,9 +37,9 @@ public record IssueHistory(
     public record FieldChange(
             @Schema(description = "Display label of the changed field (resolved custom-field name when applicable).", requiredMode = Schema.RequiredMode.REQUIRED)
             String fieldLabel,
-            @Schema(description = "Previous value, null on creation.")
+            @Schema(description = "Previous value, null on creation.", nullable = true)
             String oldValue,
-            @Schema(description = "New value, null on deletion.")
+            @Schema(description = "New value, null on deletion.", nullable = true)
             String newValue
     ) {
     }
@@ -50,7 +50,7 @@ public record IssueHistory(
             String statusName,
             @Schema(description = "When the issue entered this status (ISO-8601).", requiredMode = Schema.RequiredMode.REQUIRED, format = "date-time")
             String fromTimestamp,
-            @Schema(description = "When the issue left this status; null when the issue is currently in this status.", format = "date-time")
+            @Schema(description = "When the issue left this status; null when the issue is currently in this status.", format = "date-time", nullable = true)
             String toTimestamp,
             @Schema(description = "Human-readable duration (e.g. `3 days`, `< 1 hour`).", requiredMode = Schema.RequiredMode.REQUIRED, example = "3 days")
             String duration

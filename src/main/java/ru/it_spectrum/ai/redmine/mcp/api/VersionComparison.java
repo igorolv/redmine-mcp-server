@@ -26,7 +26,7 @@ public record VersionComparison(
             int versionId,
             @Schema(description = "Version name (or `#id` placeholder when the version could not be resolved).", requiredMode = Schema.RequiredMode.REQUIRED)
             String name,
-            @Schema(description = "Full version metadata, null when the version could not be resolved.")
+            @Schema(description = "Full version metadata, null when the version could not be resolved.", nullable = true)
             Version version,
             @Schema(description = "Total number of issues tied to this version across all pages.", requiredMode = Schema.RequiredMode.REQUIRED)
             int totalIssues,

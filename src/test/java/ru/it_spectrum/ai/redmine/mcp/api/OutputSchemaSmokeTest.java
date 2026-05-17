@@ -60,4 +60,19 @@ class OutputSchemaSmokeTest {
         var schemaJson = McpJsonSchemaGenerator.generateFromClass(Issue.class);
         assertThat(schemaJson).contains("Full Redmine issue with description");
     }
+
+    @Test
+    void nonRequiredFieldsShouldAllowNull() {
+        // After the mass `nullable = true` migration, optional fields like `category`,
+        // `parent`, `dueDate`, `estimatedHours`, `children` must declare `null` in their
+        // JSON Schema type so the MCP client accepts null values returned by Redmine.
+        var schemaJson = McpJsonSchemaGenerator.generateFromClass(Issue.class);
+        // Scalar nullable types collapse to `[ "string", "null" ]` etc.
+        assertThat(schemaJson).contains("[ \"string\", \"null\" ]");
+        assertThat(schemaJson).contains("[ \"array\", \"null\" ]");
+        assertThat(schemaJson).contains("[ \"number\", \"null\" ]");
+        assertThat(schemaJson).contains("[ \"integer\", \"null\" ]");
+        // Nullable Ref fields are emitted as a `$ref` to a `-nullable` variant.
+        assertThat(schemaJson).contains("#/$defs/Ref-nullable");
+    }
 }

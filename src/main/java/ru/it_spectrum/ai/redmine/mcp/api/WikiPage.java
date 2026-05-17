@@ -9,19 +9,19 @@ import java.util.List;
 public record WikiPage(
         @Schema(description = "Page title (URL-escaped form used as the path).", requiredMode = Schema.RequiredMode.REQUIRED, example = "Getting_Started")
         String title,
-        @Schema(description = "Page body in Textile or Markdown markup depending on the Redmine instance. Null in index listings.")
+        @Schema(description = "Page body in Textile or Markdown markup depending on the Redmine instance. Null in index listings.", nullable = true)
         String text,
         @Schema(description = "Monotonic revision number of the page.", requiredMode = Schema.RequiredMode.REQUIRED, example = "7")
         int version,
-        @Schema(description = "Author of the most recent revision.")
+        @Schema(description = "Author of the most recent revision.", nullable = true)
         Ref author,
-        @Schema(description = "Comment attached to the most recent revision.")
+        @Schema(description = "Comment attached to the most recent revision.", nullable = true)
         String comments,
-        @Schema(description = "When the page was first created, ISO-8601.", format = "date-time")
+        @Schema(description = "When the page was first created, ISO-8601.", format = "date-time", nullable = true)
         String createdOn,
-        @Schema(description = "When the page was last edited, ISO-8601.", format = "date-time")
+        @Schema(description = "When the page was last edited, ISO-8601.", format = "date-time", nullable = true)
         String updatedOn,
-        @Schema(description = "Files attached to the page. Empty in index listings.")
+        @Schema(description = "Files attached to the page. Empty in index listings.", nullable = true)
         List<Attachment> attachments
 ) {
     public static WikiPage from(RedmineWikiPage source) {

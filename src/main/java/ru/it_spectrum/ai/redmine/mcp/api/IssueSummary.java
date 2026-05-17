@@ -18,29 +18,29 @@ public record IssueSummary(
         Ref status,
         @Schema(description = "Priority.", requiredMode = Schema.RequiredMode.REQUIRED)
         Ref priority,
-        @Schema(description = "User currently assigned, null when unassigned.")
+        @Schema(description = "User currently assigned, null when unassigned.", nullable = true)
         Ref assignedTo,
-        @Schema(description = "Parent issue reference if this is a subtask.")
+        @Schema(description = "Parent issue reference if this is a subtask.", nullable = true)
         Ref parent,
-        @Schema(description = "Target version / milestone.")
+        @Schema(description = "Target version / milestone.", nullable = true)
         Ref fixedVersion,
-        @Schema(description = "Issue category.")
+        @Schema(description = "Issue category.", nullable = true)
         Ref category,
         @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.REQUIRED, example = "API returns 500 on empty payload")
         String subject,
-        @Schema(description = "Planned start date in ISO-8601.", format = "date")
+        @Schema(description = "Planned start date in ISO-8601.", format = "date", nullable = true)
         String startDate,
-        @Schema(description = "Planned due date in ISO-8601.", format = "date")
+        @Schema(description = "Planned due date in ISO-8601.", format = "date", nullable = true)
         String dueDate,
         @Schema(description = "Completion percentage from 0 to 100.", requiredMode = Schema.RequiredMode.REQUIRED)
         int doneRatio,
-        @Schema(description = "Estimated effort in hours.")
+        @Schema(description = "Estimated effort in hours.", nullable = true)
         Double estimatedHours,
-        @Schema(description = "Creation timestamp in ISO-8601.", format = "date-time")
+        @Schema(description = "Creation timestamp in ISO-8601.", format = "date-time", nullable = true)
         String createdOn,
-        @Schema(description = "Timestamp of the most recent change in ISO-8601.", format = "date-time")
+        @Schema(description = "Timestamp of the most recent change in ISO-8601.", format = "date-time", nullable = true)
         String updatedOn,
-        @Schema(description = "Project-defined custom field values.")
+        @Schema(description = "Project-defined custom field values.", nullable = true)
         List<Issue.CustomFieldValue> customFields
 ) {
 

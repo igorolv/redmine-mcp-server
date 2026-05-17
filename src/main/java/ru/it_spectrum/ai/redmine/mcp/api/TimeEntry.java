@@ -7,19 +7,19 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry;
 public record TimeEntry(
         @Schema(description = "Time entry identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "9876")
         int id,
-        @Schema(description = "Project the time was logged against.")
+        @Schema(description = "Project the time was logged against.", nullable = true)
         Ref project,
-        @Schema(description = "Issue the time was logged against, null when the entry is attached only to the project.")
+        @Schema(description = "Issue the time was logged against, null when the entry is attached only to the project.", nullable = true)
         Ref issue,
-        @Schema(description = "User who logged the time.")
+        @Schema(description = "User who logged the time.", nullable = true)
         Ref user,
-        @Schema(description = "Activity classification (Development, Testing, Design, ...).")
+        @Schema(description = "Activity classification (Development, Testing, Design, ...).", nullable = true)
         Ref activity,
         @Schema(description = "Logged hours.", requiredMode = Schema.RequiredMode.REQUIRED, example = "2.5")
         double hours,
-        @Schema(description = "Optional comment supplied with the time entry.")
+        @Schema(description = "Optional comment supplied with the time entry.", nullable = true)
         String comments,
-        @Schema(description = "Date the work was performed, ISO-8601 (yyyy-MM-dd).", format = "date", example = "2025-03-15")
+        @Schema(description = "Date the work was performed, ISO-8601 (yyyy-MM-dd).", format = "date", example = "2025-03-15", nullable = true)
         String spentOn
 ) {
     public static TimeEntry from(RedmineTimeEntry source) {

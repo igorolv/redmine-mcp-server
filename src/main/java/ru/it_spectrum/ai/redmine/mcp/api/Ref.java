@@ -7,7 +7,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 public record Ref(
         @Schema(description = "Numeric identifier of the referenced entity.", requiredMode = Schema.RequiredMode.REQUIRED, example = "12")
         int id,
-        @Schema(description = "Human-readable name of the referenced entity.", example = "In Progress")
+        @Schema(description = "Human-readable name of the referenced entity.", example = "In Progress", nullable = true)
         String name
 ) {
     public static Ref from(IdName source) {

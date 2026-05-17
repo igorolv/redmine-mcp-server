@@ -17,45 +17,45 @@ public record Issue(
         Ref status,
         @Schema(description = "Priority (e.g. Normal, High, Urgent).", requiredMode = Schema.RequiredMode.REQUIRED)
         Ref priority,
-        @Schema(description = "Author who created the issue.")
+        @Schema(description = "Author who created the issue.", nullable = true)
         Ref author,
-        @Schema(description = "User currently assigned to the issue; null when unassigned.")
+        @Schema(description = "User currently assigned to the issue; null when unassigned.", nullable = true)
         Ref assignedTo,
-        @Schema(description = "Parent issue reference if this is a sub-task; null for root-level issues.")
+        @Schema(description = "Parent issue reference if this is a sub-task; null for root-level issues.", nullable = true)
         Ref parent,
-        @Schema(description = "Target version / milestone this issue is planned for.")
+        @Schema(description = "Target version / milestone this issue is planned for.", nullable = true)
         Ref fixedVersion,
-        @Schema(description = "Issue category within the project.")
+        @Schema(description = "Issue category within the project.", nullable = true)
         Ref category,
         @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.REQUIRED, example = "API returns 500 on empty payload")
         String subject,
-        @Schema(description = "Long-form description of the issue, may contain Textile or Markdown markup depending on the Redmine instance.")
+        @Schema(description = "Long-form description of the issue, may contain Textile or Markdown markup depending on the Redmine instance.", nullable = true)
         String description,
-        @Schema(description = "Planned start date in ISO-8601 (yyyy-MM-dd).", format = "date", example = "2025-04-01")
+        @Schema(description = "Planned start date in ISO-8601 (yyyy-MM-dd).", format = "date", example = "2025-04-01", nullable = true)
         String startDate,
-        @Schema(description = "Planned due date in ISO-8601 (yyyy-MM-dd).", format = "date", example = "2025-04-15")
+        @Schema(description = "Planned due date in ISO-8601 (yyyy-MM-dd).", format = "date", example = "2025-04-15", nullable = true)
         String dueDate,
         @Schema(description = "Completion percentage from 0 to 100.", requiredMode = Schema.RequiredMode.REQUIRED, example = "60")
         int doneRatio,
-        @Schema(description = "Estimated effort in hours.", example = "8.0")
+        @Schema(description = "Estimated effort in hours.", example = "8.0", nullable = true)
         Double estimatedHours,
-        @Schema(description = "Aggregated time already logged against the issue, in hours.", example = "3.5")
+        @Schema(description = "Aggregated time already logged against the issue, in hours.", example = "3.5", nullable = true)
         Double spentHours,
-        @Schema(description = "Creation timestamp in ISO-8601.", format = "date-time", example = "2024-12-31T10:15:30Z")
+        @Schema(description = "Creation timestamp in ISO-8601.", format = "date-time", example = "2024-12-31T10:15:30Z", nullable = true)
         String createdOn,
-        @Schema(description = "Timestamp of the most recent change in ISO-8601.", format = "date-time", example = "2025-01-15T09:00:00Z")
+        @Schema(description = "Timestamp of the most recent change in ISO-8601.", format = "date-time", example = "2025-01-15T09:00:00Z", nullable = true)
         String updatedOn,
-        @Schema(description = "Project-defined custom field values, in display form.")
+        @Schema(description = "Project-defined custom field values, in display form.", nullable = true)
         List<CustomFieldValue> customFields,
-        @Schema(description = "Files attached to the issue.")
+        @Schema(description = "Files attached to the issue.", nullable = true)
         List<Attachment> attachments,
-        @Schema(description = "Chronological history entries — notes, status changes, field edits.")
+        @Schema(description = "Chronological history entries — notes, status changes, field edits.", nullable = true)
         List<Journal> journals,
-        @Schema(description = "Cross-issue relations (blocks, duplicates, relates, ...).")
+        @Schema(description = "Cross-issue relations (blocks, duplicates, relates, ...).", nullable = true)
         List<Relation> relations,
-        @Schema(description = "Direct child issues (subtasks).")
+        @Schema(description = "Direct child issues (subtasks).", nullable = true)
         List<Child> children,
-        @Schema(description = "Linked VCS changesets/commits, when the Redmine repository integration exposes them.")
+        @Schema(description = "Linked VCS changesets/commits, when the Redmine repository integration exposes them.", nullable = true)
         List<Changeset> changesets
 ) {
 
@@ -125,7 +125,7 @@ public record Issue(
     public record Child(
             @Schema(description = "Child issue identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
             int id,
-            @Schema(description = "Tracker of the child issue.")
+            @Schema(description = "Tracker of the child issue.", nullable = true)
             Ref tracker,
             @Schema(description = "Child issue subject.", requiredMode = Schema.RequiredMode.REQUIRED)
             String subject
@@ -156,7 +156,7 @@ public record Issue(
             @Schema(description = "Type of relation.", requiredMode = Schema.RequiredMode.REQUIRED,
                     allowableValues = {"relates", "duplicates", "duplicated", "blocks", "blocked", "precedes", "follows", "copied_to", "copied_from"})
             String relationType,
-            @Schema(description = "Delay in days, used by precedes/follows relations.")
+            @Schema(description = "Delay in days, used by precedes/follows relations.", nullable = true)
             Integer delay
     ) {
         public static Relation from(RedmineIssue.Relation source) {
@@ -179,13 +179,13 @@ public record Issue(
     public record Journal(
             @Schema(description = "Journal entry identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
             int id,
-            @Schema(description = "Author of the change.")
+            @Schema(description = "Author of the change.", nullable = true)
             Ref user,
-            @Schema(description = "Free-text note. Empty when the entry only carries field changes.")
+            @Schema(description = "Free-text note. Empty when the entry only carries field changes.", nullable = true)
             String notes,
-            @Schema(description = "Timestamp the entry was recorded, ISO-8601.", format = "date-time")
+            @Schema(description = "Timestamp the entry was recorded, ISO-8601.", format = "date-time", nullable = true)
             String createdOn,
-            @Schema(description = "Field-level changes recorded in this entry. Raw form — use issue history endpoints for resolved values.")
+            @Schema(description = "Field-level changes recorded in this entry. Raw form — use issue history endpoints for resolved values.", nullable = true)
             List<Detail> details
     ) {
         public static Journal from(RedmineIssue.Journal source) {
@@ -211,9 +211,9 @@ public record Issue(
             String property,
             @Schema(description = "Property name (e.g. status_id, subject) when property is `attr`; custom field id when property is `cf`.", requiredMode = Schema.RequiredMode.REQUIRED)
             String name,
-            @Schema(description = "Previous raw value, null on creation.")
+            @Schema(description = "Previous raw value, null on creation.", nullable = true)
             String oldValue,
-            @Schema(description = "New raw value, null on deletion.")
+            @Schema(description = "New raw value, null on deletion.", nullable = true)
             String newValue
     ) {
         public static Detail from(RedmineIssue.Detail source) {
@@ -235,11 +235,11 @@ public record Issue(
     public record Changeset(
             @Schema(description = "Revision identifier as reported by the VCS.", requiredMode = Schema.RequiredMode.REQUIRED)
             String revision,
-            @Schema(description = "Committer / author of the changeset, when Redmine maps it to a user.")
+            @Schema(description = "Committer / author of the changeset, when Redmine maps it to a user.", nullable = true)
             Ref user,
-            @Schema(description = "Commit message.")
+            @Schema(description = "Commit message.", nullable = true)
             String comments,
-            @Schema(description = "Commit timestamp in ISO-8601.", format = "date-time")
+            @Schema(description = "Commit timestamp in ISO-8601.", format = "date-time", nullable = true)
             String committedOn
     ) {
         public static Changeset from(RedmineIssue.Changeset source) {

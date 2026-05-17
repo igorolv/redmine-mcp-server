@@ -11,7 +11,7 @@ public record UserWorkload(
         int userId,
         @Schema(description = "Display name of the user. May be a placeholder like 'User #42' when only an id was provided.", requiredMode = Schema.RequiredMode.REQUIRED)
         String userName,
-        @Schema(description = "Project the workload was scoped to, null when scope is all projects.")
+        @Schema(description = "Project the workload was scoped to, null when scope is all projects.", nullable = true)
         String projectId,
         @Schema(description = "Total number of open issues assigned to the user across all pages.", requiredMode = Schema.RequiredMode.REQUIRED)
         int totalOpenIssues,

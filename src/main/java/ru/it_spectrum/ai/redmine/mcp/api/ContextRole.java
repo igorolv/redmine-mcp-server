@@ -8,15 +8,15 @@ public record ContextRole(
                 allowableValues = {"parent", "sibling", "child", "related"})
         String role,
         @Schema(description = "When role=related, the specific relation type (relates, blocks, blocked_by, duplicates, ...). Null for parent/sibling/child.",
-                allowableValues = {"relates", "duplicates", "duplicated_by", "blocks", "blocked_by", "precedes", "follows", "copied_to", "copied_from"})
+                allowableValues = {"relates", "duplicates", "duplicated_by", "blocks", "blocked_by", "precedes", "follows", "copied_to", "copied_from"}, nullable = true)
         String relationType,
-        @Schema(description = "Relation identifier when role=related.")
+        @Schema(description = "Relation identifier when role=related.", nullable = true)
         Integer relationId,
-        @Schema(description = "Source issue id in the relation: the issue that owns the relation entry.")
+        @Schema(description = "Source issue id in the relation: the issue that owns the relation entry.", nullable = true)
         Integer sourceIssueId,
-        @Schema(description = "Target issue id in the relation: the context issue itself.")
+        @Schema(description = "Target issue id in the relation: the context issue itself.", nullable = true)
         Integer targetIssueId,
-        @Schema(description = "Delay in days for precedes/follows relations.")
+        @Schema(description = "Delay in days for precedes/follows relations.", nullable = true)
         Integer delay
 ) {
 }

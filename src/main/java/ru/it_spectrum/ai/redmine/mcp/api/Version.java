@@ -7,20 +7,20 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
 public record Version(
         @Schema(description = "Version identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
         int id,
-        @Schema(description = "Project the version belongs to.")
+        @Schema(description = "Project the version belongs to.", nullable = true)
         Ref project,
         @Schema(description = "Version name as shown in the UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "v1.2.0")
         String name,
-        @Schema(description = "Optional description of the version's scope.")
+        @Schema(description = "Optional description of the version's scope.", nullable = true)
         String description,
-        @Schema(description = "Lifecycle status of the version.", allowableValues = {"open", "locked", "closed"})
+        @Schema(description = "Lifecycle status of the version.", allowableValues = {"open", "locked", "closed"}, nullable = true)
         String status,
-        @Schema(description = "Planned release date in ISO-8601.", format = "date", example = "2025-06-30")
+        @Schema(description = "Planned release date in ISO-8601.", format = "date", example = "2025-06-30", nullable = true)
         String dueDate,
         @Schema(description = "Sharing scope of the version across projects.",
-                allowableValues = {"none", "descendants", "hierarchy", "tree", "system"})
+                allowableValues = {"none", "descendants", "hierarchy", "tree", "system"}, nullable = true)
         String sharing,
-        @Schema(description = "Wiki page title that holds the release notes for this version, when configured.")
+        @Schema(description = "Wiki page title that holds the release notes for this version, when configured.", nullable = true)
         String wikiPageTitle
 ) {
     public static Version from(RedmineVersion source) {

@@ -11,15 +11,15 @@ public record Attachment(
         String filename,
         @Schema(description = "File size in bytes.", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345")
         long filesize,
-        @Schema(description = "MIME content type, may be null when Redmine has not detected it.", example = "application/pdf")
+        @Schema(description = "MIME content type, may be null when Redmine has not detected it.", example = "application/pdf", nullable = true)
         String contentType,
-        @Schema(description = "Absolute URL to download the raw file contents (requires Redmine authentication).", example = "https://redmine.example.com/attachments/download/456/specification.pdf")
+        @Schema(description = "Absolute URL to download the raw file contents (requires Redmine authentication).", example = "https://redmine.example.com/attachments/download/456/specification.pdf", nullable = true)
         String contentUrl,
-        @Schema(description = "Optional caption supplied by the uploader.")
+        @Schema(description = "Optional caption supplied by the uploader.", nullable = true)
         String description,
-        @Schema(description = "User who uploaded the attachment.")
+        @Schema(description = "User who uploaded the attachment.", nullable = true)
         Ref author,
-        @Schema(description = "Upload timestamp in ISO-8601 format.", format = "date-time", example = "2024-12-31T10:15:30Z")
+        @Schema(description = "Upload timestamp in ISO-8601 format.", format = "date-time", example = "2024-12-31T10:15:30Z", nullable = true)
         String createdOn
 ) {
     public static Attachment from(RedmineAttachment source) {

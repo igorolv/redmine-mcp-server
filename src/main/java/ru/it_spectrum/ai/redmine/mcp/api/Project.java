@@ -13,17 +13,17 @@ public record Project(
         String name,
         @Schema(description = "URL-safe project slug. Either this or the numeric id can be used as projectId for other tools.", requiredMode = Schema.RequiredMode.REQUIRED, example = "backend")
         String identifier,
-        @Schema(description = "Project description (Textile/Markdown markup).")
+        @Schema(description = "Project description (Textile/Markdown markup).", nullable = true)
         String description,
-        @Schema(description = "Optional homepage URL configured for the project.", example = "https://example.com")
+        @Schema(description = "Optional homepage URL configured for the project.", example = "https://example.com", nullable = true)
         String homepage,
-        @Schema(description = "Parent project reference, null for top-level projects.")
+        @Schema(description = "Parent project reference, null for top-level projects.", nullable = true)
         Ref parent,
         @Schema(description = "True when the project is visible to anonymous users.", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean isPublic,
-        @Schema(description = "Trackers enabled for this project (Bug, Feature, ...).")
+        @Schema(description = "Trackers enabled for this project (Bug, Feature, ...).", nullable = true)
         List<Ref> trackers,
-        @Schema(description = "Names of enabled Redmine modules (e.g. issue_tracking, wiki, repository).")
+        @Schema(description = "Names of enabled Redmine modules (e.g. issue_tracking, wiki, repository).", nullable = true)
         List<String> enabledModules
 ) {
     public static Project from(RedmineProject source) {

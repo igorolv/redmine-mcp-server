@@ -9,7 +9,7 @@ import java.util.Map;
 public record ProjectSummary(
         @Schema(description = "Project identifier the summary was computed for.", requiredMode = Schema.RequiredMode.REQUIRED)
         String projectId,
-        @Schema(description = "Version/milestone the summary was scoped to, null when unscoped.")
+        @Schema(description = "Version/milestone the summary was scoped to, null when unscoped.", nullable = true)
         Integer versionId,
         @Schema(description = "Open / closed / total issue counts for the scope.", requiredMode = Schema.RequiredMode.REQUIRED)
         IssueCountSummary counts,
