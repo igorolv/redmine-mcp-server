@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 
+import java.util.Set;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("integration")
@@ -209,7 +211,7 @@ class RedmineClientTest {
 
     @Test
     void shouldSearchAll() {
-        var result = redmineClient.search("выплата", 0, 10);
+        var result = redmineClient.search("выплата", null, Set.of(), true, 0, 10);
 
         assertThat(result).isNotNull();
         assertThat(result.results()).isNotNull();

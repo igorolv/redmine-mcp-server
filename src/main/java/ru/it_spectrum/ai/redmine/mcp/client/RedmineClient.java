@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.client;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriBuilder;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
@@ -245,10 +246,8 @@ public class RedmineClient {
      */
     public RedmineSearchResult search(String query, String projectId, Set<SearchType> types,
                                       boolean allWords, int offset, int limit) {
-        var uri = buildSearchUri(query, projectId, types, allWords, offset, limit);
-
         var response = restClient.get()
-                .uri(uri)
+                .uri(uriBuilder -> buildSearchUri(uriBuilder, query, projectId, types, allWords, offset, limit))
                 .retrieve()
                 .body(RedmineSearchResult.class);
 
@@ -369,27 +368,25 @@ public class RedmineClient {
         return response != null ? response.issues() : List.of();
     }
 
-    private String buildSearchUri(String query, String projectId, Set<SearchType> types,
-                                  boolean allWords, int offset, int limit) {
-        var path = new StringBuilder();
-
+    private URI buildSearchUri(UriBuilder uriBuilder, String query, String projectId, Set<SearchType> types,
+                               boolean allWords, int offset, int limit) {
         if (projectId != null && !projectId.isBlank()) {
-            path.append("/projects/").append(encode(projectId));
+            uriBuilder.pathSegment("projects", projectId);
         }
 
-        var params = new LinkedHashMap<String, String>();
-        params.put("q", query);
+        uriBuilder.path("/search.json")
+                .queryParam("q", query);
         if (allWords) {
-            params.put("all_words", "1");
+            uriBuilder.queryParam("all_words", "1");
         }
-        params.put("titles_only", "0");
         if (types != null) {
-            types.forEach(type -> params.put(type.parameterName(), "1"));
+            types.forEach(type -> uriBuilder.queryParam(type.parameterName(), "1"));
         }
-        params.put("offset", String.valueOf(offset));
-        params.put("limit", String.valueOf(limit));
 
-        return path.append("/search.json").append(buildQueryString(params)).toString();
+        return uriBuilder
+                .queryParam("offset", offset)
+                .queryParam("limit", limit)
+                .build();
     }
 
     private void putIfPresent(Map<String, String> params, String key, Object value) {
