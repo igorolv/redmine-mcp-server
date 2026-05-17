@@ -7,7 +7,7 @@ import java.util.List;
 
 @Schema(description = "Redmine wiki page. When returned from the index listing only metadata fields are populated; fetch a specific page to retrieve `text` and attachments.")
 public record WikiPage(
-        @Schema(description = "Page title (URL-escaped form used as the path).", requiredMode = Schema.RequiredMode.REQUIRED, example = "Getting_Started")
+        @Schema(description = "Page title (URL-escaped form used as the path).", requiredMode = Schema.RequiredMode.REQUIRED, example = "Getting_Started", nullable = true)
         String title,
         @Schema(description = "Page body in Textile or Markdown markup depending on the Redmine instance. Null in index listings.", nullable = true)
         String text,

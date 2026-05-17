@@ -10,13 +10,13 @@ import java.util.List;
 public record IssueSummary(
         @Schema(description = "Issue identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345")
         int id,
-        @Schema(description = "Project the issue belongs to.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Project the issue belongs to.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Ref project,
-        @Schema(description = "Tracker type (Bug, Feature, Task, ...).", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Tracker type (Bug, Feature, Task, ...).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Ref tracker,
-        @Schema(description = "Current workflow status.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Current workflow status.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Ref status,
-        @Schema(description = "Priority.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Priority.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Ref priority,
         @Schema(description = "User currently assigned, null when unassigned.", nullable = true)
         Ref assignedTo,
@@ -26,7 +26,7 @@ public record IssueSummary(
         Ref fixedVersion,
         @Schema(description = "Issue category.", nullable = true)
         Ref category,
-        @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.REQUIRED, example = "API returns 500 on empty payload")
+        @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.REQUIRED, example = "API returns 500 on empty payload", nullable = true)
         String subject,
         @Schema(description = "Planned start date in ISO-8601.", format = "date", nullable = true)
         String startDate,

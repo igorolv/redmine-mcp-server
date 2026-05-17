@@ -5,11 +5,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "Attachment included in issue context, annotated with where it came from in the context graph.")
 public record ContextAttachment(
         @Schema(description = "Where the attachment lives in the context graph.", requiredMode = Schema.RequiredMode.REQUIRED,
-                allowableValues = {"issue", "parent"})
+                allowableValues = {"issue", "parent"}, nullable = true)
         String source,
         @Schema(description = "Identifier of the issue the attachment is hosted on.", requiredMode = Schema.RequiredMode.REQUIRED)
         int sourceIssueId,
-        @Schema(description = "Materialized attachment content. Text parts may be truncated by full-context inline budgets; image and binary parts carry localPath/fileUri links.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Materialized attachment content. Text parts may be truncated by full-context inline budgets; image and binary parts carry localPath/fileUri links.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         AttachmentContent content
 ) {
 }

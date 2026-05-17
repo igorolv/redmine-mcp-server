@@ -7,7 +7,7 @@ import java.util.List;
 
 @Schema(description = "Paginated slice of Redmine full-text search hits. Hits may be issues, wiki pages, news, documents, projects, etc. — distinguished by `type` on each hit.")
 public record SearchResult(
-        @Schema(description = "Hits on this page.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Hits on this page.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         List<Hit> results,
         @Schema(description = "Total number of hits across all pages.", requiredMode = Schema.RequiredMode.REQUIRED)
         int totalCount,
@@ -30,10 +30,10 @@ public record SearchResult(
     public record Hit(
             @Schema(description = "Identifier of the matched entity within its type's namespace (issue id, wiki revision id, etc.).", requiredMode = Schema.RequiredMode.REQUIRED)
             int id,
-            @Schema(description = "Title or subject as shown in search results.", requiredMode = Schema.RequiredMode.REQUIRED)
+            @Schema(description = "Title or subject as shown in search results.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
             String title,
             @Schema(description = "Kind of entity that matched.", requiredMode = Schema.RequiredMode.REQUIRED,
-                    allowableValues = {"issue", "issue-closed", "wiki-page", "news", "document", "changeset", "message", "project"})
+                    allowableValues = {"issue", "issue-closed", "wiki-page", "news", "document", "changeset", "message", "project"}, nullable = true)
             String type,
             @Schema(description = "Direct link to the entity in the Redmine UI.", nullable = true)
             String url,

@@ -9,13 +9,13 @@ import java.util.List;
 public record Issue(
         @Schema(description = "Issue identifier (the # shown in Redmine).", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345")
         int id,
-        @Schema(description = "Project the issue belongs to.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Project the issue belongs to.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Ref project,
-        @Schema(description = "Tracker type (Bug, Feature, Task, ...).", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Tracker type (Bug, Feature, Task, ...).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Ref tracker,
-        @Schema(description = "Current workflow status (e.g. New, In Progress, Closed).", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Current workflow status (e.g. New, In Progress, Closed).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Ref status,
-        @Schema(description = "Priority (e.g. Normal, High, Urgent).", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Priority (e.g. Normal, High, Urgent).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Ref priority,
         @Schema(description = "Author who created the issue.", nullable = true)
         Ref author,
@@ -27,7 +27,7 @@ public record Issue(
         Ref fixedVersion,
         @Schema(description = "Issue category within the project.", nullable = true)
         Ref category,
-        @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.REQUIRED, example = "API returns 500 on empty payload")
+        @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.REQUIRED, example = "API returns 500 on empty payload", nullable = true)
         String subject,
         @Schema(description = "Long-form description of the issue, may contain Textile or Markdown markup depending on the Redmine instance.", nullable = true)
         String description,
@@ -101,9 +101,9 @@ public record Issue(
 
     @Schema(description = "Project-defined custom field value in display form.")
     public record CustomFieldValue(
-            @Schema(description = "Custom field name as configured in the project.", requiredMode = Schema.RequiredMode.REQUIRED, example = "Customer code")
+            @Schema(description = "Custom field name as configured in the project.", requiredMode = Schema.RequiredMode.REQUIRED, example = "Customer code", nullable = true)
             String name,
-            @Schema(description = "Effective values (single-valued fields produce one element).", requiredMode = Schema.RequiredMode.REQUIRED)
+            @Schema(description = "Effective values (single-valued fields produce one element).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
             List<String> values
     ) {
         public static CustomFieldValue from(RedmineIssue.CustomField source) {
@@ -127,7 +127,7 @@ public record Issue(
             int id,
             @Schema(description = "Tracker of the child issue.", nullable = true)
             Ref tracker,
-            @Schema(description = "Child issue subject.", requiredMode = Schema.RequiredMode.REQUIRED)
+            @Schema(description = "Child issue subject.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
             String subject
     ) {
         public static Child from(RedmineIssue.Child source) {
@@ -154,7 +154,7 @@ public record Issue(
             @Schema(description = "Target issue id of the relation.", requiredMode = Schema.RequiredMode.REQUIRED)
             int issueToId,
             @Schema(description = "Type of relation.", requiredMode = Schema.RequiredMode.REQUIRED,
-                    allowableValues = {"relates", "duplicates", "duplicated", "blocks", "blocked", "precedes", "follows", "copied_to", "copied_from"})
+                    allowableValues = {"relates", "duplicates", "duplicated", "blocks", "blocked", "precedes", "follows", "copied_to", "copied_from"}, nullable = true)
             String relationType,
             @Schema(description = "Delay in days, used by precedes/follows relations.", nullable = true)
             Integer delay
@@ -207,9 +207,9 @@ public record Issue(
     @Schema(description = "Single field-level change inside a journal entry. Values are raw Redmine identifiers when the property is `attr` (e.g. status_id), or raw text otherwise.")
     public record Detail(
             @Schema(description = "Property kind.", requiredMode = Schema.RequiredMode.REQUIRED,
-                    allowableValues = {"attr", "cf", "relation", "attachment"})
+                    allowableValues = {"attr", "cf", "relation", "attachment"}, nullable = true)
             String property,
-            @Schema(description = "Property name (e.g. status_id, subject) when property is `attr`; custom field id when property is `cf`.", requiredMode = Schema.RequiredMode.REQUIRED)
+            @Schema(description = "Property name (e.g. status_id, subject) when property is `attr`; custom field id when property is `cf`.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
             String name,
             @Schema(description = "Previous raw value, null on creation.", nullable = true)
             String oldValue,
@@ -233,7 +233,7 @@ public record Issue(
 
     @Schema(description = "Linked VCS commit / changeset associated with the issue.")
     public record Changeset(
-            @Schema(description = "Revision identifier as reported by the VCS.", requiredMode = Schema.RequiredMode.REQUIRED)
+            @Schema(description = "Revision identifier as reported by the VCS.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
             String revision,
             @Schema(description = "Committer / author of the changeset, when Redmine maps it to a user.", nullable = true)
             Ref user,

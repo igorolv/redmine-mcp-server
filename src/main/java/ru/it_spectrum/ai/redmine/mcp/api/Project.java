@@ -9,9 +9,9 @@ import java.util.List;
 public record Project(
         @Schema(description = "Project numeric identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "5")
         int id,
-        @Schema(description = "Display name shown in the UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "Backend services")
+        @Schema(description = "Display name shown in the UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "Backend services", nullable = true)
         String name,
-        @Schema(description = "URL-safe project slug. Either this or the numeric id can be used as projectId for other tools.", requiredMode = Schema.RequiredMode.REQUIRED, example = "backend")
+        @Schema(description = "URL-safe project slug. Either this or the numeric id can be used as projectId for other tools.", requiredMode = Schema.RequiredMode.REQUIRED, example = "backend", nullable = true)
         String identifier,
         @Schema(description = "Project description (Textile/Markdown markup).", nullable = true)
         String description,

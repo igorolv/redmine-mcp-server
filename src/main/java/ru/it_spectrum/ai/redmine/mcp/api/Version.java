@@ -9,7 +9,7 @@ public record Version(
         int id,
         @Schema(description = "Project the version belongs to.", nullable = true)
         Ref project,
-        @Schema(description = "Version name as shown in the UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "v1.2.0")
+        @Schema(description = "Version name as shown in the UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "v1.2.0", nullable = true)
         String name,
         @Schema(description = "Optional description of the version's scope.", nullable = true)
         String description,

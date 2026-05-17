@@ -7,7 +7,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 public record Attachment(
         @Schema(description = "Attachment identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "456")
         int id,
-        @Schema(description = "Original file name as uploaded.", requiredMode = Schema.RequiredMode.REQUIRED, example = "specification.pdf")
+        @Schema(description = "Original file name as uploaded.", requiredMode = Schema.RequiredMode.REQUIRED, example = "specification.pdf", nullable = true)
         String filename,
         @Schema(description = "File size in bytes.", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345")
         long filesize,

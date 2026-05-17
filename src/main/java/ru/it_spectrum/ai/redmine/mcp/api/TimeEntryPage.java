@@ -7,7 +7,7 @@ import java.util.List;
 
 @Schema(description = "Paginated slice of time entries.")
 public record TimeEntryPage(
-        @Schema(description = "Time entries on this page.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Time entries on this page.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         List<TimeEntry> timeEntries,
         @Schema(description = "Total number of time entries across all pages.", requiredMode = Schema.RequiredMode.REQUIRED)
         int totalCount,

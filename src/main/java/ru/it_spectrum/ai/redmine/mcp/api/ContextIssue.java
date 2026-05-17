@@ -6,9 +6,9 @@ import java.util.List;
 
 @Schema(description = "Issue that provides context for the issue under analysis, together with the role(s) in which it appears.")
 public record ContextIssue(
-        @Schema(description = "Full issue payload.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Full issue payload.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Issue issue,
-        @Schema(description = "All roles this issue plays relative to the analysed issue (e.g. both a sibling and a related issue).", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "All roles this issue plays relative to the analysed issue (e.g. both a sibling and a related issue).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         List<ContextRole> roles
 ) {
 }

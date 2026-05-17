@@ -6,17 +6,17 @@ import java.util.List;
 
 @Schema(description = "Side-by-side comparison of two Redmine versions/milestones: per-version completion stats plus issue diffs (only-in-first, only-in-second, shared).")
 public record VersionComparison(
-        @Schema(description = "Project identifier the versions belong to.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Project identifier the versions belong to.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         String projectId,
-        @Schema(description = "Scope statistics for the first version.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Scope statistics for the first version.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Scope first,
-        @Schema(description = "Scope statistics for the second version.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Scope statistics for the second version.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         Scope second,
-        @Schema(description = "Issues present only in the first version.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Issues present only in the first version.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         List<IssueSummary> onlyInFirst,
-        @Schema(description = "Issues present only in the second version.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Issues present only in the second version.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         List<IssueSummary> onlyInSecond,
-        @Schema(description = "Issues present in both versions.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Issues present in both versions.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         List<IssueSummary> inBoth
 ) {
 
@@ -24,7 +24,7 @@ public record VersionComparison(
     public record Scope(
             @Schema(description = "Version identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
             int versionId,
-            @Schema(description = "Version name (or `#id` placeholder when the version could not be resolved).", requiredMode = Schema.RequiredMode.REQUIRED)
+            @Schema(description = "Version name (or `#id` placeholder when the version could not be resolved).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
             String name,
             @Schema(description = "Full version metadata, null when the version could not be resolved.", nullable = true)
             Version version,

@@ -7,7 +7,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineQuery;
 public record Query(
         @Schema(description = "Query identifier. Pass as queryId to listIssues.", requiredMode = Schema.RequiredMode.REQUIRED, example = "17")
         int id,
-        @Schema(description = "Display name shown in the Redmine UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "Open bugs assigned to me")
+        @Schema(description = "Display name shown in the Redmine UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "Open bugs assigned to me", nullable = true)
         String name,
         @Schema(description = "True when the query is shared with other users; false when it is private to its owner.", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean isPublic,

@@ -4,9 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Time entries logged by the currently authenticated Redmine user, together with that user's identity.")
 public record MyTimeEntries(
-        @Schema(description = "Authenticated user the entries are filtered against.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Authenticated user the entries are filtered against.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         User user,
-        @Schema(description = "Page of time entries logged by the user.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "Page of time entries logged by the user.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         TimeEntryPage page
 ) {
 }
