@@ -1,5 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.customizer.McpSyncServerCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,8 +13,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class McpServerConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(McpServerConfig.class);
+
     @Bean
     McpSyncServerCustomizer stdioSyncServerCustomizer() {
-        return serverBuilder -> serverBuilder.immediateExecution(true);
+        return serverBuilder -> {
+            log.info("Applying MCP sync server customization: immediateExecution=true");
+            serverBuilder.immediateExecution(true);
+        };
     }
 }
