@@ -41,7 +41,7 @@ class IssueFullContextToolTest {
         var properties = TestRedmineMcpProperties.withDataDir(dataDir);
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), properties);
         var service = ExtractionTestPipelines.newAttachmentService(client, snapshot);
-        var issueService = new IssueService(client, properties);
+        var issueService = new IssueService(client, service, properties);
         tools = new IssueTools(issueService, new ContextService(client, service, issueService, properties),
                 properties);
     }

@@ -20,6 +20,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -34,7 +35,8 @@ class IssueServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new IssueService(client, TestRedmineMcpProperties.defaults());
+        service = new IssueService(client, mock(AttachmentService.class),
+                TestRedmineMcpProperties.defaults());
     }
 
     // --- find / findOrThrow ---

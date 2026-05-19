@@ -44,17 +44,25 @@ public class IssueService {
     );
 
     private final RedmineClient client;
+    private final AttachmentService attachmentService;
     private final RedmineMcpProperties properties;
 
-    public IssueService(RedmineClient client, RedmineMcpProperties properties) {
+    public IssueService(RedmineClient client, AttachmentService attachmentService,
+                        RedmineMcpProperties properties) {
         this.client = client;
+        this.attachmentService = attachmentService;
         this.properties = properties;
     }
 
     // --- Basic lookup ---
 
     public Optional<Issue> find(int issueId) {
-        return Optional.ofNullable(client.getIssue(issueId)).map(Issue::from);
+        var issue = client.getIssue(issueId);
+        if (issue == null) {
+            return Optional.empty();
+        }
+        attachmentService.snapshotIssue(issue);
+        return Optional.of(Issue.from(issue));
     }
 
     // --- Listing / search ---
@@ -232,7 +240,9 @@ public class IssueService {
             return null;
         }
         fetchCount[0]++;
-        return ctx.getIssue(issueId);
+        var issue = ctx.getIssue(issueId);
+        attachmentService.snapshotIssue(issue);
+        return issue;
     }
 
     private IssueTree.Node nodeFromIssue(RedmineIssue issue) {

@@ -12,6 +12,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 
@@ -20,6 +21,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,7 +38,8 @@ class IssueToolsTest {
     @BeforeEach
     void setUp() {
         var properties = TestRedmineMcpProperties.defaults();
-        tools = new IssueTools(new IssueService(client, properties), contextService, properties);
+        var issueService = new IssueService(client, mock(AttachmentService.class), properties);
+        tools = new IssueTools(issueService, contextService, properties);
     }
 
     // --- getMyIssues ---
