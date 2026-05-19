@@ -53,7 +53,7 @@ class ReferenceDataToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listStatuses());
 
-        assertThat(result).isEqualTo("[]");
+        assertThat(result).contains("\"items\":[]");
     }
 
     // --- listTrackers ---
@@ -79,7 +79,7 @@ class ReferenceDataToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listTrackers());
 
-        assertThat(result).isEqualTo("[]");
+        assertThat(result).contains("\"items\":[]");
     }
 
     // --- listPriorities ---
@@ -107,7 +107,7 @@ class ReferenceDataToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listPriorities());
 
-        assertThat(result).isEqualTo("[]");
+        assertThat(result).contains("\"items\":[]");
     }
 
     // --- listIssueCategories ---
@@ -133,7 +133,7 @@ class ReferenceDataToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listIssueCategories("empty-project"));
 
-        assertThat(result).isEqualTo("[]");
+        assertThat(result).contains("\"items\":[]");
     }
 
     // --- listTimeEntryActivities ---
@@ -159,7 +159,7 @@ class ReferenceDataToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listTimeEntryActivities());
 
-        assertThat(result).isEqualTo("[]");
+        assertThat(result).contains("\"items\":[]");
     }
 
     // --- listQueries ---

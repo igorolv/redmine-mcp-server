@@ -7,11 +7,10 @@ import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.SearchResult;
 import ru.it_spectrum.ai.redmine.mcp.api.WikiPage;
+import ru.it_spectrum.ai.redmine.mcp.api.WikiPageList;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
-
-import java.util.List;
 
 @Service
 public class WikiTools {
@@ -54,14 +53,14 @@ public class WikiTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<WikiPage> listWikiPages(
+    public WikiPageList listWikiPages(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
         log.info("Tool call: listWikiPages (projectId={})", projectId);
         long start = System.nanoTime();
         var result = wikiService.listPages(projectId);
         ToolLogger.completed(log, "listWikiPages", start);
-        return result;
+        return WikiPageList.of(result);
     }
 
     @McpTool(

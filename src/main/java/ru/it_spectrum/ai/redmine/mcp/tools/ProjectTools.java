@@ -8,12 +8,10 @@ import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.MembershipPage;
 import ru.it_spectrum.ai.redmine.mcp.api.Project;
 import ru.it_spectrum.ai.redmine.mcp.api.ProjectPage;
-import ru.it_spectrum.ai.redmine.mcp.api.Version;
+import ru.it_spectrum.ai.redmine.mcp.api.VersionList;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.ProjectService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
-
-import java.util.List;
 
 @Service
 public class ProjectTools {
@@ -95,13 +93,13 @@ public class ProjectTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<Version> listVersions(
+    public VersionList listVersions(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
         log.info("Tool call: listVersions (projectId={})", projectId);
         long start = System.nanoTime();
         var result = projectService.listVersions(projectId);
         ToolLogger.completed(log, "listVersions", start);
-        return result;
+        return VersionList.of(result);
     }
 }

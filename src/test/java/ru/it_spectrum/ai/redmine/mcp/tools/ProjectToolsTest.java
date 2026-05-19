@@ -152,6 +152,6 @@ class ProjectToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listVersions("empty"));
 
-        assertThat(result).isEqualTo("[]");
+        assertThat(result).contains("\"versions\":[]");
     }
 }

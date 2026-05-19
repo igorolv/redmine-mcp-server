@@ -6,11 +6,9 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.QueryPage;
-import ru.it_spectrum.ai.redmine.mcp.api.Ref;
+import ru.it_spectrum.ai.redmine.mcp.api.RefList;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.ReferenceDataService;
-
-import java.util.List;
 
 @Service
 public class ReferenceDataTools {
@@ -31,12 +29,12 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<Ref> listStatuses() {
+    public RefList listStatuses() {
         log.info("Tool call: listStatuses");
         long start = System.nanoTime();
         var result = referenceDataService.listStatuses();
         ToolLogger.completed(log, "listStatuses", start);
-        return result;
+        return RefList.of(result);
     }
 
     @McpTool(
@@ -45,12 +43,12 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<Ref> listTrackers() {
+    public RefList listTrackers() {
         log.info("Tool call: listTrackers");
         long start = System.nanoTime();
         var result = referenceDataService.listTrackers();
         ToolLogger.completed(log, "listTrackers", start);
-        return result;
+        return RefList.of(result);
     }
 
     @McpTool(
@@ -59,12 +57,12 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<Ref> listPriorities() {
+    public RefList listPriorities() {
         log.info("Tool call: listPriorities");
         long start = System.nanoTime();
         var result = referenceDataService.listPriorities();
         ToolLogger.completed(log, "listPriorities", start);
-        return result;
+        return RefList.of(result);
     }
 
     @McpTool(
@@ -73,14 +71,14 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<Ref> listIssueCategories(
+    public RefList listIssueCategories(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
         log.info("Tool call: listIssueCategories (projectId={})", projectId);
         long start = System.nanoTime();
         var result = referenceDataService.listIssueCategories(projectId);
         ToolLogger.completed(log, "listIssueCategories", start);
-        return result;
+        return RefList.of(result);
     }
 
     @McpTool(
@@ -89,12 +87,12 @@ public class ReferenceDataTools {
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
-    public List<Ref> listTimeEntryActivities() {
+    public RefList listTimeEntryActivities() {
         log.info("Tool call: listTimeEntryActivities");
         long start = System.nanoTime();
         var result = referenceDataService.listTimeEntryActivities();
         ToolLogger.completed(log, "listTimeEntryActivities", start);
-        return result;
+        return RefList.of(result);
     }
 
     @McpTool(

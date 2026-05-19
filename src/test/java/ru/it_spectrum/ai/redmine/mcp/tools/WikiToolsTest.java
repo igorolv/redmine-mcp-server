@@ -90,7 +90,7 @@ class WikiToolsTest {
 
         var result = ToolJsonTestSupport.stringify(tools.listWikiPages("empty"));
 
-        assertThat(result).isEqualTo("[]");
+        assertThat(result).contains("\"pages\":[]");
     }
 
     // --- searchWikiPages ---
