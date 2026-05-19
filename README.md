@@ -10,14 +10,8 @@
 1. Установите JDK 25+.
 2. Соберите сервер: `./gradlew build`.
 3. Получите `REDMINE_URL` и `REDMINE_API_KEY`.
-4. Добавьте собранный JAR в MCP-конфигурацию вашего клиента.
-
-Клиентские примеры подключения:
-
-| Клиент | Инструкция |
-|---|---|
-| Claude Code | [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md) |
-| Qwen Code | [QWEN_CODE_SETUP.md](QWEN_CODE_SETUP.md) |
+4. Проверьте, что JAR запускается (см. [Проверка запуска](#проверка-запуска)).
+5. Добавьте собранный JAR в MCP-конфигурацию вашего клиента (см. [Подключение к AI-клиенту](#подключение-к-ai-клиенту)).
 
 ## Архитектура
 
@@ -137,11 +131,22 @@ AI-клиент запускает сервер как дочерний проц
 
 ## Сборка
 
+Linux/macOS:
+
 ```bash
 # Указать JDK 25+, если не является JDK по умолчанию:
 export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 
 ./gradlew build
+```
+
+Windows PowerShell:
+
+```powershell
+# Указать JDK 25+, если не является JDK по умолчанию:
+$env:JAVA_HOME="C:\Program Files\Java\jdk-25"
+
+.\gradlew.bat build
 ```
 
 Результат: `build/libs/redmine-mcp-server.jar`
@@ -213,15 +218,37 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 
 > Если блок «Ключ доступа к API» не отображается, обратитесь к администратору Redmine — возможно, REST API отключён в настройках.
 
-## Запуск
+## Проверка запуска
+
+Перед подключением к AI-клиенту полезно убедиться, что JAR корректно стартует с теми же
+переменными окружения, которые потом будут указаны в конфигурации клиента.
+
+Linux/macOS:
 
 ```bash
 REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=your_key \
   java -jar build/libs/redmine-mcp-server.jar
 ```
 
+Windows PowerShell:
+
+```powershell
+$env:REDMINE_URL="https://redmine.example.com"
+$env:REDMINE_API_KEY="your_key"
+java -jar .\build\libs\redmine-mcp-server.jar
+```
+
+Сервер работает через `stdio` и не открывает HTTP-порт: после успешного старта он молча
+ждёт MCP-запросы через `stdin/stdout`. Признаком успешного старта служит отсутствие ошибок
+в логе и отсутствие немедленного завершения процесса. Для остановки достаточно нажать
+`Ctrl+C`.
+
+### Логи
+
 Логи пишутся в `${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/logs/redmine-mcp-server.log`.
 Файл ротируется по дате и размеру: `10MB`, хранение `30` дней, общий лимит `512MB`.
+
+### Снимки задач
 
 При загрузке issue сервер сохраняет снимок на диск в
 `${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/issues/<issue-id>/`: `issue.json`,

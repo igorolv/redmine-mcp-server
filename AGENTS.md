@@ -3,9 +3,8 @@
 This file is for AI agents (and humans) **modifying the source code** of this repository.
 It is **not** a setup guide for end users — for that, see:
 
-- [README.md](README.md) — product description, MCP tool catalogue, env vars, security model.
-- [CLAUDE_CODE_SETUP.md](CLAUDE_CODE_SETUP.md), [QWEN_CODE_SETUP.md](QWEN_CODE_SETUP.md) — step-by-step
-  guides for an AI agent that is **installing** this server on a user's machine.
+- [README.md](README.md) — product description, MCP tool catalogue, env vars, security model,
+  build, smoke-test, and client connection instructions.
 
 Read this file before changing code. It documents non-obvious invariants, the layered architecture,
 and the conventions that the existing code follows consistently.
@@ -53,16 +52,24 @@ If you change a dependency, update `libs.versions.toml`, not the build script.
 
 ## 3. Build, run, test
 
+The build tool is **Gradle** (wrapper checked in as `./gradlew` / `gradlew.bat`). Always drive
+builds, tests, and the runnable jar through the Gradle wrapper — every command below is the
+canonical invocation.
+
 All commands assume `JAVA_HOME` points to JDK 25+. On Windows the default JDK is often older;
 set `JAVA_HOME` explicitly (e.g. `$env:JAVA_HOME = "$HOME\.jdks\jdk-25.0.2"`).
 
 ```bash
 ./gradlew build              # compile + unit tests + bootJar
+./gradlew compileJava        # compile main sources only
 ./gradlew bootJar            # just the runnable jar -> build/libs/redmine-mcp-server.jar
 ./gradlew test               # unit tests; the `integration` JUnit tag is EXCLUDED
 ./gradlew integrationTest    # tests tagged `integration` — require live REDMINE_URL + REDMINE_API_KEY
 ./gradlew check              # test + any other verification tasks
+./gradlew clean              # wipe build/
 ```
+
+On Windows PowerShell, use `.\gradlew.bat` instead of `./gradlew`.
 
 The `test` task in `build.gradle.kts` uses `excludeTags("integration")`. The `integrationTest`
 task uses `includeTags("integration")` and `shouldRunAfter(tasks.test)`. Tag a JUnit test with
@@ -321,9 +328,8 @@ result. Don't call `pandoc` from a parser directly — route through `DocxPandoc
 ## 12. Where to look for more
 
 - **README.md** — product overview, full tool catalogue, env-var table, security model,
-  troubleshooting. The first place to look when a user asks "what does this server do?".
-- **CLAUDE_CODE_SETUP.md / QWEN_CODE_SETUP.md** — guides written **for an agent that is
-  installing this server for a user**. Useful as templates if you ever add another client.
+  build, smoke-test, client connection, troubleshooting. The first place to look when a
+  user asks "what does this server do?" or "how do I install it?".
 - **`build.gradle.kts` + `gradle/libs.versions.toml`** — the source of truth for dependency
   versions and the `integrationTest` task definition.
 - **`application.yml`** — every knob the server has, with its env-var override name.
