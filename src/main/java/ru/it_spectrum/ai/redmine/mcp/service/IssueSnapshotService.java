@@ -1,6 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,12 +25,19 @@ public class IssueSnapshotService {
 
     private final RedmineClient client;
     private final ObjectMapper mapper;
+    private final Path dataDir;
     private final Path issuesDir;
 
     public IssueSnapshotService(RedmineClient client, ObjectMapper mapper, RedmineMcpProperties properties) {
         this.client = client;
         this.mapper = mapper;
-        this.issuesDir = properties.resolvedDataDir().resolve("issues");
+        this.dataDir = properties.resolvedDataDir();
+        this.issuesDir = this.dataDir.resolve("issues");
+    }
+
+    @PostConstruct
+    void logResolvedDataDir() {
+        log.info("Redmine MCP data directory resolved to: {} (issues stored under: {})", dataDir, issuesDir);
     }
 
     public void snapshotIssue(RedmineIssue issue) {
