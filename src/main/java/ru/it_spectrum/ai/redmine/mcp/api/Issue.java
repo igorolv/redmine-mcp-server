@@ -25,8 +25,6 @@ public record Issue(
         Ref author,
         @Schema(description = "User currently assigned to the issue; null when unassigned.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref assignedTo,
-        @Schema(description = "Parent issue reference if this is a sub-task; null for root-level issues.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Ref parent,
         @Schema(description = "Target version / milestone this issue is planned for.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref fixedVersion,
         @Schema(description = "Issue category within the project.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
@@ -55,10 +53,6 @@ public record Issue(
         List<Attachment> attachments,
         @Schema(description = "Chronological history entries — notes, status changes, field edits.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Journal> journals,
-        @Schema(description = "Cross-issue relations (blocks, duplicates, relates, ...).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        List<Relation> relations,
-        @Schema(description = "Direct child issues (subtasks).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        List<Child> children,
         @Schema(description = "Enriched references to related issues (parent, siblings, children, relations) — id + subject/tracker/status + roles. Populated when the issue is loaded with related-issue enrichment; null otherwise. Use it to decide which related issues are worth fetching in full.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<RelatedRef> related,
         @Schema(description = "Linked VCS changesets/commits, when the Redmine repository integration exposes them.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
@@ -79,7 +73,6 @@ public record Issue(
                 Ref.from(source.priority()),
                 Ref.from(source.author()),
                 Ref.from(source.assignedTo()),
-                Ref.from(source.parent()),
                 Ref.from(source.fixedVersion()),
                 Ref.from(source.category()),
                 source.subject(),
@@ -94,8 +87,6 @@ public record Issue(
                 CustomFieldValue.fromAll(source.customFields()),
                 ApiCollections.mapNonNull(source.attachments(), Attachment::from),
                 Journal.fromAll(source.journals()),
-                Relation.fromAll(source.relations()),
-                Child.fromAll(source.children()),
                 null,
                 mergeChangesets(source),
                 null
@@ -103,31 +94,31 @@ public record Issue(
     }
 
     public Issue withChangesets(List<Changeset> newChangesets) {
-        return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
+        return new Issue(id, project, tracker, status, priority, author, assignedTo,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                journals, relations, children, related, newChangesets, compressionNotes);
+                journals, related, newChangesets, compressionNotes);
     }
 
     public Issue withJournals(List<Journal> newJournals) {
-        return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
+        return new Issue(id, project, tracker, status, priority, author, assignedTo,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                newJournals, relations, children, related, changesets, compressionNotes);
+                newJournals, related, changesets, compressionNotes);
     }
 
     public Issue withRelated(List<RelatedRef> newRelated) {
-        return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
+        return new Issue(id, project, tracker, status, priority, author, assignedTo,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                journals, relations, children, newRelated, changesets, compressionNotes);
+                journals, newRelated, changesets, compressionNotes);
     }
 
     public Issue withCompressionNotes(List<String> newCompressionNotes) {
-        return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
+        return new Issue(id, project, tracker, status, priority, author, assignedTo,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                journals, relations, children, related, changesets, newCompressionNotes);
+                journals, related, changesets, newCompressionNotes);
     }
 
     private static List<Changeset> mergeChangesets(RedmineIssue source) {
@@ -164,62 +155,6 @@ public record Issue(
                 return null;
             }
             return ApiCollections.mapNonNull(source, CustomFieldValue::from);
-        }
-    }
-
-    @Schema(description = "Reference to a direct subtask of this issue (lightweight, fetch the issue separately for full details).")
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Child(
-            @Schema(description = "Child issue identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
-            int id,
-            @Schema(description = "Tracker of the child issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-            Ref tracker,
-            @Schema(description = "Child issue subject.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-            String subject
-    ) {
-        public static Child from(RedmineIssue.Child source) {
-            if (source == null) {
-                return null;
-            }
-            return new Child(source.id(), Ref.from(source.tracker()), source.subject());
-        }
-
-        public static List<Child> fromAll(List<RedmineIssue.Child> source) {
-            if (source == null) {
-                return null;
-            }
-            return ApiCollections.mapNonNull(source, Child::from);
-        }
-    }
-
-    @Schema(description = "Cross-issue relation. `issueId` is the source side, `issueToId` is the target side; `relationType` describes the link.")
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Relation(
-            @Schema(description = "Relation identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
-            int id,
-            @Schema(description = "Source issue id of the relation.", requiredMode = Schema.RequiredMode.REQUIRED)
-            int issueId,
-            @Schema(description = "Target issue id of the relation.", requiredMode = Schema.RequiredMode.REQUIRED)
-            int issueToId,
-            @Schema(description = "Type of relation.", requiredMode = Schema.RequiredMode.NOT_REQUIRED,
-                    allowableValues = {"relates", "duplicates", "duplicated", "blocks", "blocked", "precedes", "follows", "copied_to", "copied_from"}, nullable = true)
-            String relationType,
-            @Schema(description = "Delay in days, used by precedes/follows relations.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-            Integer delay
-    ) {
-        public static Relation from(RedmineIssue.Relation source) {
-            if (source == null) {
-                return null;
-            }
-            return new Relation(source.id(), source.issueId(), source.issueToId(),
-                    source.relationType(), source.delay());
-        }
-
-        public static List<Relation> fromAll(List<RedmineIssue.Relation> source) {
-            if (source == null) {
-                return null;
-            }
-            return ApiCollections.mapNonNull(source, Relation::from);
         }
     }
 

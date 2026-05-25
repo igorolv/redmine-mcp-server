@@ -239,9 +239,9 @@ class IssueCompressionTest {
 
     private static Issue stubIssue(List<Issue.Journal> journals, List<Issue.Changeset> changesets) {
         return new Issue(1, new Ref(1, "p"), new Ref(1, "t"), new Ref(1, "s"), new Ref(1, "pr"),
-                null, null, null, null, null,
+                null, null, null, null,
                 "subject", "desc", null, null, 0, null, null, "t", "t",
-                List.of(), List.of(), List.copyOf(journals), List.of(), List.of(),
+                List.of(), List.of(), List.copyOf(journals),
                 null, List.copyOf(changesets), null);
     }
 }

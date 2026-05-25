@@ -4,16 +4,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(description = "Hierarchical view around a target issue: the issue itself, its ancestor chain up to the root, its subtree, and direct relations.")
+@Schema(description = "Hierarchical view around a target issue: the issue itself, its ancestor chain up to the root, and its subtree.")
 public record IssueTree(
-        @Schema(description = "The issue the tree is centred around.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+        @Schema(description = "The issue the tree is centred around. Inspect its `related` field for cross-issue relations.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Issue root,
         @Schema(description = "Parent chain in order parent → grandparent → ... up to the root-most ancestor.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Issue> ancestors,
         @Schema(description = "The root issue plus its descendant subtree, expanded up to the requested depth.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Node subtree,
-        @Schema(description = "Direct cross-issue relations recorded on the root issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        List<Issue.Relation> relations,
         @Schema(description = "Total issues fetched while building the tree (visibility into rate-limited traversal).", requiredMode = Schema.RequiredMode.REQUIRED, example = "12")
         int fetchedCount,
         @Schema(description = "True when traversal stopped at the safety limit and additional branches/depths exist.", requiredMode = Schema.RequiredMode.REQUIRED)

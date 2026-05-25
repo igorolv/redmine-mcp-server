@@ -46,8 +46,6 @@ class ApiSerializationTest {
         assertThat(issue.attachments()).hasSize(1);
         assertThat(issue.journals()).hasSize(1);
         assertThat(issue.journals().getFirst().details()).hasSize(1);
-        assertThat(issue.relations()).hasSize(1);
-        assertThat(issue.children()).hasSize(1);
         assertThat(issue.changesets()).hasSize(1);
         assertThat(jacksonJson).doesNotContain(":null");
         assertThat(jacksonJson).doesNotContain("[null");

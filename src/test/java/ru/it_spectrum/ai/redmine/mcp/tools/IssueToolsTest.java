@@ -172,17 +172,22 @@ class IssueToolsTest {
                 "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
                 null, null, null, null, children
         );
+        var child501 = treeIssue(501, "Fix null pointer", "Open", "my-project", null, List.of(), List.of());
+        var child502 = treeIssue(502, "Write tests", "Open", "my-project", null, List.of(), List.of());
         when(client.getIssue(100)).thenReturn(issue);
+        when(client.getIssue(501)).thenReturn(child501);
+        when(client.getIssue(502)).thenReturn(child502);
 
         var result = ToolJsonTestSupport.stringify(tools.getIssue(100));
 
         assertThat(result).contains("\"id\":100");
         assertThat(result).contains("Parent issue");
-        assertThat(result).contains("\"children\"");
-        assertThat(result).contains("\"id\":501");
+        assertThat(result).contains("\"related\"");
+        assertThat(result).contains("\"issueId\":501");
         assertThat(result).contains("Fix null pointer");
-        assertThat(result).contains("\"id\":502");
+        assertThat(result).contains("\"issueId\":502");
         assertThat(result).contains("Write tests");
+        assertThat(result).contains("\"role\":\"child\"");
     }
 
     @Test
@@ -509,25 +514,6 @@ class IssueToolsTest {
 
         assertThatThrownBy(() -> tools.getIssueTree(999, null))
                 .hasMessageContaining("Issue #999 not found");
-    }
-
-    @Test
-    void shouldShowRelationsInTree() {
-        var relations = List.of(
-                new RedmineIssue.Relation(1, 100, 200, "blocks", null),
-                new RedmineIssue.Relation(2, 300, 100, "relates", null)
-        );
-        var issue = treeIssue(100, "Main task", "Open", "proj", null, List.of(), relations);
-        when(client.getIssue(100)).thenReturn(issue);
-
-        var result = ToolJsonTestSupport.stringify(tools.getIssueTree(100, null));
-
-        assertThat(result).contains("\"relations\"");
-        assertThat(result).contains("\"issueId\":100");
-        assertThat(result).contains("\"issueToId\":200");
-        assertThat(result).contains("\"relationType\":\"blocks\"");
-        assertThat(result).contains("\"issueId\":300");
-        assertThat(result).contains("\"relationType\":\"relates\"");
     }
 
     // --- helpers ---

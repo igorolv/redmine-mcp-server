@@ -160,15 +160,11 @@ public class IssueService {
         var subtree = nodeFromIssue(root);
         expandChildren(subtree, root, actualDepth, 0, visited, fetchCount, ctx);
 
-        var relations = root.relations() != null
-                ? root.relations().stream().map(Issue.Relation::from).toList()
-                : List.<Issue.Relation>of();
         boolean limitReached = fetchCount[0] >= properties.tree().maxIssues();
         return new IssueTree(
                 Issue.from(root),
                 ancestors.stream().map(Issue::from).toList(),
                 subtree,
-                relations,
                 fetchCount[0],
                 limitReached
         );

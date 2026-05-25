@@ -40,8 +40,8 @@ class JournalsTailKeepStepTest {
     }
 
     private static Issue stubIssue(List<Issue.Journal> journals) {
-        return new Issue(1, null, null, null, null, null, null, null, null, null,
+        return new Issue(1, null, null, null, null, null, null, null, null,
                 "s", "d", null, null, 0, null, null, "t", "t",
-                List.of(), List.of(), List.copyOf(journals), List.of(), List.of(), null, List.of(), null);
+                List.of(), List.of(), List.copyOf(journals), null, List.of(), null);
     }
 }
