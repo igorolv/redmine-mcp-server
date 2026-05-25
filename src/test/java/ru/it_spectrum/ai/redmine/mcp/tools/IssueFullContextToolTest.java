@@ -17,6 +17,7 @@ import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionTestPipelines;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.TestCompression;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -43,7 +44,9 @@ class IssueFullContextToolTest {
         var service = ExtractionTestPipelines.newAttachmentService(client, snapshot);
         var issueService = new IssueService(client, service, properties);
         tools = new IssueTools(issueService, new ContextService(client, service, issueService, properties),
-                properties);
+                properties,
+                TestCompression.issueCompression(properties),
+                TestCompression.contextCompression(properties));
     }
 
     // ── getIssueFullContext ──────────────────────────────────────────

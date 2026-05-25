@@ -15,6 +15,8 @@ import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.IssueCompression;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.IssueFullContextCompression;
 
 import java.util.Map;
 
@@ -26,11 +28,16 @@ public class IssueTools {
     private final IssueService issueService;
     private final ContextService contextService;
     private final RedmineMcpProperties properties;
+    private final IssueCompression issueCompression;
+    private final IssueFullContextCompression contextCompression;
 
-    public IssueTools(IssueService issueService, ContextService contextService, RedmineMcpProperties properties) {
+    public IssueTools(IssueService issueService, ContextService contextService, RedmineMcpProperties properties,
+                      IssueCompression issueCompression, IssueFullContextCompression contextCompression) {
         this.issueService = issueService;
         this.contextService = contextService;
         this.properties = properties;
+        this.issueCompression = issueCompression;
+        this.contextCompression = contextCompression;
     }
 
     @McpTool(
@@ -178,8 +185,9 @@ public class IssueTools {
             ToolLogger.failed(log, "getIssue", start, e.getMessage());
             throw e;
         }
+        var compressed = issueCompression.compress(maybeIssue.get());
         ToolLogger.completed(log, "getIssue", start);
-        return maybeIssue.get();
+        return compressed;
     }
 
     @McpTool(
@@ -204,8 +212,9 @@ public class IssueTools {
             ToolLogger.failed(log, "getIssueFullContext", start, e.getMessage());
             throw e;
         }
+        var compressed = contextCompression.compress(result.get());
         ToolLogger.completed(log, "getIssueFullContext", start);
-        return result.get();
+        return compressed;
     }
 
 }

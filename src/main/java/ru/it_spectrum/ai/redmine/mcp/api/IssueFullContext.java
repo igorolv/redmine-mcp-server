@@ -17,6 +17,23 @@ public record IssueFullContext(
         @Schema(description = "Most recent discussion notes (free-text comments). Older notes may be omitted; long notes are truncated.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         List<Issue.Journal> recentNotes,
         @Schema(description = "Flags indicating which context sets were truncated.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
-        ContextStats stats
+        ContextStats stats,
+        @Schema(description = "Human-readable notes describing how this response was compressed to fit the response size budget. Null/empty when no compression was applied.", nullable = true)
+        List<String> compressionNotes
 ) {
+    public IssueFullContext withIssue(Issue newIssue) {
+        return new IssueFullContext(newIssue, history, contextIssues, attachments, recentNotes, stats, compressionNotes);
+    }
+
+    public IssueFullContext withAttachments(List<ContextAttachment> newAttachments) {
+        return new IssueFullContext(issue, history, contextIssues, newAttachments, recentNotes, stats, compressionNotes);
+    }
+
+    public IssueFullContext withRecentNotes(List<Issue.Journal> newRecentNotes) {
+        return new IssueFullContext(issue, history, contextIssues, attachments, newRecentNotes, stats, compressionNotes);
+    }
+
+    public IssueFullContext withCompressionNotes(List<String> newCompressionNotes) {
+        return new IssueFullContext(issue, history, contextIssues, attachments, recentNotes, stats, newCompressionNotes);
+    }
 }

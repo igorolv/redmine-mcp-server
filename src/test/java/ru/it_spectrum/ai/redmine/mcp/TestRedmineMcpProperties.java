@@ -18,6 +18,6 @@ public final class TestRedmineMcpProperties {
     }
 
     public static RedmineMcpProperties withDataDir(String dataDir) {
-        return new RedmineMcpProperties(dataDir, null, null, null, null, null, null);
+        return new RedmineMcpProperties(dataDir, null, null, null, null, null, null, null);
     }
 }

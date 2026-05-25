@@ -13,18 +13,22 @@ public record RedmineMcpProperties(
         Pagination pagination,
         Tree tree,
         Analysis analysis,
-        Extraction extraction
+        Extraction extraction,
+        Response response
 ) {
     public static final String DEFAULT_DATA_DIR_NAME = ".redmine-mcp-server";
     public static final int DEFAULT_ATTACHMENT_PER_PART_CHARS = 30_000;
     public static final int DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS = 50_000;
-    public static final int DEFAULT_FULL_CONTEXT_PER_ATTACHMENT_CHARS = 10_000;
-    public static final int DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS = 30_000;
     public static final int DEFAULT_FULL_CONTEXT_MAX_SIBLINGS = 20;
     public static final int DEFAULT_FULL_CONTEXT_MAX_CHILDREN = 20;
     public static final int DEFAULT_FULL_CONTEXT_MAX_RELATED = 10;
     public static final int DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES = 10;
-    public static final int DEFAULT_FULL_CONTEXT_MAX_NOTE_LENGTH = 500;
+    public static final int DEFAULT_RESPONSE_MAX_CHARS = 60_000;
+    public static final int DEFAULT_RESPONSE_JOURNAL_TAIL = 30;
+    public static final int DEFAULT_RESPONSE_RECENT_NOTES_TAIL = 20;
+    public static final int DEFAULT_RESPONSE_ATTACHMENT_TEXT_PART_CHARS = 10_000;
+    public static final int DEFAULT_RESPONSE_RECENT_NOTE_CHARS = 10_000;
+    public static final int DEFAULT_RESPONSE_IMAGE_PARTS_KEEP = 5;
     public static final int DEFAULT_PAGE_LIMIT = 25;
     public static final int DEFAULT_PAGE_OFFSET = 0;
     public static final int DEFAULT_MEMBERS_PAGE_LIMIT = 100;
@@ -57,13 +61,10 @@ public record RedmineMcpProperties(
         fullContext = fullContext != null
                 ? fullContext
                 : new FullContext(
-                        DEFAULT_FULL_CONTEXT_PER_ATTACHMENT_CHARS,
-                        DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS,
                         DEFAULT_FULL_CONTEXT_MAX_SIBLINGS,
                         DEFAULT_FULL_CONTEXT_MAX_CHILDREN,
                         DEFAULT_FULL_CONTEXT_MAX_RELATED,
-                        DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES,
-                        DEFAULT_FULL_CONTEXT_MAX_NOTE_LENGTH);
+                        DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES);
         pagination = pagination != null
                 ? pagination
                 : new Pagination(
@@ -88,6 +89,15 @@ public record RedmineMcpProperties(
         extraction = extraction != null
                 ? extraction
                 : new Extraction(null, null, null, null);
+        response = response != null
+                ? response
+                : new Response(
+                        DEFAULT_RESPONSE_MAX_CHARS,
+                        DEFAULT_RESPONSE_JOURNAL_TAIL,
+                        DEFAULT_RESPONSE_RECENT_NOTES_TAIL,
+                        DEFAULT_RESPONSE_ATTACHMENT_TEXT_PART_CHARS,
+                        DEFAULT_RESPONSE_RECENT_NOTE_CHARS,
+                        DEFAULT_RESPONSE_IMAGE_PARTS_KEEP);
     }
 
     public Path resolvedDataDir() {
@@ -113,21 +123,12 @@ public record RedmineMcpProperties(
     }
 
     public record FullContext(
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_PER_ATTACHMENT_CHARS) int perAttachmentChars,
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS) int totalAttachmentChars,
             @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_SIBLINGS) int maxSiblings,
             @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_CHILDREN) int maxChildren,
             @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_RELATED) int maxRelated,
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES) int maxRecentNotes,
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_NOTE_LENGTH) int maxNoteLength
+            @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES) int maxRecentNotes
     ) {
         public FullContext {
-            if (perAttachmentChars < 0) {
-                perAttachmentChars = DEFAULT_FULL_CONTEXT_PER_ATTACHMENT_CHARS;
-            }
-            if (totalAttachmentChars < 0) {
-                totalAttachmentChars = DEFAULT_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS;
-            }
             if (maxSiblings < 0) {
                 maxSiblings = DEFAULT_FULL_CONTEXT_MAX_SIBLINGS;
             }
@@ -140,8 +141,35 @@ public record RedmineMcpProperties(
             if (maxRecentNotes < 0) {
                 maxRecentNotes = DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES;
             }
-            if (maxNoteLength < 0) {
-                maxNoteLength = DEFAULT_FULL_CONTEXT_MAX_NOTE_LENGTH;
+        }
+    }
+
+    public record Response(
+            @DefaultValue("" + DEFAULT_RESPONSE_MAX_CHARS) int maxChars,
+            @DefaultValue("" + DEFAULT_RESPONSE_JOURNAL_TAIL) int journalTailKeep,
+            @DefaultValue("" + DEFAULT_RESPONSE_RECENT_NOTES_TAIL) int recentNotesTailKeep,
+            @DefaultValue("" + DEFAULT_RESPONSE_ATTACHMENT_TEXT_PART_CHARS) int attachmentTextPartChars,
+            @DefaultValue("" + DEFAULT_RESPONSE_RECENT_NOTE_CHARS) int recentNoteChars,
+            @DefaultValue("" + DEFAULT_RESPONSE_IMAGE_PARTS_KEEP) int imagePartsKeep
+    ) {
+        public Response {
+            if (maxChars <= 0) {
+                maxChars = DEFAULT_RESPONSE_MAX_CHARS;
+            }
+            if (journalTailKeep < 0) {
+                journalTailKeep = DEFAULT_RESPONSE_JOURNAL_TAIL;
+            }
+            if (recentNotesTailKeep < 0) {
+                recentNotesTailKeep = DEFAULT_RESPONSE_RECENT_NOTES_TAIL;
+            }
+            if (attachmentTextPartChars <= 0) {
+                attachmentTextPartChars = DEFAULT_RESPONSE_ATTACHMENT_TEXT_PART_CHARS;
+            }
+            if (recentNoteChars <= 0) {
+                recentNoteChars = DEFAULT_RESPONSE_RECENT_NOTE_CHARS;
+            }
+            if (imagePartsKeep < 0) {
+                imagePartsKeep = DEFAULT_RESPONSE_IMAGE_PARTS_KEEP;
             }
         }
     }

@@ -58,7 +58,9 @@ public record Issue(
         @Schema(description = "Direct child issues (subtasks).", nullable = true)
         List<Child> children,
         @Schema(description = "Linked VCS changesets/commits, when the Redmine repository integration exposes them.", nullable = true)
-        List<Changeset> changesets
+        List<Changeset> changesets,
+        @Schema(description = "Human-readable notes describing how this response was compressed to fit the response size budget. Null/empty when no compression was applied.", nullable = true)
+        List<String> compressionNotes
 ) {
 
     public static Issue from(RedmineIssue source) {
@@ -90,8 +92,30 @@ public record Issue(
                 Journal.fromAll(source.journals()),
                 Relation.fromAll(source.relations()),
                 Child.fromAll(source.children()),
-                mergeChangesets(source)
+                mergeChangesets(source),
+                null
         );
+    }
+
+    public Issue withChangesets(List<Changeset> newChangesets) {
+        return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
+                fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
+                estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
+                journals, relations, children, newChangesets, compressionNotes);
+    }
+
+    public Issue withJournals(List<Journal> newJournals) {
+        return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
+                fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
+                estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
+                newJournals, relations, children, changesets, compressionNotes);
+    }
+
+    public Issue withCompressionNotes(List<String> newCompressionNotes) {
+        return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
+                fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
+                estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
+                journals, relations, children, changesets, newCompressionNotes);
     }
 
     private static List<Changeset> mergeChangesets(RedmineIssue source) {

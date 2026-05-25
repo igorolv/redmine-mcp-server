@@ -63,12 +63,6 @@ public class AttachmentService {
         return buildAttachmentContent(attachment, localFile, parts);
     }
 
-    public AttachmentContent getAttachmentContentWithinTextBudget(int issueId, RedmineAttachment attachment,
-                                                                  int textBudget) {
-        return getAttachmentContentWithinBudget(issueId, attachment, textBudget,
-                properties.attachment().perPartChars());
-    }
-
     public AttachmentContent getAttachmentContentWithinBudget(int issueId, RedmineAttachment attachment,
                                                               int textBudget, int partLimit) {
         var localFile = issueSnapshot.materializeAttachment(issueId, attachment);

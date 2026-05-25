@@ -1,7 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextAttachment;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextIssue;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextRole;
@@ -12,7 +11,11 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class ContextService {
@@ -106,9 +109,9 @@ public class ContextService {
         }
 
         var attachments = new ArrayList<ContextAttachment>();
-        int totalAttachmentText = collectContextAttachments(issue, "issue", issue.id(), attachments, 0);
+        collectContextAttachments(issue, "issue", issue.id(), attachments);
         if (parent != null) {
-            collectContextAttachments(parent, "parent", parent.id(), attachments, totalAttachmentText);
+            collectContextAttachments(parent, "parent", parent.id(), attachments);
         }
 
         List<Issue.Journal> recentNotes = List.of();
@@ -119,9 +122,6 @@ public class ContextService {
             if (!notes.isEmpty()) {
                 int startIdx = Math.max(0, notes.size() - properties.fullContext().maxRecentNotes());
                 recentNotes = notes.subList(startIdx, notes.size()).stream()
-                        .map(j -> new RedmineIssue.Journal(j.id(), j.user(),
-                                truncate(j.notes(), properties.fullContext().maxNoteLength()),
-                                j.createdOn(), j.details()))
                         .map(Issue.Journal::from)
                         .toList();
             }
@@ -141,7 +141,8 @@ public class ContextService {
                         .toList(),
                 attachments,
                 recentNotes,
-                stats
+                stats,
+                null
         ));
     }
 
@@ -159,43 +160,15 @@ public class ContextService {
         };
     }
 
-    private String truncate(String text, int maxLength) {
-        if (text.length() <= maxLength) return text;
-        return text.substring(0, maxLength) + "... (truncated)";
-    }
+    private void collectContextAttachments(RedmineIssue sourceIssue, String source,
+                                           int sourceIssueId, List<ContextAttachment> attachments) {
+        if (sourceIssue.attachments() == null) return;
 
-    private int collectContextAttachments(RedmineIssue sourceIssue, String source,
-                                          int sourceIssueId, List<ContextAttachment> attachments,
-                                          int totalAttachmentText) {
-        if (sourceIssue.attachments() == null) return totalAttachmentText;
-
+        int partLimit = properties.attachment().perPartChars();
         for (var att : sourceIssue.attachments()) {
-            int previewLimit = nextAttachmentPreviewLimit(totalAttachmentText);
-            AttachmentContent content = attachmentService.getAttachmentContentWithinTextBudget(
-                    sourceIssueId, att, previewLimit);
-            attachments.add(new ContextAttachment(
-                    source,
-                    sourceIssueId,
-                    content
-            ));
-            totalAttachmentText += textContentLength(content);
+            var content = attachmentService.getAttachmentContent(sourceIssueId, att, partLimit);
+            attachments.add(new ContextAttachment(source, sourceIssueId, content));
         }
-        return totalAttachmentText;
-    }
-
-    private int nextAttachmentPreviewLimit(int totalAttachmentText) {
-        var fullContext = properties.fullContext();
-        int remainingTotal = Math.max(0, fullContext.totalAttachmentChars() - totalAttachmentText);
-        return Math.min(fullContext.perAttachmentChars(), remainingTotal);
-    }
-
-    private int textContentLength(AttachmentContent content) {
-        return content.parts().stream()
-                .filter(AttachmentContent.Part::textExtracted)
-                .map(AttachmentContent.Part::content)
-                .filter(Objects::nonNull)
-                .mapToInt(String::length)
-                .sum();
     }
 
     private void addContextIssue(Map<Integer, ContextIssueBuilder> contextIssues,
