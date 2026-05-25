@@ -1,7 +1,15 @@
 package ru.it_spectrum.ai.redmine.mcp.api;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.mcp.annotation.method.tool.utils.McpJsonSchemaGenerator;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -74,5 +82,70 @@ class OutputSchemaSmokeTest {
         assertThat(schemaJson).contains("[ \"integer\", \"null\" ]");
         // Nullable Ref fields are emitted as a `$ref` to a `-nullable` variant.
         assertThat(schemaJson).contains("#/$defs/Ref-nullable");
+    }
+
+    @Test
+    void omittedNullableIssueFieldsShouldNotBeRequired() throws Exception {
+        var schemaJson = McpJsonSchemaGenerator.generateFromClass(Issue.class);
+        var requiredFields = collectRequiredFields(new ObjectMapper().readTree(schemaJson));
+
+        assertThat(requiredFields).contains("id", "doneRatio");
+        assertThat(requiredFields).doesNotContain(
+                "children",
+                "comments",
+                "committedOn",
+                "details",
+                "dueDate",
+                "estimatedHours",
+                "fixedVersion",
+                "oldValue",
+                "parent",
+                "relations",
+                "user"
+        );
+    }
+
+    @Test
+    void nullableSchemaFieldsShouldNotBeMarkedRequired() throws Exception {
+        var forbidden = Pattern.compile(
+                "requiredMode\\s*=\\s*Schema\\.RequiredMode\\.REQUIRED\\s*,\\s*nullable\\s*=\\s*true"
+                        + "|nullable\\s*=\\s*true\\s*,\\s*requiredMode\\s*=\\s*Schema\\.RequiredMode\\.REQUIRED");
+
+        try (var files = Files.walk(Path.of("src/main/java/ru/it_spectrum/ai/redmine/mcp/api"))) {
+            var offenders = files
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> {
+                        try {
+                            return forbidden.matcher(Files.readString(path)).find();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .map(Path::toString)
+                    .toList();
+
+            assertThat(offenders).isEmpty();
+        }
+    }
+
+    private static Set<String> collectRequiredFields(JsonNode node) {
+        var fields = new LinkedHashSet<String>();
+        collectRequiredFields(node, fields);
+        return fields;
+    }
+
+    private static void collectRequiredFields(JsonNode node, Set<String> fields) {
+        if (node == null) {
+            return;
+        }
+        if (node.isObject()) {
+            var required = node.get("required");
+            if (required != null && required.isArray()) {
+                required.forEach(value -> fields.add(value.asText()));
+            }
+            node.fields().forEachRemaining(entry -> collectRequiredFields(entry.getValue(), fields));
+        } else if (node.isArray()) {
+            node.forEach(value -> collectRequiredFields(value, fields));
+        }
     }
 }

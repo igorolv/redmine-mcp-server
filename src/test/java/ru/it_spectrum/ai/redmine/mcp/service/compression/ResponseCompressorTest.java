@@ -1,6 +1,5 @@
 package ru.it_spectrum.ai.redmine.mcp.service.compression;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -10,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ResponseCompressorTest {
 
-    private final ResponseCompressor compressor = new ResponseCompressor(new ObjectMapper());
+    private final ResponseCompressor compressor = TestCompression.compressor();
 
     @Test
     void returnsValueUnchangedWhenWithinBudget() {

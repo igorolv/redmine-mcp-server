@@ -11,7 +11,7 @@ public record Membership(
         Ref user,
         @Schema(description = "Group member, when this entry represents a group.", nullable = true)
         Ref group,
-        @Schema(description = "Roles the user or group holds in the project (Developer, Reporter, ...).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Roles the user or group holds in the project (Developer, Reporter, ...).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Ref> roles
 ) {
     public static Membership from(RedmineMembership source) {

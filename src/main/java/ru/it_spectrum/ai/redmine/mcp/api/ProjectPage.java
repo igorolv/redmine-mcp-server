@@ -7,7 +7,7 @@ import java.util.List;
 
 @Schema(description = "Paginated slice of projects.")
 public record ProjectPage(
-        @Schema(description = "Projects on this page.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Projects on this page.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Project> projects,
         @Schema(description = "Total number of projects across all pages.", requiredMode = Schema.RequiredMode.REQUIRED)
         int totalCount,

@@ -6,7 +6,7 @@ import java.util.List;
 
 @Schema(description = "List of Redmine entity references (id+name pairs). Wraps a JSON array so the MCP outputSchema can be an object.")
 public record RefList(
-        @Schema(description = "Entity references.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Entity references.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Ref> items
 ) {
     public static RefList of(List<Ref> items) {

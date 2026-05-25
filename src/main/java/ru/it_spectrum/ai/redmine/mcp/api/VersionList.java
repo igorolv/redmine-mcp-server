@@ -6,7 +6,7 @@ import java.util.List;
 
 @Schema(description = "List of Redmine project versions / milestones. Wraps a JSON array so the MCP outputSchema can be an object.")
 public record VersionList(
-        @Schema(description = "Project versions.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Project versions.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Version> versions
 ) {
     public static VersionList of(List<Version> versions) {

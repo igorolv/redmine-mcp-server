@@ -7,7 +7,7 @@ import java.util.Set;
 
 @Schema(description = "Risk assessment for a Redmine version/milestone: open issues classified into blockers, overdue, high-priority and unassigned categories, plus an aggregate score.")
 public record ReleaseRisks(
-        @Schema(description = "Project identifier the version belongs to.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Project identifier the version belongs to.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String projectId,
         @Schema(description = "Version/milestone identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
         int versionId,
@@ -19,11 +19,11 @@ public record ReleaseRisks(
         int analyzedIssues,
         @Schema(description = "True when the analyzed set is a truncated slice of the full open set.", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean truncated,
-        @Schema(description = "Priority names treated as 'high' by the heuristic (top third of the priority ladder, or just the highest one).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Priority names treated as 'high' by the heuristic (top third of the priority ladder, or just the highest one).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Set<String> highPriorityNames,
-        @Schema(description = "Risk categories that contain at least one issue.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Risk categories that contain at least one issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Category> categories,
-        @Schema(description = "Aggregate risk score.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Aggregate risk score.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Score score
 ) {
 
@@ -32,7 +32,7 @@ public record ReleaseRisks(
             @Schema(description = "Risk kind.", requiredMode = Schema.RequiredMode.REQUIRED,
                     allowableValues = {"blockers", "overdue", "high_priority", "unassigned"}, nullable = true)
             String kind,
-            @Schema(description = "Issues in this category.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+            @Schema(description = "Issues in this category.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             List<IssueSummary> issues
     ) {
     }

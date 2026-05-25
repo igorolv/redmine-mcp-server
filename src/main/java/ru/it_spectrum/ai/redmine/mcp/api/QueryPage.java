@@ -7,7 +7,7 @@ import java.util.List;
 
 @Schema(description = "Paginated slice of saved queries.")
 public record QueryPage(
-        @Schema(description = "Queries on this page.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Queries on this page.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Query> queries,
         @Schema(description = "Total number of queries across all pages.", requiredMode = Schema.RequiredMode.REQUIRED)
         int totalCount,

@@ -23,7 +23,7 @@ public record RedmineMcpProperties(
     public static final int DEFAULT_FULL_CONTEXT_MAX_CHILDREN = 20;
     public static final int DEFAULT_FULL_CONTEXT_MAX_RELATED = 10;
     public static final int DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES = 10;
-    public static final int DEFAULT_RESPONSE_MAX_CHARS = 60_000;
+    public static final int DEFAULT_RESPONSE_MAX_CHARS = 50_000;
     public static final int DEFAULT_RESPONSE_JOURNAL_TAIL = 30;
     public static final int DEFAULT_RESPONSE_RECENT_NOTES_TAIL = 20;
     public static final int DEFAULT_RESPONSE_ATTACHMENT_TEXT_PART_CHARS = 10_000;

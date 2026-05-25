@@ -21,7 +21,7 @@ redmine-mcp:
     max-related: ${REDMINE_MCP_FULL_CONTEXT_MAX_RELATED:10}
     max-recent-notes: ${REDMINE_MCP_FULL_CONTEXT_MAX_RECENT_NOTES:10}
   response:
-    max-chars: ${REDMINE_MCP_RESPONSE_MAX_CHARS:60000}
+    max-chars: ${REDMINE_MCP_RESPONSE_MAX_CHARS:50000}
     journal-tail-keep: ${REDMINE_MCP_RESPONSE_JOURNAL_TAIL_KEEP:30}
     recent-notes-tail-keep: ${REDMINE_MCP_RESPONSE_RECENT_NOTES_TAIL_KEEP:20}
     attachment-text-part-chars: ${REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS:10000}

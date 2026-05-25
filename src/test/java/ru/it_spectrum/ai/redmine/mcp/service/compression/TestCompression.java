@@ -1,6 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.service.compression;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import ru.it_spectrum.ai.redmine.mcp.config.JsonConfig;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 public final class TestCompression {
@@ -9,7 +10,11 @@ public final class TestCompression {
     }
 
     public static ResponseCompressor compressor() {
-        return new ResponseCompressor(new ObjectMapper());
+        return new ResponseCompressor(mapper());
+    }
+
+    public static ObjectMapper mapper() {
+        return new JsonConfig().redmineMcpObjectMapper();
     }
 
     public static IssueCompression issueCompression(RedmineMcpProperties properties) {

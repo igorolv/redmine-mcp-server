@@ -8,7 +8,7 @@ import java.util.List;
 
 @Schema(description = "Paginated slice of issue summaries. Use `offset` + `limit` to walk the full result set; `totalCount` tells you when to stop.")
 public record IssuePage(
-        @Schema(description = "Issues on this page.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Issues on this page.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<IssueSummary> issues,
         @Schema(description = "Total number of issues matching the query across all pages.", requiredMode = Schema.RequiredMode.REQUIRED, example = "137")
         int totalCount,

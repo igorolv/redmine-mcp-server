@@ -2,10 +2,11 @@ package ru.it_spectrum.ai.redmine.mcp.tools;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import ru.it_spectrum.ai.redmine.mcp.config.JsonConfig;
 
 final class ToolJsonTestSupport {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new JsonConfig().redmineMcpObjectMapper();
 
     private ToolJsonTestSupport() {
     }

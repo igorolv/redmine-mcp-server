@@ -6,7 +6,7 @@ import java.util.List;
 
 @Schema(description = "List of wiki pages in a Redmine project. Wraps a JSON array so the MCP outputSchema can be an object.")
 public record WikiPageList(
-        @Schema(description = "Wiki pages.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Wiki pages.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<WikiPage> pages
 ) {
     public static WikiPageList of(List<WikiPage> pages) {

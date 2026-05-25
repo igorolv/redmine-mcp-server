@@ -263,12 +263,12 @@ class IssueToolsTest {
 
         var changeset = json.get("changesets").get(0);
         assertThat(changeset.get("revision").asText()).isEqualTo("be561082833c6d4fbeba95228a253298a1cfa874");
-        assertThat(changeset.get("comments").isNull()).isTrue();
-        assertThat(changeset.get("user").isNull()).isTrue();
-        assertThat(changeset.get("committedOn").isNull()).isTrue();
+        assertThat(changeset.has("comments")).isFalse();
+        assertThat(changeset.has("user")).isFalse();
+        assertThat(changeset.has("committedOn")).isFalse();
         assertThat(json.get("journals")).hasSize(1);
         assertThat(json.get("journals").get(0).get("notes").asText()).isEqualTo("Important review note");
-        assertThat(json.get("journals").get(0).get("details").isNull()).isTrue();
+        assertThat(json.get("journals").get(0).has("details")).isFalse();
         assertThat(result).contains("review profile kept all 1 changeset revisions");
     }
 

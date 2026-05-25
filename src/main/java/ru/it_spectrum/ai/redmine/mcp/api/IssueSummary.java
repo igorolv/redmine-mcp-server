@@ -10,13 +10,13 @@ import java.util.List;
 public record IssueSummary(
         @Schema(description = "Issue identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345")
         int id,
-        @Schema(description = "Project the issue belongs to.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Project the issue belongs to.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref project,
-        @Schema(description = "Tracker type (Bug, Feature, Task, ...).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Tracker type (Bug, Feature, Task, ...).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref tracker,
-        @Schema(description = "Current workflow status.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Current workflow status.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref status,
-        @Schema(description = "Priority.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+        @Schema(description = "Priority.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref priority,
         @Schema(description = "User currently assigned, null when unassigned.", nullable = true)
         Ref assignedTo,
