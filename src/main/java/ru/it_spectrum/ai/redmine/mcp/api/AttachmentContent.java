@@ -23,8 +23,31 @@ public record AttachmentContent(
         @Schema(description = "Extracted parser output. Text parts carry content; images and unsupported binaries carry localPath/fileUri and an explanatory note.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
         List<Part> parts,
         @Schema(description = "Free-text note explaining the result, typically present when text extraction was skipped.", nullable = true)
-        String note
+        String note,
+        @Schema(description = "Human-readable notes describing how this response was compressed to fit the response size budget. Null/empty when no compression was applied.", nullable = true)
+        List<String> compressionNotes
 ) {
+    public AttachmentContent(Attachment attachment, String localPath, String fileUri, long localSize,
+                             String extractionType, boolean textExtracted, boolean truncated,
+                             List<Part> parts, String note) {
+        this(attachment, localPath, fileUri, localSize, extractionType, textExtracted, truncated,
+                parts, note, null);
+    }
+
+    public AttachmentContent withParts(List<Part> newParts) {
+        return new AttachmentContent(attachment, localPath, fileUri, localSize, extractionType,
+                textExtracted, truncated, newParts, note, compressionNotes);
+    }
+
+    public AttachmentContent withTruncated(boolean newTruncated) {
+        return new AttachmentContent(attachment, localPath, fileUri, localSize, extractionType,
+                textExtracted, newTruncated, parts, note, compressionNotes);
+    }
+
+    public AttachmentContent withCompressionNotes(List<String> newCompressionNotes) {
+        return new AttachmentContent(attachment, localPath, fileUri, localSize, extractionType,
+                textExtracted, truncated, parts, note, newCompressionNotes);
+    }
 
     @Schema(description = "Single extracted text segment. For ZIP archives this is one entry; for other formats there is normally a single part.")
     public record Part(

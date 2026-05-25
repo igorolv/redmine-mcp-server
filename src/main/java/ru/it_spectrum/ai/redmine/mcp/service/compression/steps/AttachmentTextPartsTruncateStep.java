@@ -1,6 +1,5 @@
 package ru.it_spectrum.ai.redmine.mcp.service.compression.steps;
 
-import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextAttachment;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.CompressionStep;
@@ -10,10 +9,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Caps the {@code content} length of each text-bearing Part inside materialized
- * attachments. Existing truncation that was applied at extraction time is left
- * alone; this step only kicks in when the full text was still long enough to
- * overflow the response budget.
+ * Caps the {@code content} length of each text-bearing Part inside every
+ * {@link IssueFullContext} attachment.
  */
 public class AttachmentTextPartsTruncateStep implements CompressionStep<IssueFullContext> {
 
@@ -37,55 +34,14 @@ public class AttachmentTextPartsTruncateStep implements CompressionStep<IssueFul
         int truncatedParts = 0;
         var newAttachments = new ArrayList<ContextAttachment>(value.attachments().size());
         for (var att : value.attachments()) {
-            var content = att.content();
-            if (content == null || content.parts() == null) {
+            var res = AttachmentContentRewriter.truncateTextParts(att.content(), perPartChars);
+            if (res.changed()) {
+                changed = true;
+                truncatedParts += res.truncatedParts();
+                newAttachments.add(new ContextAttachment(att.source(), att.sourceIssueId(), res.content()));
+            } else {
                 newAttachments.add(att);
-                continue;
             }
-            var newParts = new ArrayList<AttachmentContent.Part>(content.parts().size());
-            boolean attachmentChanged = false;
-            for (var part : content.parts()) {
-                String text = part.content();
-                if (text == null || text.length() <= perPartChars) {
-                    newParts.add(part);
-                    continue;
-                }
-                attachmentChanged = true;
-                truncatedParts++;
-                var truncated = new AttachmentContent.Part(
-                        part.name(),
-                        part.parent(),
-                        part.extractionType(),
-                        part.producer(),
-                        part.textExtracted(),
-                        true,
-                        text.substring(0, perPartChars) + "\n\n... (truncated by response compressor; total: %d chars)"
-                                .formatted(text.length()),
-                        part.localPath(),
-                        part.fileUri(),
-                        part.note(),
-                        part.size()
-                );
-                newParts.add(truncated);
-            }
-            if (!attachmentChanged) {
-                newAttachments.add(att);
-                continue;
-            }
-            boolean truncatedFlag = content.truncated() || newParts.stream().anyMatch(AttachmentContent.Part::truncated);
-            var newContent = new AttachmentContent(
-                    content.attachment(),
-                    content.localPath(),
-                    content.fileUri(),
-                    content.localSize(),
-                    content.extractionType(),
-                    content.textExtracted(),
-                    truncatedFlag,
-                    List.copyOf(newParts),
-                    content.note()
-            );
-            newAttachments.add(new ContextAttachment(att.source(), att.sourceIssueId(), newContent));
-            changed = true;
         }
         if (!changed) {
             return Optional.empty();

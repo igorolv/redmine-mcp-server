@@ -19,4 +19,8 @@ public final class TestCompression {
     public static IssueFullContextCompression contextCompression(RedmineMcpProperties properties) {
         return new IssueFullContextCompression(compressor(), properties);
     }
+
+    public static AttachmentContentCompression attachmentContentCompression(RedmineMcpProperties properties) {
+        return new AttachmentContentCompression(compressor(), properties);
+    }
 }

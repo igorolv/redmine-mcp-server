@@ -10,6 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.AttachmentContentCompression;
 
 @Service
 public class AttachmentTools {
@@ -17,9 +18,11 @@ public class AttachmentTools {
     private static final Logger log = LoggerFactory.getLogger(AttachmentTools.class);
 
     private final AttachmentService attachmentService;
+    private final AttachmentContentCompression compression;
 
-    public AttachmentTools(AttachmentService attachmentService) {
+    public AttachmentTools(AttachmentService attachmentService, AttachmentContentCompression compression) {
         this.attachmentService = attachmentService;
+        this.compression = compression;
     }
 
     @McpTool(
@@ -56,8 +59,9 @@ public class AttachmentTools {
         long start = System.nanoTime();
         try {
             var result = attachmentService.getAttachment(issueId, attachmentId, maxChars, partLimit);
+            var compressed = compression.compress(result);
             ToolLogger.completed(log, "getAttachment", start);
-            return result;
+            return compressed;
         } catch (AttachmentNotFoundException | IssueNotFoundException | AttachmentDownloadFailedException e) {
             ToolLogger.failed(log, "getAttachment", start, e.getMessage());
             throw e;
