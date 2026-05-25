@@ -59,6 +59,20 @@ class OutputSchemaSmokeTest {
     }
 
     @Test
+    void contextRoleKindSchemaShouldUseWireValues() {
+        var schemaJson = McpJsonSchemaGenerator.generateFromClass(Issue.class);
+
+        assertThat(schemaJson).contains("\"parent\"");
+        assertThat(schemaJson).contains("\"sibling\"");
+        assertThat(schemaJson).contains("\"child\"");
+        assertThat(schemaJson).contains("\"related\"");
+        assertThat(schemaJson).doesNotContain("\"PARENT\"");
+        assertThat(schemaJson).doesNotContain("\"SIBLING\"");
+        assertThat(schemaJson).doesNotContain("\"CHILD\"");
+        assertThat(schemaJson).doesNotContain("\"RELATED\"");
+    }
+
+    @Test
     void nonRequiredFieldsShouldAllowNull() {
         // After the mass `nullable = true` migration, optional fields like `category`,
         // `parent`, `dueDate`, `estimatedHours`, `children` must declare `null` in their
