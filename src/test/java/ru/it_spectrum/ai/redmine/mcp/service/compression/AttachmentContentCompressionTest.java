@@ -51,7 +51,7 @@ class AttachmentContentCompressionTest {
 
     private static RedmineMcpProperties props(int budget, int imagePartsKeep, int textPartChars) {
         return new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(budget, 30, 20, textPartChars, 10_000, imagePartsKeep));
+                new RedmineMcpProperties.Response(budget, 30, 20, textPartChars, 10_000, 10_000, imagePartsKeep));
     }
 
     private static AttachmentContent.Part imagePart(String name) {

@@ -45,7 +45,7 @@ class IssueCompressionTest {
     @Test
     void appliesJournalTailKeepWhenChangesetTrimNotEnough() {
         var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(500, 3, 20, 10_000, 10_000, 5));
+                new RedmineMcpProperties.Response(500, 3, 20, 10_000, 10_000, 10_000, 5));
         var compression = TestCompression.issueCompression(props);
         var journals = IntStream.rangeClosed(1, 20)
                 .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
@@ -58,6 +58,43 @@ class IssueCompressionTest {
 
         assertThat(result.journals()).hasSize(3);
         assertThat(result.compressionNotes()).anyMatch(s -> s.contains("3 most recent of 20"));
+    }
+
+    @Test
+    void truncatesJournalNoteBodiesWhenTailKeepNotEnough() {
+        var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
+                new RedmineMcpProperties.Response(3000, 10, 20, 10_000, 10_000, 100, 5));
+        var compression = TestCompression.issueCompression(props);
+        var journals = IntStream.rangeClosed(1, 5)
+                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
+                        "x".repeat(1000),
+                        "2026-01-0%dT00:00:00Z".formatted(i), List.of()))
+                .toList();
+        var issue = stubIssue(journals, List.of());
+
+        var result = compression.compress(issue);
+
+        assertThat(result.journals()).hasSize(5);
+        assertThat(result.journals()).allSatisfy(j ->
+                assertThat(j.notes()).startsWith("x".repeat(100))
+                        .contains("truncated by response compressor")
+                        .contains("total: 1000 chars"));
+        assertThat(result.compressionNotes()).anyMatch(s ->
+                s.contains("journal note bodies truncated to 100 chars (5 entries affected)"));
+    }
+
+    @Test
+    void doesNotTruncateJournalNotesWhenWithinBudget() {
+        var props = propsWithBudget(100_000);
+        var compression = TestCompression.issueCompression(props);
+        var journals = List.of(new Issue.Journal(1, new Ref(1, "u"),
+                "x".repeat(50_000), "2026-01-01T00:00:00Z", List.of()));
+        var issue = stubIssue(journals, List.of());
+
+        var result = compression.compress(issue);
+
+        assertThat(result.journals().getFirst().notes()).hasSize(50_000);
+        assertThat(result.compressionNotes()).isNull();
     }
 
     @Test
@@ -99,7 +136,7 @@ class IssueCompressionTest {
 
     private static RedmineMcpProperties propsWithBudget(int budget) {
         return new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(budget, 30, 20, 10_000, 10_000, 5));
+                new RedmineMcpProperties.Response(budget, 30, 20, 10_000, 10_000, 10_000, 5));
     }
 
     private static Issue stubIssue(List<Issue.Journal> journals, List<Issue.Changeset> changesets) {

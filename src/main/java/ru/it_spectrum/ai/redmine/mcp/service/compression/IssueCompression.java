@@ -5,6 +5,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetsRevisionOnlyStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetCommentsFirstLineStep;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalNoteContentTruncateStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsReviewStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsTailKeepStep;
 
@@ -56,7 +57,8 @@ public class IssueCompression {
     List<CompressionStep<Issue>> buildBudgetSteps() {
         return List.of(
                 new ChangesetCommentsFirstLineStep(),
-                new JournalsTailKeepStep(properties.response().journalTailKeep())
+                new JournalsTailKeepStep(properties.response().journalTailKeep()),
+                new JournalNoteContentTruncateStep(properties.response().journalNoteChars())
         );
     }
 }
