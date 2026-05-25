@@ -7,10 +7,8 @@ import java.util.List;
 
 /**
  * Shared rewriting primitives for {@link AttachmentContent}: collapsing
- * extra image parts and truncating overlong text-bearing parts. Both
- * {@code AttachmentContent}-level steps (for {@code getAttachment}) and
- * {@code IssueFullContext}-level steps (for {@code getIssueFullContext})
- * delegate here.
+ * extra image parts and truncating overlong text-bearing parts. Used by
+ * the {@code AttachmentContent}-level compression steps for {@code getAttachment}.
  */
 public final class AttachmentContentRewriter {
 

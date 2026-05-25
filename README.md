@@ -103,22 +103,15 @@ AI-клиент запускает сервер как дочерний проц
 | `getReleaseRisks` | Оценка рисков релиза: блокеры, просроченные, высокоприоритетные, без назначенного. Анализирует до 500 открытых задач и возвращает флаг усечения. Параметры: `projectId`, `versionId` |
 | `compareVersions` | Сравнение двух версий: уникальные задачи, общие задачи, процент закрытия. Анализирует до 500 задач на версию и возвращает флаг усечения. Параметры: `projectId`, `versionId1`, `versionId2` |
 
-### Контекст задачи
-
-| Tool | Описание |
-|---|---|
-| `getIssueFullContext` | Полный контекст задачи одним вызовом: описание, интерпретированная история с длительностью статусов, единый список окружающих задач с ролями (`parent`, `sibling`, `child`, `related`), вложения задачи и parent-задачи в формате `getAttachment` с inline-бюджетами для текста и ссылками `localPath`/`fileUri` для изображений, последние комментарии и флаги усечения. Параметры: `issueId`, `responseProfile` (`default`, `review`, `full`; опц.) |
-
 Все инструменты **read-only** — данные в Redmine не изменяются.
 
 ## MCP-промпты
 
-Сервер также экспортирует **2 MCP prompts** для типовых сценариев расследования инцидентов:
+Сервер также экспортирует **MCP prompt** для типового сценария расследования инцидентов:
 
 | Prompt | Описание |
 |---|---|
 | `incident-brief` | Быстрый обзор инцидента: получает задачу через `getIssue`, скачивает все вложения через `getAttachment` с коротким preview и формирует краткий Markdown-отчёт |
-| `investigate-incident` | Глубокое расследование: использует `getIssueFullContext`, при необходимости догружает полные тексты вложений, строит цепочку блокировок и дерево задачи, затем формирует структурированный аналитический отчёт |
 
 ## Стек
 
@@ -162,13 +155,6 @@ $env:JAVA_HOME="C:\Program Files\Java\jdk-25"
 | `REDMINE_MCP_DATA_DIR` | Каталог локальных данных сервера; по умолчанию `~/.redmine-mcp-server` |
 | `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Лимит текста на один `part` (например, один файл внутри ZIP) для `getAttachment`; по умолчанию `30000` символов. Параметр `partLimit` инструмента переопределяет это значение. |
 | `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Суммарный лимит извлечённого текста на одно вложение в `getAttachment`; по умолчанию `50000` символов. Параметр `maxChars` инструмента переопределяет это значение. |
-| `REDMINE_MCP_FULL_CONTEXT_PER_ATTACHMENT_CHARS` | Лимит inline-текста на одно вложение в `getIssueFullContext`; по умолчанию `10000` символов |
-| `REDMINE_MCP_FULL_CONTEXT_TOTAL_ATTACHMENT_CHARS` | Суммарный лимит inline-текста по всем вложениям в `getIssueFullContext`; по умолчанию `30000` символов |
-| `REDMINE_MCP_FULL_CONTEXT_MAX_SIBLINGS` | Максимум sibling-задач в `getIssueFullContext`; по умолчанию `20` |
-| `REDMINE_MCP_FULL_CONTEXT_MAX_CHILDREN` | Максимум дочерних задач в `getIssueFullContext`; по умолчанию `20` |
-| `REDMINE_MCP_FULL_CONTEXT_MAX_RELATED` | Максимум связанных задач в `getIssueFullContext`; по умолчанию `10` |
-| `REDMINE_MCP_FULL_CONTEXT_MAX_RECENT_NOTES` | Максимум последних комментариев в `getIssueFullContext`; по умолчанию `10` |
-| `REDMINE_MCP_FULL_CONTEXT_MAX_NOTE_LENGTH` | Максимальная длина одного комментария в `getIssueFullContext`; по умолчанию `500` символов |
 | `REDMINE_MCP_PAGINATION_DEFAULT_LIMIT` | Лимит страницы по умолчанию для list/search-инструментов; по умолчанию `25` |
 | `REDMINE_MCP_PAGINATION_DEFAULT_OFFSET` | Offset по умолчанию для list/search-инструментов; по умолчанию `0` |
 | `REDMINE_MCP_PAGINATION_MEMBERS_DEFAULT_LIMIT` | Лимит страницы по умолчанию для `listProjectMembers`; по умолчанию `100` |
@@ -315,20 +301,18 @@ AI-клиент получает ровно те данные, которые з
 |---|---|
 | Каждая текстовая часть `getAttachment.parts[]` | до 30 000 символов по умолчанию, дальше текст обрезается |
 | Одно вложение в `getAttachment` суммарно | до 50 000 символов по умолчанию |
-| Вложения в `getIssueFullContext` | до 10 000 символов на вложение и до 30 000 символов суммарно по умолчанию |
 | ZIP-глубина | 1 уровень |
 | ZIP-файлы | до 100 записей |
 | ZIP-файл внутри архива | до 10 MB |
 | ZIP-архив суммарно | до 50 MB извлечённых данных |
 | `getIssueTree` | глубина до 5, максимум 50 задач |
 
-`getIssue`, `getIssueFullContext` и `getAttachment` поддерживают `responseProfile`. Профиль `default`
+`getIssue` и `getAttachment` поддерживают `responseProfile`. Профиль `default`
 сохраняет обычную форму ответа и применяет компрессию только при превышении бюджета ответа.
 Профиль `review` предназначен для code review реализации по задаче: полная issue всё равно
 сохраняется на диск, а в ответе tool сохраняются review-релевантные поля — описание, человеческие
 заметки, метаданные вложений и все revisions changeset-ов; verbose-история и тело commit-сообщений
-опускаются. В `getIssueFullContext` у окружающих `contextIssues` сохраняются сами задачи и роли,
-но журналы этих окружающих задач опускаются. Профиль `full` сейчас эквивалентен `default` и оставлен как явный выбор полной формы
+опускаются. Профиль `full` сейчас эквивалентен `default` и оставлен как явный выбор полной формы
 с защитной бюджетной компрессией.
 
 Часть обычных list инструментов (`listIssues`, `listProjects`, `listTimeEntries`, `listQueries`) принимает `limit` и `offset` напрямую. Для устойчивой работы лучше не запрашивать чрезмерно большие страницы; практичный диапазон — 25-100 элементов за вызов.
@@ -379,7 +363,6 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   ├── RedmineMcpServerApplication.java   — точка входа Spring Boot
 │   ├── api/                                — стабильный MCP wire format: records, возвращаемые tools/services
 │   │   ├── Issue.java
-│   │   ├── IssueFullContext.java
 │   │   ├── AttachmentContent.java
 │   │   ├── Project.java
 │   │   └── ...                             — DTO ответов инструментов и аналитики
@@ -415,7 +398,6 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   │       └── BinaryFallbackParser.java
 │   ├── service/
 │   │   ├── IssueService.java              — бизнес-логика задач и mapping client.model -> api
-│   │   ├── ContextService.java            — полный контекст задачи
 │   │   ├── AttachmentService.java         — snapshot, скачивание и извлечение вложений
 │   │   ├── IssueSnapshotService.java      — локальные снимки issue и вложений
 │   │   ├── AnalysisService.java           — аналитика, риски, blocker chain
@@ -423,8 +405,8 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   └── tools/
 │       ├── AnalysisTools.java             — 7 MCP-инструментов аналитики и анализа рисков
 │       ├── AttachmentTools.java           — 1 MCP-инструмент для файлов и контекста вложений
-│       ├── IncidentPrompts.java           — 2 MCP-промпта для расследования инцидентов
-│       ├── IssueTools.java                — 6 MCP-инструментов для задач, включая `getIssueFullContext`
+│       ├── IncidentPrompts.java           — MCP-промпт для расследования инцидентов
+│       ├── IssueTools.java                — MCP-инструменты для задач
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
 │       ├── ReferenceDataTools.java        — 6 MCP-инструментов для справочников
 │       ├── SearchTools.java               — 1 MCP-инструмент для глобального поиска

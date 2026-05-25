@@ -19,7 +19,6 @@ redmine-mcp:
     max-siblings: ${REDMINE_MCP_FULL_CONTEXT_MAX_SIBLINGS:20}
     max-children: ${REDMINE_MCP_FULL_CONTEXT_MAX_CHILDREN:20}
     max-related: ${REDMINE_MCP_FULL_CONTEXT_MAX_RELATED:10}
-    max-recent-notes: ${REDMINE_MCP_FULL_CONTEXT_MAX_RECENT_NOTES:10}
   response:
     max-chars: ${REDMINE_MCP_RESPONSE_MAX_CHARS:50000}
     journal-tail-keep: ${REDMINE_MCP_RESPONSE_JOURNAL_TAIL_KEEP:30}

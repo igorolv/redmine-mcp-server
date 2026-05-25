@@ -15,10 +15,8 @@ import java.util.Map;
 
 /**
  * Fetches parent, siblings, children and relation targets for a given issue,
- * snapshots each fetched RedmineIssue, and exposes the result either as
- * lightweight {@link RelatedRef}s (for the basic Issue payload) or as
- * role-tagged RedmineIssue entries (for IssueFullContext, which still needs
- * the full payloads).
+ * snapshots each fetched RedmineIssue, and exposes the result as lightweight
+ * {@link RelatedRef}s for the Issue payload.
  */
 @Service
 public class RelatedRefBuilder {

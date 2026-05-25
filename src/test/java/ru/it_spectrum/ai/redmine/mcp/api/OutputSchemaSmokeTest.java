@@ -41,17 +41,6 @@ class OutputSchemaSmokeTest {
     }
 
     @Test
-    void issueFullContextSchemaShouldAdvertiseContextRoleEnum() {
-        var schemaJson = McpJsonSchemaGenerator.generateFromClass(IssueFullContext.class);
-        assertThat(schemaJson).contains("\"contextIssues\"");
-        // The role @Schema(allowableValues = {...}) lands as JSON Schema "enum".
-        assertThat(schemaJson).contains("\"parent\"");
-        assertThat(schemaJson).contains("\"sibling\"");
-        assertThat(schemaJson).contains("\"child\"");
-        assertThat(schemaJson).contains("\"related\"");
-    }
-
-    @Test
     void userSchemaShouldNotLeakRedmineInternals() {
         var schemaJson = McpJsonSchemaGenerator.generateFromClass(User.class);
         // None of these field names should appear as schema properties.

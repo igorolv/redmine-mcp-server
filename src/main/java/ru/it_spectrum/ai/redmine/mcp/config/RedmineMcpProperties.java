@@ -22,7 +22,6 @@ public record RedmineMcpProperties(
     public static final int DEFAULT_FULL_CONTEXT_MAX_SIBLINGS = 20;
     public static final int DEFAULT_FULL_CONTEXT_MAX_CHILDREN = 20;
     public static final int DEFAULT_FULL_CONTEXT_MAX_RELATED = 10;
-    public static final int DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES = 10;
     public static final int DEFAULT_RESPONSE_MAX_CHARS = 50_000;
     public static final int DEFAULT_RESPONSE_JOURNAL_TAIL = 30;
     public static final int DEFAULT_RESPONSE_RECENT_NOTES_TAIL = 20;
@@ -64,8 +63,7 @@ public record RedmineMcpProperties(
                 : new FullContext(
                         DEFAULT_FULL_CONTEXT_MAX_SIBLINGS,
                         DEFAULT_FULL_CONTEXT_MAX_CHILDREN,
-                        DEFAULT_FULL_CONTEXT_MAX_RELATED,
-                        DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES);
+                        DEFAULT_FULL_CONTEXT_MAX_RELATED);
         pagination = pagination != null
                 ? pagination
                 : new Pagination(
@@ -127,8 +125,7 @@ public record RedmineMcpProperties(
     public record FullContext(
             @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_SIBLINGS) int maxSiblings,
             @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_CHILDREN) int maxChildren,
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_RELATED) int maxRelated,
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES) int maxRecentNotes
+            @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_RELATED) int maxRelated
     ) {
         public FullContext {
             if (maxSiblings < 0) {
@@ -139,9 +136,6 @@ public record RedmineMcpProperties(
             }
             if (maxRelated < 0) {
                 maxRelated = DEFAULT_FULL_CONTEXT_MAX_RELATED;
-            }
-            if (maxRecentNotes < 0) {
-                maxRecentNotes = DEFAULT_FULL_CONTEXT_MAX_RECENT_NOTES;
             }
         }
     }

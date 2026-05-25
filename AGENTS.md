@@ -103,7 +103,7 @@ config/       — Spring @ConfigurationProperties, beans, MCP customizer
 |---|---|---|
 | `RedmineMcpServerApplication` | Spring Boot entry point. Empty by design. | Nothing. |
 | `tools/` | Thin `@McpTool` / `@McpPrompt` adapters. Spring `@Service` beans. | One class per logical domain (`IssueTools`, `ProjectTools`, `AnalysisTools`, `IncidentPrompts`, …). Plus the shared `ToolLogger`. |
-| `service/` | Business logic. Calls `RedmineClient`, maps `client.model.*` → `api.*`. | Domain services (`IssueService`, `ContextService`, `AnalysisService`, `AttachmentService`, `IssueSnapshotService`, …) and the typed exceptions tools throw (`IssueNotFoundException`, `ResourceUnavailableException`, `AttachmentNotFoundException`, …). |
+| `service/` | Business logic. Calls `RedmineClient`, maps `client.model.*` → `api.*`. | Domain services (`IssueService`, `AnalysisService`, `AttachmentService`, `IssueSnapshotService`, …) and the typed exceptions tools throw (`IssueNotFoundException`, `ResourceUnavailableException`, `AttachmentNotFoundException`, …). |
 | `client/` | `RedmineClient` — wrapper over Redmine REST API using `RestClient`. | HTTP/JSON glue only. No domain decisions. |
 | `client/model/` | Raw Redmine DTOs (mirror Redmine REST shape). | Add fields here when Redmine adds a field you need. **Never expose these on the MCP wire.** |
 | `api/` | Stable MCP response records. `@Schema`-annotated for output-schema generation. | Add a new record here when you add a new tool. |
@@ -273,10 +273,9 @@ result. Don't call `pandoc` from a parser directly — route through `DocxPandoc
 - **Pagination defaults are configurable, not constants.** Always read from
   `properties.pagination().defaultLimit()` / `defaultOffset()`. Hardcoded 25/0 in tools
   will be wrong as soon as a user overrides them.
-- **Attachment text is budget-bounded twice.** `getAttachment` uses
-  `attachment.per-part-chars` / `per-attachment-chars`; `getIssueFullContext` uses the
-  smaller `full-context.per-attachment-chars` / `total-attachment-chars`. New tools that
-  surface attachment text must pick one budget consciously — do not invent a third.
+- **Attachment text is budget-bounded.** `getAttachment` uses
+  `attachment.per-part-chars` / `per-attachment-chars`. New tools that surface attachment
+  text must reuse this budget rather than inventing a parallel one.
 
 ---
 
@@ -335,7 +334,7 @@ result. Don't call `pandoc` from a parser directly — route through `DocxPandoc
 - **`application.yml`** — every knob the server has, with its env-var override name.
 - **Recent commits** — many runtime decisions are non-obvious. Notable commits:
   - `3138a4a` — why stdio MCP uses `immediateExecution(true)` (stdout race).
-  - `4890f73` — addition of the `incident-brief` / `investigate-incident` MCP prompts.
+  - `4890f73` — addition of the `incident-brief` MCP prompt.
   - `1410e66` — per-attachment / per-part char budgets for `getAttachment`.
   - `d2aaf37` — schema relaxation for optional fields (the reason `nullable = true` is
     important on `api/*` records).

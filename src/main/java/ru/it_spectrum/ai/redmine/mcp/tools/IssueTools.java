@@ -6,19 +6,16 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
-import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueHistory;
 import ru.it_spectrum.ai.redmine.mcp.api.IssuePage;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueTree;
 import ru.it_spectrum.ai.redmine.mcp.api.MyIssues;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
-import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
 import ru.it_spectrum.ai.redmine.mcp.compression.CompressionOptions;
 import ru.it_spectrum.ai.redmine.mcp.compression.IssueCompression;
-import ru.it_spectrum.ai.redmine.mcp.compression.IssueFullContextCompression;
 
 import java.util.Map;
 
@@ -28,18 +25,14 @@ public class IssueTools {
     private static final Logger log = LoggerFactory.getLogger(IssueTools.class);
 
     private final IssueService issueService;
-    private final ContextService contextService;
     private final RedmineMcpProperties properties;
     private final IssueCompression issueCompression;
-    private final IssueFullContextCompression contextCompression;
 
-    public IssueTools(IssueService issueService, ContextService contextService, RedmineMcpProperties properties,
-                      IssueCompression issueCompression, IssueFullContextCompression contextCompression) {
+    public IssueTools(IssueService issueService, RedmineMcpProperties properties,
+                      IssueCompression issueCompression) {
         this.issueService = issueService;
-        this.contextService = contextService;
         this.properties = properties;
         this.issueCompression = issueCompression;
-        this.contextCompression = contextCompression;
     }
 
     @McpTool(
@@ -197,39 +190,6 @@ public class IssueTools {
 
     public Issue getIssue(int issueId) {
         return getIssue(issueId, null);
-    }
-
-    @McpTool(
-            description = "Get full context needed to understand and implement a Redmine issue. " +
-            "Returns: the issue with description, " +
-            "interpreted history timeline with status durations, " +
-            "nearby context issues with explicit roles (parent, sibling, child, related), " +
-            "issue and parent attachments materialized like getAttachment, with text constrained by inline budgets " +
-            "and image attachments included as localPath/fileUri links, " +
-            "recent discussion notes, and truncation flags. Ideal first call when investigating a task. " +
-            "Use responseProfile='review' when reviewing an implementation and you primarily need issue text, notes, attachments, and revisions.",
-            generateOutputSchema = true,
-            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
-    )
-    public IssueFullContext getIssueFullContext(
-            @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Response shaping profile: default, review, or full. The review profile keeps review-relevant text and all changeset revisions while omitting verbose history.", required = false) String responseProfile
-    ) {
-        log.info("Tool call: getIssueFullContext (issueId={}, responseProfile={})", issueId, responseProfile);
-        long start = System.nanoTime();
-        var result = contextService.getIssueFullContext(issueId);
-        if (result.isEmpty()) {
-            var e = new IssueNotFoundException(issueId);
-            ToolLogger.failed(log, "getIssueFullContext", start, e.getMessage());
-            throw e;
-        }
-        var compressed = contextCompression.compress(result.get(), CompressionOptions.fromProfile(responseProfile));
-        ToolLogger.completed(log, "getIssueFullContext", start);
-        return compressed;
-    }
-
-    public IssueFullContext getIssueFullContext(int issueId) {
-        return getIssueFullContext(issueId, null);
     }
 
     @McpTool(
