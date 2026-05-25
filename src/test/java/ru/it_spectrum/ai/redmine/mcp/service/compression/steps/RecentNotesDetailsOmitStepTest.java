@@ -54,7 +54,7 @@ class RecentNotesDetailsOmitStepTest {
     private static IssueFullContext stubContext(List<Issue.Journal> recentNotes) {
         var issue = new Issue(1, null, null, null, null, null, null, null, null, null,
                 "s", "d", null, null, 0, null, null, "t", "t",
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), null);
+                List.of(), List.of(), List.of(), List.of(), List.of(), null, List.of(), null);
         return new IssueFullContext(issue, null, List.of(), List.of(),
                 recentNotes == null ? null : List.copyOf(recentNotes),
                 new ContextStats(false, false, false), null);

@@ -242,6 +242,6 @@ class IssueCompressionTest {
                 null, null, null, null, null,
                 "subject", "desc", null, null, 0, null, null, "t", "t",
                 List.of(), List.of(), List.copyOf(journals), List.of(), List.of(),
-                List.copyOf(changesets), null);
+                null, List.copyOf(changesets), null);
     }
 }

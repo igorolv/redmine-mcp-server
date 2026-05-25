@@ -12,9 +12,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -22,13 +20,16 @@ public class ContextService {
     private final RedmineClient client;
     private final AttachmentService attachmentService;
     private final IssueService issueService;
+    private final RelatedRefBuilder relatedRefBuilder;
     private final RedmineMcpProperties properties;
 
     public ContextService(RedmineClient client, AttachmentService attachmentService,
-                          IssueService issueService, RedmineMcpProperties properties) {
+                          IssueService issueService, RelatedRefBuilder relatedRefBuilder,
+                          RedmineMcpProperties properties) {
         this.client = client;
         this.attachmentService = attachmentService;
         this.issueService = issueService;
+        this.relatedRefBuilder = relatedRefBuilder;
         this.properties = properties;
     }
 
@@ -41,72 +42,18 @@ public class ContextService {
         var fetchContext = new IssueFetchContext(client);
         var history = issueService.buildHistory(issue, fetchContext);
 
-        var contextIssues = new LinkedHashMap<Integer, ContextIssueBuilder>();
+        var fetchResult = relatedRefBuilder.fetchRelated(issue);
 
-        RedmineIssue parent = null;
-        if (issue.parent() != null) {
-            parent = client.getIssue(issue.parent().id());
-            if (parent != null) {
-                attachmentService.snapshotIssue(parent);
-                addContextIssue(contextIssues, parent, new ContextRole(
-                        "parent", null, null, issueId, parent.id(), null));
-            }
-        }
+        var contextIssues = fetchResult.entries().stream()
+                .map(entry -> new ContextIssue(Issue.from(entry.issue()), entry.roles()))
+                .toList();
 
-        boolean siblingsTruncated = false;
-        if (parent != null && parent.children() != null) {
-            long siblingsTotal = parent.children().stream()
-                    .filter(child -> child.id() != issueId)
-                    .count();
-            siblingsTruncated = siblingsTotal > properties.fullContext().maxSiblings();
-            int siblingAttempts = 0;
-            for (var child : parent.children()) {
-                if (child.id() == issueId) continue;
-                if (siblingAttempts >= properties.fullContext().maxSiblings()) break;
-                siblingAttempts++;
-                var sibling = client.getIssue(child.id());
-                if (sibling != null) {
-                    attachmentService.snapshotIssue(sibling);
-                    addContextIssue(contextIssues, sibling, new ContextRole(
-                            "sibling", null, null, parent.id(), sibling.id(), null));
-                }
-            }
-        }
-
-        boolean childrenTruncated = issue.children() != null
-                                    && issue.children().size() > properties.fullContext().maxChildren();
-        if (issue.children() != null) {
-            int childAttempts = 0;
-            for (var child : issue.children()) {
-                if (childAttempts >= properties.fullContext().maxChildren()) break;
-                childAttempts++;
-                var childIssue = client.getIssue(child.id());
-                if (childIssue != null) {
-                    attachmentService.snapshotIssue(childIssue);
-                    addContextIssue(contextIssues, childIssue, new ContextRole(
-                            "child", null, null, issueId, childIssue.id(), null));
-                }
-            }
-        }
-
-        boolean relatedTruncated = issue.relations() != null
-                                   && issue.relations().size() > properties.fullContext().maxRelated();
-        if (issue.relations() != null && !issue.relations().isEmpty()) {
-            int relCount = 0;
-
-            for (var rel : issue.relations()) {
-                if (relCount >= properties.fullContext().maxRelated()) break;
-                int relatedId = rel.issueId() == issueId ? rel.issueToId() : rel.issueId();
-                String relType = formatRelationType(rel, issueId);
-                var related = client.getIssue(relatedId);
-                relCount++;
-                if (related != null) {
-                    attachmentService.snapshotIssue(related);
-                    addContextIssue(contextIssues, related, new ContextRole(
-                            "related", relType, rel.id(), issueId, relatedId, rel.delay()));
-                }
-            }
-        }
+        RedmineIssue parent = fetchResult.entries().stream()
+                .filter(entry -> entry.roles().stream()
+                        .anyMatch(role -> role.role() == ContextRole.Kind.PARENT))
+                .map(RelatedRefBuilder.Fetched::issue)
+                .findFirst()
+                .orElse(null);
 
         var attachments = new ArrayList<ContextAttachment>();
         collectContextAttachments(issue, "issue", issue.id(), attachments);
@@ -128,36 +75,20 @@ public class ContextService {
         }
 
         var stats = new ContextStats(
-                siblingsTruncated,
-                childrenTruncated,
-                relatedTruncated
+                fetchResult.siblingsTruncated(),
+                fetchResult.childrenTruncated(),
+                fetchResult.relatedTruncated()
         );
 
         return Optional.of(new IssueFullContext(
                 Issue.from(issue),
                 history,
-                contextIssues.values().stream()
-                        .map(ContextIssueBuilder::build)
-                        .toList(),
+                contextIssues,
                 attachments,
                 recentNotes,
                 stats,
                 null
         ));
-    }
-
-    private String formatRelationType(RedmineIssue.Relation rel, int currentIssueId) {
-        String type = rel.relationType();
-        if (rel.issueId() == currentIssueId) {
-            return type;
-        }
-        return switch (type) {
-            case "blocks" -> "blocked_by";
-            case "precedes" -> "follows";
-            case "duplicates" -> "duplicated_by";
-            case "copied_to" -> "copied_from";
-            default -> type;
-        };
     }
 
     private void collectContextAttachments(RedmineIssue sourceIssue, String source,
@@ -168,29 +99,6 @@ public class ContextService {
         for (var att : sourceIssue.attachments()) {
             var content = attachmentService.getAttachmentContent(sourceIssueId, att, partLimit);
             attachments.add(new ContextAttachment(source, sourceIssueId, content));
-        }
-    }
-
-    private void addContextIssue(Map<Integer, ContextIssueBuilder> contextIssues,
-                                 RedmineIssue issue,
-                                 ContextRole role) {
-        contextIssues.computeIfAbsent(issue.id(), ignored -> new ContextIssueBuilder(issue)).addRole(role);
-    }
-
-    private static final class ContextIssueBuilder {
-        private final RedmineIssue issue;
-        private final List<ContextRole> roles = new ArrayList<>();
-
-        private ContextIssueBuilder(RedmineIssue issue) {
-            this.issue = issue;
-        }
-
-        private void addRole(ContextRole role) {
-            roles.add(role);
-        }
-
-        private ContextIssue build() {
-            return new ContextIssue(Issue.from(issue), List.copyOf(roles));
         }
     }
 }

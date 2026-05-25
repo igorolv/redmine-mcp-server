@@ -62,6 +62,6 @@ class ChangesetCommentsFirstLineStepTest {
     private static Issue stubIssue(List<Issue.Changeset> changesets) {
         return new Issue(1, null, null, null, null, null, null, null, null, null,
                 "s", "d", null, null, 0, null, null, "t", "t",
-                List.of(), List.of(), List.of(), List.of(), List.of(), List.copyOf(changesets), null);
+                List.of(), List.of(), List.of(), List.of(), List.of(), null, List.copyOf(changesets), null);
     }
 }

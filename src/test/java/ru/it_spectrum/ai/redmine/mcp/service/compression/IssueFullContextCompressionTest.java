@@ -189,7 +189,7 @@ class IssueFullContextCompressionTest {
         var issue = new Issue(1, new Ref(1, "p"), new Ref(1, "t"), new Ref(1, "s"), new Ref(1, "pr"),
                 null, null, null, null, null,
                 "subject", "desc", null, null, 0, null, null, "t", "t",
-                List.of(), List.of(), List.copyOf(journals), List.of(), List.of(), List.of(), null);
+                List.of(), List.of(), List.copyOf(journals), List.of(), List.of(), null, List.of(), null);
         return new IssueFullContext(issue, null, List.copyOf(contextIssues), attachments, List.copyOf(recentNotes),
                 new ContextStats(false, false, false), null);
     }
@@ -200,7 +200,7 @@ class IssueFullContextCompressionTest {
                 null, null, null, null, null,
                 "context subject", "context desc", null, null, 0, null, null, "t", "t",
                 List.of(), List.of(), List.copyOf(journals), List.of(), List.of(),
-                List.copyOf(changesets), null);
-        return new ContextIssue(issue, List.of(new ContextRole("related", "relates", 1, 1, id, null)));
+                null, List.copyOf(changesets), null);
+        return new ContextIssue(issue, List.of(new ContextRole(ContextRole.Kind.RELATED, "relates", 1, 1, id, null)));
     }
 }

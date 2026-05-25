@@ -59,6 +59,8 @@ public record Issue(
         List<Relation> relations,
         @Schema(description = "Direct child issues (subtasks).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Child> children,
+        @Schema(description = "Enriched references to related issues (parent, siblings, children, relations) — id + subject/tracker/status + roles. Populated when the issue is loaded with related-issue enrichment; null otherwise. Use it to decide which related issues are worth fetching in full.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+        List<RelatedRef> related,
         @Schema(description = "Linked VCS changesets/commits, when the Redmine repository integration exposes them.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Changeset> changesets,
         @Schema(description = "Human-readable notes describing how this response was compressed to fit the response size budget. Null/empty when no compression was applied.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
@@ -94,6 +96,7 @@ public record Issue(
                 Journal.fromAll(source.journals()),
                 Relation.fromAll(source.relations()),
                 Child.fromAll(source.children()),
+                null,
                 mergeChangesets(source),
                 null
         );
@@ -103,21 +106,28 @@ public record Issue(
         return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                journals, relations, children, newChangesets, compressionNotes);
+                journals, relations, children, related, newChangesets, compressionNotes);
     }
 
     public Issue withJournals(List<Journal> newJournals) {
         return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                newJournals, relations, children, changesets, compressionNotes);
+                newJournals, relations, children, related, changesets, compressionNotes);
+    }
+
+    public Issue withRelated(List<RelatedRef> newRelated) {
+        return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
+                fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
+                estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
+                journals, relations, children, newRelated, changesets, compressionNotes);
     }
 
     public Issue withCompressionNotes(List<String> newCompressionNotes) {
         return new Issue(id, project, tracker, status, priority, author, assignedTo, parent,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                journals, relations, children, changesets, newCompressionNotes);
+                journals, relations, children, related, changesets, newCompressionNotes);
     }
 
     private static List<Changeset> mergeChangesets(RedmineIssue source) {

@@ -45,12 +45,15 @@ public class IssueService {
 
     private final RedmineClient client;
     private final AttachmentService attachmentService;
+    private final RelatedRefBuilder relatedRefBuilder;
     private final RedmineMcpProperties properties;
 
     public IssueService(RedmineClient client, AttachmentService attachmentService,
+                        RelatedRefBuilder relatedRefBuilder,
                         RedmineMcpProperties properties) {
         this.client = client;
         this.attachmentService = attachmentService;
+        this.relatedRefBuilder = relatedRefBuilder;
         this.properties = properties;
     }
 
@@ -62,7 +65,8 @@ public class IssueService {
             return Optional.empty();
         }
         attachmentService.snapshotIssue(issue);
-        return Optional.of(Issue.from(issue));
+        var related = relatedRefBuilder.fetchRelated(issue).toRefs();
+        return Optional.of(Issue.from(issue).withRelated(related));
     }
 
     // --- Listing / search ---

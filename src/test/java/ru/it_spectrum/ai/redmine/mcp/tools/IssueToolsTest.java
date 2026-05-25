@@ -15,6 +15,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
+import ru.it_spectrum.ai.redmine.mcp.service.RelatedRefBuilder;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.TestCompression;
 
 import java.util.List;
@@ -39,7 +40,9 @@ class IssueToolsTest {
     @BeforeEach
     void setUp() {
         var properties = TestRedmineMcpProperties.defaults();
-        var issueService = new IssueService(client, mock(AttachmentService.class), properties);
+        var attachmentService = mock(AttachmentService.class);
+        var relatedRefBuilder = new RelatedRefBuilder(client, attachmentService, properties);
+        var issueService = new IssueService(client, attachmentService, relatedRefBuilder, properties);
         tools = new IssueTools(issueService, contextService, properties,
                 TestCompression.issueCompression(properties),
                 TestCompression.contextCompression(properties));

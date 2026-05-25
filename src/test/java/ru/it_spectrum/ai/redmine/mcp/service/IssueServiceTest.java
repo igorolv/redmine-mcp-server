@@ -35,8 +35,10 @@ class IssueServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new IssueService(client, mock(AttachmentService.class),
-                TestRedmineMcpProperties.defaults());
+        var properties = TestRedmineMcpProperties.defaults();
+        var attachmentService = mock(AttachmentService.class);
+        var relatedRefBuilder = new RelatedRefBuilder(client, attachmentService, properties);
+        service = new IssueService(client, attachmentService, relatedRefBuilder, properties);
     }
 
     // --- find / findOrThrow ---
