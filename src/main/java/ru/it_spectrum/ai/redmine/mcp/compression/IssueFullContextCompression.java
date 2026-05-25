@@ -19,22 +19,29 @@ import ru.it_spectrum.ai.redmine.mcp.compression.steps.RecentNotesDetailsOmitSte
 import ru.it_spectrum.ai.redmine.mcp.compression.steps.RecentNotesReviewStep;
 import ru.it_spectrum.ai.redmine.mcp.compression.steps.RecentNotesTailKeepStep;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Applies {@link IssueFullContext}-level compression. Step order is cheap → costly:
- * image parts (lowest information value) are collapsed first; description-bearing
- * cuts (commit messages, attachment text, recent notes) come later.
+ * Applies {@link IssueFullContext}-level compression. Peripheral context
+ * (attachments, contextIssues, recentNotes) is compressed first; the inner
+ * {@link IssueFullContext#issue()} — the actual subject of the request — is
+ * only touched once everything else has been thinned, by delegating to
+ * {@link IssueCompression}'s budget pipeline.
  */
 @Service
 public class IssueFullContextCompression {
 
     private final ResponseCompressor compressor;
     private final RedmineMcpProperties properties;
+    private final IssueCompression issueCompression;
 
-    public IssueFullContextCompression(ResponseCompressor compressor, RedmineMcpProperties properties) {
+    public IssueFullContextCompression(ResponseCompressor compressor,
+                                       RedmineMcpProperties properties,
+                                       IssueCompression issueCompression) {
         this.compressor = compressor;
         this.properties = properties;
+        this.issueCompression = issueCompression;
     }
 
     public IssueFullContext compress(IssueFullContext context) {
@@ -70,23 +77,24 @@ public class IssueFullContextCompression {
 
     List<CompressionStep<IssueFullContext>> buildBudgetSteps() {
         var response = properties.response();
-        return List.of(
-                new AttachmentImagePartsCollapseStep(response.imagePartsKeep()),
-                new InnerIssueStep(new ChangesetCommentsFirstLineStep()),
-                new ContextIssuesIssueStep(new ChangesetCommentsFirstLineStep()),
-                new AttachmentTextPartsTruncateStep(response.attachmentTextPartChars()),
-                // Drop field-change details everywhere before touching note bodies — details
-                // are far cheaper to lose than human notes.
-                new InnerIssueStep(new JournalDetailsOmitStep()),
-                new ContextIssuesIssueStep(new JournalDetailsOmitStep()),
-                new RecentNotesDetailsOmitStep(),
-                new ContextIssuesIssueStep(new JournalsReviewStep()),
-                new ContextIssuesIssueStep(new JournalsTailKeepStep(response.journalTailKeep())),
-                new ContextIssuesIssueStep(new JournalNoteContentTruncateStep(response.journalNoteChars())),
-                new ContextIssueJournalsOmitStep(),
-                new InnerIssueStep(new JournalsTailKeepStep(response.journalTailKeep())),
-                new RecentNotesTailKeepStep(response.recentNotesTailKeep()),
-                new RecentNoteContentTruncateStep(response.recentNoteChars())
-        );
+        var steps = new ArrayList<CompressionStep<IssueFullContext>>();
+        // Periphery first: attachments, contextIssues, recentNotes — protect the inner Issue.
+        steps.add(new AttachmentImagePartsCollapseStep(response.imagePartsKeep()));
+        steps.add(new ContextIssuesIssueStep(new ChangesetCommentsFirstLineStep()));
+        steps.add(new AttachmentTextPartsTruncateStep(response.attachmentTextPartChars()));
+        // Details are far cheaper to lose than human notes — drop them across periphery first.
+        steps.add(new ContextIssuesIssueStep(new JournalDetailsOmitStep()));
+        steps.add(new RecentNotesDetailsOmitStep());
+        steps.add(new ContextIssuesIssueStep(new JournalsReviewStep()));
+        steps.add(new ContextIssuesIssueStep(new JournalsTailKeepStep(response.journalTailKeep())));
+        steps.add(new ContextIssuesIssueStep(new JournalNoteContentTruncateStep(response.journalNoteChars())));
+        steps.add(new ContextIssueJournalsOmitStep());
+        steps.add(new RecentNotesTailKeepStep(response.recentNotesTailKeep()));
+        steps.add(new RecentNoteContentTruncateStep(response.recentNoteChars()));
+        // Last resort: compress the inner Issue itself by reusing the Issue-level pipeline.
+        for (var step : issueCompression.buildBudgetSteps()) {
+            steps.add(new InnerIssueStep(step));
+        }
+        return List.copyOf(steps);
     }
 }
