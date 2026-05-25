@@ -212,6 +212,94 @@ class IssueToolsTest {
         assertThat(result).contains("Igor Olvovsky");
         assertThat(result).contains("#4183. Текущие версии snapshot");
         assertThat(result).contains("\"committedOn\":\"2026-03-06T13:06:16Z\"");
+        assertThat(result).contains("\"source\":\"redmine\"");
+    }
+
+    @Test
+    void shouldExtractCommitReferencesFromJournalNotes() {
+        var journals = List.of(
+                new RedmineIssue.Journal(
+                        1001,
+                        new IdName(2, "Аноним"),
+                        "Commit referenced this issue: @4a900e11@\n\n"
+                                + "http://asvgit.example.com:3000/SPEKTR/sskv-jws/commit/"
+                                + "4a900e11f6cacbc4b92b1662f73e3d263d5e5d9b\n\n"
+                                + "> #4412. Общие функции. Обнови формат сведений ЕГРЮЛ",
+                        "2026-05-15T14:05:42Z",
+                        List.of())
+        );
+        var issue = new RedmineIssue(
+                4412,
+                new IdName(1, "my-project"),
+                new IdName(1, "Bug"),
+                new IdName(1, "Open"),
+                new IdName(2, "Normal"),
+                new IdName(42, "John Doe"),
+                new IdName(42, "John Doe"),
+                null, null, null,
+                "Issue with commit comment", "desc",
+                null, null, 0,
+                null, null, false,
+                "2026-05-15T00:00:00Z", "2026-05-15T14:05:42Z",
+                null, null, journals, null, null, null
+        );
+        when(client.getIssue(4412)).thenReturn(issue);
+
+        var result = ToolJsonTestSupport.stringify(tools.getIssue(4412));
+
+        assertThat(result).contains("\"changesets\"");
+        assertThat(result).contains("\"revision\":\"4a900e11f6cacbc4b92b1662f73e3d263d5e5d9b\"");
+        assertThat(result).contains("\"source\":\"comment_reference\"");
+    }
+
+    @Test
+    void shouldDeduplicateCommentReferencesAgainstRedmineChangesets() {
+        var changesets = List.of(
+                new RedmineIssue.Changeset(
+                        "4a900e11f6cacbc4b92b1662f73e3d263d5e5d9b",
+                        new IdName(56, "Igor Olvovsky"),
+                        "Real commit",
+                        "2026-05-15T14:00:00Z")
+        );
+        var journals = List.of(
+                new RedmineIssue.Journal(
+                        1001,
+                        new IdName(2, "Аноним"),
+                        "Commit referenced this issue: @4a900e11@\n\n"
+                                + "http://asvgit.example.com:3000/SPEKTR/sskv-jws/commit/"
+                                + "4a900e11f6cacbc4b92b1662f73e3d263d5e5d9b",
+                        "2026-05-15T14:05:42Z",
+                        List.of())
+        );
+        var issue = new RedmineIssue(
+                4412,
+                new IdName(1, "p"), new IdName(1, "Bug"), new IdName(1, "Open"),
+                new IdName(2, "Normal"), new IdName(42, "John"), new IdName(42, "John"),
+                null, null, null,
+                "subj", "desc",
+                null, null, 0,
+                null, null, false,
+                "2026-05-15T00:00:00Z", "2026-05-15T14:05:42Z",
+                null, null, journals, null, null, changesets
+        );
+        when(client.getIssue(4412)).thenReturn(issue);
+
+        var result = ToolJsonTestSupport.stringify(tools.getIssue(4412));
+
+        int redmineSourceCount = countOccurrences(result, "\"source\":\"redmine\"");
+        int commentSourceCount = countOccurrences(result, "\"source\":\"comment_reference\"");
+        assertThat(redmineSourceCount).isEqualTo(1);
+        assertThat(commentSourceCount).isZero();
+    }
+
+    private static int countOccurrences(String haystack, String needle) {
+        int count = 0;
+        int idx = 0;
+        while ((idx = haystack.indexOf(needle, idx)) != -1) {
+            count++;
+            idx += needle.length();
+        }
+        return count;
     }
 
     @Test

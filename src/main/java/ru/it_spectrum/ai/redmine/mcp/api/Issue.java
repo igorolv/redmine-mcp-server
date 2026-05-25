@@ -1,8 +1,10 @@
 package ru.it_spectrum.ai.redmine.mcp.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import ru.it_spectrum.ai.redmine.mcp.client.CommitReferenceExtractor;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Schema(description = "Full Redmine issue with description, relations, history notes, child tasks and attachments.")
@@ -88,8 +90,22 @@ public record Issue(
                 Journal.fromAll(source.journals()),
                 Relation.fromAll(source.relations()),
                 Child.fromAll(source.children()),
-                Changeset.fromAll(source.changesets())
+                mergeChangesets(source)
         );
+    }
+
+    private static List<Changeset> mergeChangesets(RedmineIssue source) {
+        var fromRedmine = Changeset.fromAll(source.changesets());
+        var fromNotes = CommitReferenceExtractor.extractFromJournals(source.journals(), fromRedmine);
+        if (fromNotes.isEmpty()) {
+            return fromRedmine;
+        }
+        var combined = new ArrayList<Changeset>();
+        if (fromRedmine != null) {
+            combined.addAll(fromRedmine);
+        }
+        combined.addAll(fromNotes);
+        return List.copyOf(combined);
     }
 
     private static <S, T> List<T> mapList(List<S> source, java.util.function.Function<S, T> mapper) {
@@ -231,23 +247,30 @@ public record Issue(
         }
     }
 
-    @Schema(description = "Linked VCS commit / changeset associated with the issue.")
+    @Schema(description = "Linked VCS commit / changeset associated with the issue. May be sourced from Redmine's repository integration or extracted from journal note URLs.")
     public record Changeset(
-            @Schema(description = "Revision identifier as reported by the VCS.", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
+            @Schema(description = "Revision identifier as reported by the VCS. Lowercased when extracted from journal URLs (may be a short prefix).", requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
             String revision,
-            @Schema(description = "Committer / author of the changeset, when Redmine maps it to a user.", nullable = true)
+            @Schema(description = "Committer / author of the changeset. For `redmine`-sourced entries this is the VCS user mapping; for `comment_reference` entries this is the journal author.", nullable = true)
             Ref user,
-            @Schema(description = "Commit message.", nullable = true)
+            @Schema(description = "Commit message. Null for `comment_reference` entries — we don't try to parse free-form notes.", nullable = true)
             String comments,
-            @Schema(description = "Commit timestamp in ISO-8601.", format = "date-time", nullable = true)
-            String committedOn
+            @Schema(description = "Commit timestamp for `redmine`-sourced entries; journal creation time for `comment_reference` entries. ISO-8601.", format = "date-time", nullable = true)
+            String committedOn,
+            @Schema(description = "Where the reference came from: `redmine` — from Redmine's repository integration; `comment_reference` — extracted from a commit URL inside a journal note.",
+                    requiredMode = Schema.RequiredMode.REQUIRED,
+                    allowableValues = {"redmine", "comment_reference"}, nullable = true)
+            String source
     ) {
+        public static final String SOURCE_REDMINE = "redmine";
+        public static final String SOURCE_COMMENT_REFERENCE = "comment_reference";
+
         public static Changeset from(RedmineIssue.Changeset source) {
             if (source == null) {
                 return null;
             }
             return new Changeset(source.revision(), Ref.from(source.user()),
-                    source.comments(), source.committedOn());
+                    source.comments(), source.committedOn(), SOURCE_REDMINE);
         }
 
         public static List<Changeset> fromAll(List<RedmineIssue.Changeset> source) {
