@@ -5,6 +5,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.ContextStats;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.RecentNotesDetailsOmitStep;
 
 import java.util.List;
 

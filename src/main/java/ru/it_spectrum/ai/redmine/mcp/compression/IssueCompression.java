@@ -1,14 +1,14 @@
-package ru.it_spectrum.ai.redmine.mcp.service.compression;
+package ru.it_spectrum.ai.redmine.mcp.compression;
 
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetsRevisionOnlyStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetCommentsFirstLineStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalDetailsOmitStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalNoteContentTruncateStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsReviewStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsTailKeepStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.ChangesetsRevisionOnlyStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.ChangesetCommentsFirstLineStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalDetailsOmitStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalNoteContentTruncateStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalsReviewStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalsTailKeepStep;
 
 import java.util.List;
 

@@ -3,6 +3,8 @@ package ru.it_spectrum.ai.redmine.mcp.service.compression;
 import org.junit.jupiter.api.Test;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
+import ru.it_spectrum.ai.redmine.mcp.compression.CompressionOptions;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalNoteContentTruncateStep;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 import java.util.List;
@@ -161,10 +163,8 @@ class IssueCompressionTest {
     @Test
     void truncationStepIsIdempotentAndKeepsOriginalSize() {
         // Same step applied twice (5000 then 1000) must keep the original length in the marker.
-        var step1 = new ru.it_spectrum.ai.redmine.mcp.service.compression.steps
-                .JournalNoteContentTruncateStep(5_000);
-        var step2 = new ru.it_spectrum.ai.redmine.mcp.service.compression.steps
-                .JournalNoteContentTruncateStep(1_000);
+        var step1 = new JournalNoteContentTruncateStep(5_000);
+        var step2 = new JournalNoteContentTruncateStep(1_000);
         var journals = List.of(new Issue.Journal(1, new Ref(1, "u"),
                 "z".repeat(8_000), "2026-01-01T00:00:00Z", List.of()));
         var issue = stubIssue(journals, List.of());

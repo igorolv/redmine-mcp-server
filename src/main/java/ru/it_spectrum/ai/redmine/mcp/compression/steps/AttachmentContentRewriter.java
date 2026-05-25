@@ -1,4 +1,4 @@
-package ru.it_spectrum.ai.redmine.mcp.service.compression.steps;
+package ru.it_spectrum.ai.redmine.mcp.compression.steps;
 
 import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 

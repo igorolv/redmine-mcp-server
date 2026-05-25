@@ -1,23 +1,23 @@
-package ru.it_spectrum.ai.redmine.mcp.service.compression;
+package ru.it_spectrum.ai.redmine.mcp.compression;
 
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.AttachmentImagePartsCollapseStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.AttachmentTextPartsTruncateStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ContextIssueJournalsOmitStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ContextIssuesIssueStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetsRevisionOnlyStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetCommentsFirstLineStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.InnerIssueStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalDetailsOmitStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalNoteContentTruncateStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsReviewStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsTailKeepStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNoteContentTruncateStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNotesDetailsOmitStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNotesReviewStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNotesTailKeepStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.AttachmentImagePartsCollapseStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.AttachmentTextPartsTruncateStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.ContextIssueJournalsOmitStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.ContextIssuesIssueStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.ChangesetsRevisionOnlyStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.ChangesetCommentsFirstLineStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.InnerIssueStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalDetailsOmitStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalNoteContentTruncateStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalsReviewStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalsTailKeepStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.RecentNoteContentTruncateStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.RecentNotesDetailsOmitStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.RecentNotesReviewStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.RecentNotesTailKeepStep;
 
 import java.util.List;
 

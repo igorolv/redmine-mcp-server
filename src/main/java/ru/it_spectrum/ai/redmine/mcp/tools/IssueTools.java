@@ -15,9 +15,9 @@ import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.CompressionOptions;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.IssueCompression;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.IssueFullContextCompression;
+import ru.it_spectrum.ai.redmine.mcp.compression.CompressionOptions;
+import ru.it_spectrum.ai.redmine.mcp.compression.IssueCompression;
+import ru.it_spectrum.ai.redmine.mcp.compression.IssueFullContextCompression;
 
 import java.util.Map;
 

@@ -1,10 +1,10 @@
-package ru.it_spectrum.ai.redmine.mcp.service.compression;
+package ru.it_spectrum.ai.redmine.mcp.compression;
 
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.AttachmentContentImagePartsCollapseStep;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.AttachmentContentTextPartsTruncateStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.AttachmentContentImagePartsCollapseStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.AttachmentContentTextPartsTruncateStep;
 
 import java.util.List;
 

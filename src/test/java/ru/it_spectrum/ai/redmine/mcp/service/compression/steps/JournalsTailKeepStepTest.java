@@ -3,6 +3,7 @@ package ru.it_spectrum.ai.redmine.mcp.service.compression.steps;
 import org.junit.jupiter.api.Test;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalsTailKeepStep;
 
 import java.util.List;
 import java.util.stream.IntStream;

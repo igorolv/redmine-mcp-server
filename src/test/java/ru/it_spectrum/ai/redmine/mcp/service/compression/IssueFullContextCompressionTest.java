@@ -10,6 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.ContextStats;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
+import ru.it_spectrum.ai.redmine.mcp.compression.CompressionOptions;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 import java.util.ArrayList;

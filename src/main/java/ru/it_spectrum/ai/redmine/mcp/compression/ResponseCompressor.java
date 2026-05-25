@@ -1,4 +1,4 @@
-package ru.it_spectrum.ai.redmine.mcp.service.compression;
+package ru.it_spectrum.ai.redmine.mcp.compression;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

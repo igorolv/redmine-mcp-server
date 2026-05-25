@@ -10,8 +10,8 @@ import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.AttachmentContentCompression;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.CompressionOptions;
+import ru.it_spectrum.ai.redmine.mcp.compression.AttachmentContentCompression;
+import ru.it_spectrum.ai.redmine.mcp.compression.CompressionOptions;
 
 @Service
 public class AttachmentTools {

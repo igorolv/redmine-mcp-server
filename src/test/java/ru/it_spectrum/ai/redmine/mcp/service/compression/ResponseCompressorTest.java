@@ -1,6 +1,8 @@
 package ru.it_spectrum.ai.redmine.mcp.service.compression;
 
 import org.junit.jupiter.api.Test;
+import ru.it_spectrum.ai.redmine.mcp.compression.CompressionStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.ResponseCompressor;
 
 import java.util.List;
 import java.util.Optional;

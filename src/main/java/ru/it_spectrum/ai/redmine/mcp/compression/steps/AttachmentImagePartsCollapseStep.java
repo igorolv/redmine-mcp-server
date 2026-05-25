@@ -1,8 +1,8 @@
-package ru.it_spectrum.ai.redmine.mcp.service.compression.steps;
+package ru.it_spectrum.ai.redmine.mcp.compression.steps;
 
 import ru.it_spectrum.ai.redmine.mcp.api.ContextAttachment;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
-import ru.it_spectrum.ai.redmine.mcp.service.compression.CompressionStep;
+import ru.it_spectrum.ai.redmine.mcp.compression.CompressionStep;
 
 import java.util.ArrayList;
 import java.util.List;

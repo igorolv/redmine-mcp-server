@@ -1,4 +1,4 @@
-package ru.it_spectrum.ai.redmine.mcp.service.compression;
+package ru.it_spectrum.ai.redmine.mcp.compression;
 
 public record CompressionOptions(ResponseProfile profile) {
 

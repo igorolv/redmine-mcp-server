@@ -6,6 +6,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextAttachment;
 import ru.it_spectrum.ai.redmine.mcp.api.ContextStats;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
+import ru.it_spectrum.ai.redmine.mcp.compression.steps.AttachmentTextPartsTruncateStep;
 
 import java.util.List;
 
