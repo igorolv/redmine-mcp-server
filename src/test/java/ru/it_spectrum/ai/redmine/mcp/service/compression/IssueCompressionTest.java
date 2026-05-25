@@ -60,6 +60,43 @@ class IssueCompressionTest {
         assertThat(result.compressionNotes()).anyMatch(s -> s.contains("3 most recent of 20"));
     }
 
+    @Test
+    void reviewProfileKeepsRevisionsAndHumanNotes() {
+        var props = propsWithBudget(100_000);
+        var compression = TestCompression.issueCompression(props);
+        var journals = List.of(
+                new Issue.Journal(1, new Ref(1, "u"), "Useful note",
+                        "2026-01-01T00:00:00Z",
+                        List.of(new Issue.Detail("attr", "status_id", "1", "2"))),
+                new Issue.Journal(2, new Ref(1, "u"), "",
+                        "2026-01-02T00:00:00Z",
+                        List.of(new Issue.Detail("attachment", "10", null, "file.txt")))
+        );
+        var changesets = List.of(
+                new Issue.Changeset("abc123", new Ref(1, "u"), "Subject\nBody",
+                        "2026-01-03T00:00:00Z", Issue.Changeset.SOURCE_REDMINE),
+                new Issue.Changeset("def456", new Ref(2, "v"), "Other",
+                        "2026-01-04T00:00:00Z", Issue.Changeset.SOURCE_COMMENT_REFERENCE)
+        );
+        var issue = stubIssue(journals, changesets);
+
+        var result = compression.compress(issue, CompressionOptions.fromProfile("review"));
+
+        assertThat(result.changesets()).hasSize(2);
+        assertThat(result.changesets()).extracting(Issue.Changeset::revision)
+                .containsExactly("abc123", "def456");
+        assertThat(result.changesets()).allSatisfy(changeset -> {
+            assertThat(changeset.user()).isNull();
+            assertThat(changeset.comments()).isNull();
+            assertThat(changeset.committedOn()).isNull();
+        });
+        assertThat(result.journals()).hasSize(1);
+        assertThat(result.journals().getFirst().notes()).isEqualTo("Useful note");
+        assertThat(result.journals().getFirst().details()).isNull();
+        assertThat(result.compressionNotes()).anyMatch(s -> s.contains("review profile kept all 2 changeset revisions"));
+        assertThat(result.compressionNotes()).anyMatch(s -> s.contains("kept 1 journal notes of 2"));
+    }
+
     private static RedmineMcpProperties propsWithBudget(int budget) {
         return new RedmineMcpProperties(null, null, null, null, null, null, null,
                 new RedmineMcpProperties.Response(budget, 30, 20, 10_000, 10_000, 5));

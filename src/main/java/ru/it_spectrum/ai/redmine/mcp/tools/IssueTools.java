@@ -15,6 +15,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.ContextService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.CompressionOptions;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.IssueCompression;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.IssueFullContextCompression;
 
@@ -170,14 +171,17 @@ public class IssueTools {
             description = "Get detailed information about a specific Redmine issue by its ID. " +
             "Returns full issue details including description, status, assignee, dates, " +
             "subtasks (children), relations, notes (journals), attachments list, " +
-            "and associated repository changesets/revisions when visible to the Redmine user.",
+            "and associated repository changesets/revisions when visible to the Redmine user. " +
+            "Use responseProfile='review' for implementation review: it keeps the issue text, " +
+            "human journal notes, attachment metadata, and all changeset revisions while omitting verbose history.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Issue getIssue(
-            @McpToolParam(description = "Issue ID number") int issueId
+            @McpToolParam(description = "Issue ID number") int issueId,
+            @McpToolParam(description = "Response shaping profile: default, review, or full. The review profile keeps review-relevant text and all changeset revisions while omitting verbose history.", required = false) String responseProfile
     ) {
-        log.info("Tool call: getIssue (issueId={})", issueId);
+        log.info("Tool call: getIssue (issueId={}, responseProfile={})", issueId, responseProfile);
         long start = System.nanoTime();
         var maybeIssue = issueService.find(issueId);
         if (maybeIssue.isEmpty()) {
@@ -185,9 +189,13 @@ public class IssueTools {
             ToolLogger.failed(log, "getIssue", start, e.getMessage());
             throw e;
         }
-        var compressed = issueCompression.compress(maybeIssue.get());
+        var compressed = issueCompression.compress(maybeIssue.get(), CompressionOptions.fromProfile(responseProfile));
         ToolLogger.completed(log, "getIssue", start);
         return compressed;
+    }
+
+    public Issue getIssue(int issueId) {
+        return getIssue(issueId, null);
     }
 
     @McpTool(
@@ -197,14 +205,16 @@ public class IssueTools {
             "nearby context issues with explicit roles (parent, sibling, child, related), " +
             "issue and parent attachments materialized like getAttachment, with text constrained by inline budgets " +
             "and image attachments included as localPath/fileUri links, " +
-            "recent discussion notes, and truncation flags. Ideal first call when investigating a task.",
+            "recent discussion notes, and truncation flags. Ideal first call when investigating a task. " +
+            "Use responseProfile='review' when reviewing an implementation and you primarily need issue text, notes, attachments, and revisions.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public IssueFullContext getIssueFullContext(
-            @McpToolParam(description = "Issue ID number") int issueId
+            @McpToolParam(description = "Issue ID number") int issueId,
+            @McpToolParam(description = "Response shaping profile: default, review, or full. The review profile keeps review-relevant text and all changeset revisions while omitting verbose history.", required = false) String responseProfile
     ) {
-        log.info("Tool call: getIssueFullContext (issueId={})", issueId);
+        log.info("Tool call: getIssueFullContext (issueId={}, responseProfile={})", issueId, responseProfile);
         long start = System.nanoTime();
         var result = contextService.getIssueFullContext(issueId);
         if (result.isEmpty()) {
@@ -212,9 +222,13 @@ public class IssueTools {
             ToolLogger.failed(log, "getIssueFullContext", start, e.getMessage());
             throw e;
         }
-        var compressed = contextCompression.compress(result.get());
+        var compressed = contextCompression.compress(result.get(), CompressionOptions.fromProfile(responseProfile));
         ToolLogger.completed(log, "getIssueFullContext", start);
         return compressed;
+    }
+
+    public IssueFullContext getIssueFullContext(int issueId) {
+        return getIssueFullContext(issueId, null);
     }
 
 }

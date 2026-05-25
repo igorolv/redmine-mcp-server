@@ -25,18 +25,21 @@ public class AttachmentContentCompression {
     }
 
     public AttachmentContent compress(AttachmentContent content) {
+        return compress(content, CompressionOptions.defaults());
+    }
+
+    public AttachmentContent compress(AttachmentContent content, CompressionOptions options) {
         if (content == null) {
             return null;
         }
-        var steps = buildSteps();
-        var result = compressor.fit(content, steps, properties.response().maxChars());
+        var result = compressor.fit(content, buildBudgetSteps(), properties.response().maxChars());
         if (result.notes().isEmpty()) {
             return result.value();
         }
         return result.value().withCompressionNotes(result.notes());
     }
 
-    List<CompressionStep<AttachmentContent>> buildSteps() {
+    List<CompressionStep<AttachmentContent>> buildBudgetSteps() {
         var response = properties.response();
         return List.of(
                 new AttachmentContentImagePartsCollapseStep(response.imagePartsKeep()),

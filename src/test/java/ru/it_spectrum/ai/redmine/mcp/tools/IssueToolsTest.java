@@ -219,6 +219,60 @@ class IssueToolsTest {
     }
 
     @Test
+    void shouldApplyReviewProfileInGetIssue() throws Exception {
+        var changesets = List.of(
+                new RedmineIssue.Changeset(
+                        "be561082833c6d4fbeba95228a253298a1cfa874",
+                        new IdName(56, "Igor Olvovsky"),
+                        "#4183. Commit subject\nLong body",
+                        "2026-03-06T13:06:16Z")
+        );
+        var journals = List.of(
+                new RedmineIssue.Journal(
+                        1001,
+                        new IdName(56, "Igor Olvovsky"),
+                        "Important review note",
+                        "2026-05-15T14:05:42Z",
+                        List.of(new RedmineIssue.Detail("attr", "status_id", "1", "2"))),
+                new RedmineIssue.Journal(
+                        1002,
+                        new IdName(56, "Igor Olvovsky"),
+                        "",
+                        "2026-05-15T15:05:42Z",
+                        List.of(new RedmineIssue.Detail("attachment", "10", null, "file.txt")))
+        );
+        var issue = new RedmineIssue(
+                4183,
+                new IdName(1, "my-project"),
+                new IdName(1, "Bug"),
+                new IdName(1, "Open"),
+                new IdName(2, "Normal"),
+                new IdName(42, "John Doe"),
+                new IdName(42, "John Doe"),
+                null, null, null,
+                "Incident with changesets", "Some description",
+                null, null, 0,
+                null, null, false,
+                "2026-03-01T00:00:00Z", "2026-03-02T00:00:00Z",
+                null, null, journals, null, null, changesets
+        );
+        when(client.getIssue(4183)).thenReturn(issue);
+
+        var result = ToolJsonTestSupport.stringify(tools.getIssue(4183, "review"));
+        var json = ToolJsonTestSupport.parse(result);
+
+        var changeset = json.get("changesets").get(0);
+        assertThat(changeset.get("revision").asText()).isEqualTo("be561082833c6d4fbeba95228a253298a1cfa874");
+        assertThat(changeset.get("comments").isNull()).isTrue();
+        assertThat(changeset.get("user").isNull()).isTrue();
+        assertThat(changeset.get("committedOn").isNull()).isTrue();
+        assertThat(json.get("journals")).hasSize(1);
+        assertThat(json.get("journals").get(0).get("notes").asText()).isEqualTo("Important review note");
+        assertThat(json.get("journals").get(0).get("details").isNull()).isTrue();
+        assertThat(result).contains("review profile kept all 1 changeset revisions");
+    }
+
+    @Test
     void shouldExtractCommitReferencesFromJournalNotes() {
         var journals = List.of(
                 new RedmineIssue.Journal(

@@ -11,6 +11,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.AttachmentContentCompression;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.CompressionOptions;
 
 @Service
 public class AttachmentTools {
@@ -35,6 +36,8 @@ public class AttachmentTools {
             "default, override with maxChars) and by a per-part cap (override with partLimit). When text " +
             "is cut, the affected part has truncated=true and the response has truncated=true. The full " +
             "file is always available via localPath/fileUri regardless of text limits. " +
+            "responseProfile accepts default, review, or full; review currently preserves extracted text " +
+            "within the same explicit maxChars/partLimit budgets. " +
             "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
@@ -43,23 +46,29 @@ public class AttachmentTools {
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId,
             @McpToolParam(description = "Total character budget for extracted text across all parts. Uses configured default when omitted.", required = false) Integer maxChars,
-            @McpToolParam(description = "Per-part character cap for extracted text. Uses configured default when omitted.", required = false) Integer partLimit
+            @McpToolParam(description = "Per-part character cap for extracted text. Uses configured default when omitted.", required = false) Integer partLimit,
+            @McpToolParam(description = "Response shaping profile: default, review, or full. Use review when the attachment is being loaded as part of an implementation review.", required = false) String responseProfile
     ) {
-        return getAttachmentInternal(issueId, attachmentId, maxChars, partLimit);
+        return getAttachmentInternal(issueId, attachmentId, maxChars, partLimit, responseProfile);
     }
 
     public AttachmentContent getAttachment(int issueId, int attachmentId) {
-        return getAttachmentInternal(issueId, attachmentId, null, null);
+        return getAttachmentInternal(issueId, attachmentId, null, null, null);
+    }
+
+    public AttachmentContent getAttachment(int issueId, int attachmentId, Integer maxChars, Integer partLimit) {
+        return getAttachmentInternal(issueId, attachmentId, maxChars, partLimit, null);
     }
 
     private AttachmentContent getAttachmentInternal(int issueId, int attachmentId,
-                                                    Integer maxChars, Integer partLimit) {
-        log.info("Tool call: getAttachment (attachmentId={}, issueId={}, maxChars={}, partLimit={})",
-                attachmentId, issueId, maxChars, partLimit);
+                                                    Integer maxChars, Integer partLimit,
+                                                    String responseProfile) {
+        log.info("Tool call: getAttachment (attachmentId={}, issueId={}, maxChars={}, partLimit={}, responseProfile={})",
+                attachmentId, issueId, maxChars, partLimit, responseProfile);
         long start = System.nanoTime();
         try {
             var result = attachmentService.getAttachment(issueId, attachmentId, maxChars, partLimit);
-            var compressed = compression.compress(result);
+            var compressed = compression.compress(result, CompressionOptions.fromProfile(responseProfile));
             ToolLogger.completed(log, "getAttachment", start);
             return compressed;
         } catch (AttachmentNotFoundException | IssueNotFoundException | AttachmentDownloadFailedException e) {

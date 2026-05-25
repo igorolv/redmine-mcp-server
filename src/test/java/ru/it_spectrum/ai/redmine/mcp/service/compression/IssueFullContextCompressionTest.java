@@ -46,6 +46,37 @@ class IssueFullContextCompressionTest {
         assertThat(newParts.get(2).name()).contains("28 more image parts collapsed");
     }
 
+    @Test
+    void reviewProfileAppliesToInnerIssueAndRecentNotes() {
+        var props = props(100_000, 5);
+        var compression = TestCompression.contextCompression(props);
+        var journals = List.of(
+                new Issue.Journal(1, new Ref(1, "u"), "Issue note", "2026-01-01T00:00:00Z",
+                        List.of(new Issue.Detail("attr", "status_id", "1", "2"))),
+                new Issue.Journal(2, new Ref(1, "u"), "", "2026-01-02T00:00:00Z",
+                        List.of(new Issue.Detail("attachment", "10", null, "file.txt")))
+        );
+        var recentNotes = List.of(
+                new Issue.Journal(3, new Ref(2, "v"), "Recent note", "2026-01-03T00:00:00Z",
+                        List.of(new Issue.Detail("attr", "subject", "old", "new")))
+        );
+        var ctx = contextWith(null, journals, recentNotes)
+                .withIssue(contextWith(null, journals, recentNotes).issue().withChangesets(List.of(
+                        new Issue.Changeset("abc123", new Ref(1, "u"), "Message",
+                                "2026-01-04T00:00:00Z", Issue.Changeset.SOURCE_REDMINE))));
+
+        var result = compression.compress(ctx, CompressionOptions.fromProfile("review"));
+
+        assertThat(result.issue().changesets().getFirst().revision()).isEqualTo("abc123");
+        assertThat(result.issue().changesets().getFirst().comments()).isNull();
+        assertThat(result.issue().journals()).hasSize(1);
+        assertThat(result.issue().journals().getFirst().details()).isNull();
+        assertThat(result.recentNotes()).hasSize(1);
+        assertThat(result.recentNotes().getFirst().details()).isNull();
+        assertThat(result.compressionNotes()).anyMatch(s -> s.contains("changeset revisions"));
+        assertThat(result.compressionNotes()).anyMatch(s -> s.contains("recent notes"));
+    }
+
     private static RedmineMcpProperties props(int budget, int imagePartsKeep) {
         return new RedmineMcpProperties(null, null, null, null, null, null, null,
                 new RedmineMcpProperties.Response(budget, 30, 20, 10_000, 10_000, imagePartsKeep));

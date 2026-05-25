@@ -5,10 +5,13 @@ import ru.it_spectrum.ai.redmine.mcp.api.IssueFullContext;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.AttachmentImagePartsCollapseStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.AttachmentTextPartsTruncateStep;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetsRevisionOnlyStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetCommentsFirstLineStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.InnerIssueStep;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsReviewStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsTailKeepStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNoteContentTruncateStep;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNotesReviewStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNotesTailKeepStep;
 
 import java.util.List;
@@ -30,18 +33,35 @@ public class IssueFullContextCompression {
     }
 
     public IssueFullContext compress(IssueFullContext context) {
+        return compress(context, CompressionOptions.defaults());
+    }
+
+    public IssueFullContext compress(IssueFullContext context, CompressionOptions options) {
         if (context == null) {
             return null;
         }
-        var steps = buildSteps();
-        var result = compressor.fit(context, steps, properties.response().maxChars());
-        if (result.notes().isEmpty()) {
+        var actualOptions = options != null ? options : CompressionOptions.defaults();
+        var profiled = CompressionSupport.applySteps(context, buildProfileSteps(actualOptions.profile()));
+        var result = compressor.fit(profiled.value(), buildBudgetSteps(), properties.response().maxChars());
+        var notes = CompressionSupport.concatNotes(profiled.notes(), result.notes());
+        if (notes.isEmpty()) {
             return result.value();
         }
-        return result.value().withCompressionNotes(result.notes());
+        return result.value().withCompressionNotes(notes);
     }
 
-    List<CompressionStep<IssueFullContext>> buildSteps() {
+    List<CompressionStep<IssueFullContext>> buildProfileSteps(ResponseProfile profile) {
+        if (profile != null && profile.appliesProfileSteps()) {
+            return List.of(
+                    new InnerIssueStep(new ChangesetsRevisionOnlyStep()),
+                    new InnerIssueStep(new JournalsReviewStep()),
+                    new RecentNotesReviewStep()
+            );
+        }
+        return List.of();
+    }
+
+    List<CompressionStep<IssueFullContext>> buildBudgetSteps() {
         var response = properties.response();
         return List.of(
                 new AttachmentImagePartsCollapseStep(response.imagePartsKeep()),
