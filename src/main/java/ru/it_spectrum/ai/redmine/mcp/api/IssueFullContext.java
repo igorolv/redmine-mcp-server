@@ -31,6 +31,10 @@ public record IssueFullContext(
         return new IssueFullContext(issue, history, contextIssues, newAttachments, recentNotes, stats, compressionNotes);
     }
 
+    public IssueFullContext withContextIssues(List<ContextIssue> newContextIssues) {
+        return new IssueFullContext(issue, history, newContextIssues, attachments, recentNotes, stats, compressionNotes);
+    }
+
     public IssueFullContext withRecentNotes(List<Issue.Journal> newRecentNotes) {
         return new IssueFullContext(issue, history, contextIssues, attachments, newRecentNotes, stats, compressionNotes);
     }
