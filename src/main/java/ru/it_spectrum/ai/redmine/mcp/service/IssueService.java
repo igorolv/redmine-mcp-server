@@ -172,6 +172,14 @@ public class IssueService {
 
     // --- History ---
 
+    public Optional<IssueHistory> getHistory(int issueId) {
+        var issue = client.getIssue(issueId);
+        if (issue == null) {
+            return Optional.empty();
+        }
+        return Optional.of(buildHistory(issue));
+    }
+
     public IssueHistory buildHistory(RedmineIssue issue) {
         return buildHistory(issue, new IssueFetchContext(client));
     }
