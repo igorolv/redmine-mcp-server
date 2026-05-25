@@ -74,6 +74,6 @@ class JournalDetailsOmitStepTest {
         return new Issue(1, null, null, null, null, null, null, null, null,
                 "s", "d", null, null, 0, null, null, "t", "t",
                 List.of(), List.of(), journals == null ? null : List.copyOf(journals),
-                null, List.of(), null);
+                null, List.of(), null, null);
     }
 }

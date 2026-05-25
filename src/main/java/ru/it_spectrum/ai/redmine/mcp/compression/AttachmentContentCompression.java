@@ -25,10 +25,6 @@ public class AttachmentContentCompression {
     }
 
     public AttachmentContent compress(AttachmentContent content) {
-        return compress(content, CompressionOptions.defaults());
-    }
-
-    public AttachmentContent compress(AttachmentContent content, CompressionOptions options) {
         if (content == null) {
             return null;
         }

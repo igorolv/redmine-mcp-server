@@ -16,8 +16,9 @@ import ru.it_spectrum.ai.redmine.mcp.service.IssueJournalNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
-import ru.it_spectrum.ai.redmine.mcp.compression.CompressionOptions;
 import ru.it_spectrum.ai.redmine.mcp.compression.IssueCompression;
+import ru.it_spectrum.ai.redmine.mcp.focus.IssueFocus;
+import ru.it_spectrum.ai.redmine.mcp.focus.ResponseFocus;
 
 import java.util.Map;
 
@@ -28,12 +29,14 @@ public class IssueTools {
 
     private final IssueService issueService;
     private final RedmineMcpProperties properties;
+    private final IssueFocus issueFocus;
     private final IssueCompression issueCompression;
 
     public IssueTools(IssueService issueService, RedmineMcpProperties properties,
-                      IssueCompression issueCompression) {
+                      IssueFocus issueFocus, IssueCompression issueCompression) {
         this.issueService = issueService;
         this.properties = properties;
+        this.issueFocus = issueFocus;
         this.issueCompression = issueCompression;
     }
 
@@ -168,16 +171,17 @@ public class IssueTools {
             "Returns full issue details including description, status, assignee, dates, " +
             "subtasks (children), relations, notes (journals), attachments list, " +
             "and associated repository changesets/revisions when visible to the Redmine user. " +
-            "Use responseProfile='review' for implementation review: it keeps the issue text, " +
-            "human journal notes, attachment metadata, and all changeset revisions while omitting verbose history.",
+            "Use focus='implementation' when you need the implementation context: issue text, " +
+            "human journal notes, attachment metadata, and all changeset revisions while omitting verbose history. " +
+            "Use focus='timeline' for who-did-what-and-when questions.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Issue getIssue(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Response shaping profile: default, review, or full. The review profile keeps review-relevant text and all changeset revisions while omitting verbose history.", required = false) String responseProfile
+            @McpToolParam(description = "Response focus: default, implementation, timeline, or full. The implementation focus keeps implementation-relevant text and all changeset revisions while omitting verbose history.", required = false) String focus
     ) {
-        log.info("Tool call: getIssue (issueId={}, responseProfile={})", issueId, responseProfile);
+        log.info("Tool call: getIssue (issueId={}, focus={})", issueId, focus);
         long start = System.nanoTime();
         var maybeIssue = issueService.find(issueId);
         if (maybeIssue.isEmpty()) {
@@ -185,7 +189,8 @@ public class IssueTools {
             ToolLogger.failed(log, "getIssue", start, e.getMessage());
             throw e;
         }
-        var compressed = issueCompression.compress(maybeIssue.get(), CompressionOptions.fromProfile(responseProfile));
+        var focused = issueFocus.apply(maybeIssue.get(), ResponseFocus.from(focus));
+        var compressed = issueCompression.compress(focused);
         ToolLogger.completed(log, "getIssue", start);
         return compressed;
     }

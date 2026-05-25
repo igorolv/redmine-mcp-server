@@ -57,6 +57,8 @@ public record Issue(
         List<RelatedRef> related,
         @Schema(description = "Linked VCS changesets/commits, when the Redmine repository integration exposes them.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Changeset> changesets,
+        @Schema(description = "Human-readable notes describing semantic focus shaping applied before response-size compression. Null/empty when no focus shaping was applied.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+        List<String> focusNotes,
         @Schema(description = "Human-readable notes describing how this response was compressed to fit the response size budget. Null/empty when no compression was applied.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<String> compressionNotes
 ) {
@@ -89,6 +91,7 @@ public record Issue(
                 Journal.fromAll(source.journals()),
                 null,
                 mergeChangesets(source),
+                null,
                 null
         );
     }
@@ -97,28 +100,49 @@ public record Issue(
         return new Issue(id, project, tracker, status, priority, author, assignedTo,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                journals, related, newChangesets, compressionNotes);
+                journals, related, newChangesets, focusNotes, compressionNotes);
     }
 
     public Issue withJournals(List<Journal> newJournals) {
         return new Issue(id, project, tracker, status, priority, author, assignedTo,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                newJournals, related, changesets, compressionNotes);
+                newJournals, related, changesets, focusNotes, compressionNotes);
     }
 
     public Issue withRelated(List<RelatedRef> newRelated) {
         return new Issue(id, project, tracker, status, priority, author, assignedTo,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                journals, newRelated, changesets, compressionNotes);
+                journals, newRelated, changesets, focusNotes, compressionNotes);
+    }
+
+    public Issue withCustomFields(List<CustomFieldValue> newCustomFields) {
+        return new Issue(id, project, tracker, status, priority, author, assignedTo,
+                fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
+                estimatedHours, spentHours, createdOn, updatedOn, newCustomFields, attachments,
+                journals, related, changesets, focusNotes, compressionNotes);
+    }
+
+    public Issue withAttachments(List<Attachment> newAttachments) {
+        return new Issue(id, project, tracker, status, priority, author, assignedTo,
+                fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
+                estimatedHours, spentHours, createdOn, updatedOn, customFields, newAttachments,
+                journals, related, changesets, focusNotes, compressionNotes);
+    }
+
+    public Issue withFocusNotes(List<String> newFocusNotes) {
+        return new Issue(id, project, tracker, status, priority, author, assignedTo,
+                fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
+                estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
+                journals, related, changesets, newFocusNotes, compressionNotes);
     }
 
     public Issue withCompressionNotes(List<String> newCompressionNotes) {
         return new Issue(id, project, tracker, status, priority, author, assignedTo,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,
                 estimatedHours, spentHours, createdOn, updatedOn, customFields, attachments,
-                journals, related, changesets, newCompressionNotes);
+                journals, related, changesets, focusNotes, newCompressionNotes);
     }
 
     private static List<Changeset> mergeChangesets(RedmineIssue source) {

@@ -11,7 +11,8 @@ import ru.it_spectrum.ai.redmine.mcp.service.AttachmentNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.compression.AttachmentContentCompression;
-import ru.it_spectrum.ai.redmine.mcp.compression.CompressionOptions;
+import ru.it_spectrum.ai.redmine.mcp.focus.AttachmentContentFocus;
+import ru.it_spectrum.ai.redmine.mcp.focus.ResponseFocus;
 
 @Service
 public class AttachmentTools {
@@ -19,10 +20,13 @@ public class AttachmentTools {
     private static final Logger log = LoggerFactory.getLogger(AttachmentTools.class);
 
     private final AttachmentService attachmentService;
+    private final AttachmentContentFocus focusShaper;
     private final AttachmentContentCompression compression;
 
-    public AttachmentTools(AttachmentService attachmentService, AttachmentContentCompression compression) {
+    public AttachmentTools(AttachmentService attachmentService, AttachmentContentFocus focusShaper,
+                           AttachmentContentCompression compression) {
         this.attachmentService = attachmentService;
+        this.focusShaper = focusShaper;
         this.compression = compression;
     }
 
@@ -36,8 +40,8 @@ public class AttachmentTools {
             "default, override with maxChars) and by a per-part cap (override with partLimit). When text " +
             "is cut, the affected part has truncated=true and the response has truncated=true. The full " +
             "file is always available via localPath/fileUri regardless of text limits. " +
-            "responseProfile accepts default, review, or full; review currently preserves extracted text " +
-            "within the same explicit maxChars/partLimit budgets. " +
+            "focus accepts default, implementation, timeline, or full; attachment text remains bounded by " +
+            "the same explicit maxChars/partLimit budgets. " +
             "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
@@ -47,9 +51,9 @@ public class AttachmentTools {
             @McpToolParam(description = "Attachment ID number") int attachmentId,
             @McpToolParam(description = "Total character budget for extracted text across all parts. Uses configured default when omitted.", required = false) Integer maxChars,
             @McpToolParam(description = "Per-part character cap for extracted text. Uses configured default when omitted.", required = false) Integer partLimit,
-            @McpToolParam(description = "Response shaping profile: default, review, or full. Use review when the attachment is being loaded as part of an implementation review.", required = false) String responseProfile
+            @McpToolParam(description = "Response focus: default, implementation, timeline, or full. Use implementation when the attachment is being loaded as implementation context.", required = false) String focus
     ) {
-        return getAttachmentInternal(issueId, attachmentId, maxChars, partLimit, responseProfile);
+        return getAttachmentInternal(issueId, attachmentId, maxChars, partLimit, focus);
     }
 
     public AttachmentContent getAttachment(int issueId, int attachmentId) {
@@ -62,13 +66,14 @@ public class AttachmentTools {
 
     private AttachmentContent getAttachmentInternal(int issueId, int attachmentId,
                                                     Integer maxChars, Integer partLimit,
-                                                    String responseProfile) {
-        log.info("Tool call: getAttachment (attachmentId={}, issueId={}, maxChars={}, partLimit={}, responseProfile={})",
-                attachmentId, issueId, maxChars, partLimit, responseProfile);
+                                                    String focus) {
+        log.info("Tool call: getAttachment (attachmentId={}, issueId={}, maxChars={}, partLimit={}, focus={})",
+                attachmentId, issueId, maxChars, partLimit, focus);
         long start = System.nanoTime();
         try {
             var result = attachmentService.getAttachment(issueId, attachmentId, maxChars, partLimit);
-            var compressed = compression.compress(result, CompressionOptions.fromProfile(responseProfile));
+            var focused = focusShaper.apply(result, ResponseFocus.from(focus));
+            var compressed = compression.compress(focused);
             ToolLogger.completed(log, "getAttachment", start);
             return compressed;
         } catch (AttachmentNotFoundException | IssueNotFoundException | AttachmentDownloadFailedException e) {

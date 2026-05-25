@@ -16,6 +16,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.RelatedRefBuilder;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.TestCompression;
+import ru.it_spectrum.ai.redmine.mcp.focus.IssueFocus;
 
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ class IssueToolsTest {
         var relatedRefBuilder = new RelatedRefBuilder(client, attachmentService, properties);
         var issueService = new IssueService(client, attachmentService, relatedRefBuilder, properties);
         tools = new IssueTools(issueService, properties,
+                new IssueFocus(),
                 TestCompression.issueCompression(properties));
     }
 
@@ -222,7 +224,7 @@ class IssueToolsTest {
     }
 
     @Test
-    void shouldApplyReviewProfileInGetIssue() throws Exception {
+    void shouldApplyImplementationFocusInGetIssue() throws Exception {
         var changesets = List.of(
                 new RedmineIssue.Changeset(
                         "be561082833c6d4fbeba95228a253298a1cfa874",
@@ -261,7 +263,7 @@ class IssueToolsTest {
         );
         when(client.getIssue(4183)).thenReturn(issue);
 
-        var result = ToolJsonTestSupport.stringify(tools.getIssue(4183, "review"));
+        var result = ToolJsonTestSupport.stringify(tools.getIssue(4183, "implementation"));
         var json = ToolJsonTestSupport.parse(result);
 
         var changeset = json.get("changesets").get(0);
@@ -273,7 +275,7 @@ class IssueToolsTest {
         assertThat(json.get("journals")).hasSize(1);
         assertThat(json.get("journals").get(0).get("notes").asText()).isEqualTo("Important review note");
         assertThat(json.get("journals").get(0).has("details")).isFalse();
-        assertThat(result).contains("review profile kept all 1 changeset revisions");
+        assertThat(result).contains("implementation focus kept all 1 changeset revisions");
     }
 
     @Test

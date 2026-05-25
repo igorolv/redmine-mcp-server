@@ -1,27 +1,25 @@
-package ru.it_spectrum.ai.redmine.mcp.compression;
+package ru.it_spectrum.ai.redmine.mcp.focus;
 
 import java.util.Locale;
 
-public enum ResponseProfile {
+public enum ResponseFocus {
     DEFAULT,
-    REVIEW,
+    IMPLEMENTATION,
+    TIMELINE,
     FULL;
 
-    public static ResponseProfile from(String value) {
+    public static ResponseFocus from(String value) {
         if (value == null || value.isBlank()) {
             return DEFAULT;
         }
         return switch (value.strip().toLowerCase(Locale.ROOT)) {
             case "default" -> DEFAULT;
-            case "review" -> REVIEW;
+            case "implementation" -> IMPLEMENTATION;
+            case "timeline" -> TIMELINE;
             case "full" -> FULL;
             default -> throw new IllegalArgumentException(
-                    "Unsupported responseProfile '%s'. Supported values: default, review, full."
+                    "Unsupported focus '%s'. Supported values: default, implementation, timeline, full."
                             .formatted(value));
         };
-    }
-
-    public boolean appliesProfileSteps() {
-        return this == REVIEW;
     }
 }

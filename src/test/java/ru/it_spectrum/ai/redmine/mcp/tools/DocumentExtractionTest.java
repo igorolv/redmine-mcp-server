@@ -22,6 +22,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionTestPipelines;
+import ru.it_spectrum.ai.redmine.mcp.focus.AttachmentContentFocus;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.TestCompression;
 
@@ -57,7 +58,8 @@ class DocumentExtractionTest {
         var properties = TestRedmineMcpProperties.withDataDir(dataDir);
         var snapshot = new IssueSnapshotService(client, new ObjectMapper(), properties);
         var service = ExtractionTestPipelines.newAttachmentService(client, snapshot);
-        tools = new AttachmentTools(service, TestCompression.attachmentContentCompression(properties));
+        tools = new AttachmentTools(service, new AttachmentContentFocus(),
+                TestCompression.attachmentContentCompression(properties));
     }
 
     // --- PDF ---

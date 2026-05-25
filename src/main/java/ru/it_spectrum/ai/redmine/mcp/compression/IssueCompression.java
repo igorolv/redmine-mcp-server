@@ -3,11 +3,9 @@ package ru.it_spectrum.ai.redmine.mcp.compression;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
-import ru.it_spectrum.ai.redmine.mcp.compression.steps.ChangesetsRevisionOnlyStep;
 import ru.it_spectrum.ai.redmine.mcp.compression.steps.ChangesetCommentsFirstLineStep;
 import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalDetailsOmitStep;
 import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalNoteContentTruncateStep;
-import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalsReviewStep;
 import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalsTailKeepStep;
 
 import java.util.List;
@@ -28,31 +26,14 @@ public class IssueCompression {
     }
 
     public Issue compress(Issue issue) {
-        return compress(issue, CompressionOptions.defaults());
-    }
-
-    public Issue compress(Issue issue, CompressionOptions options) {
         if (issue == null) {
             return null;
         }
-        var actualOptions = options != null ? options : CompressionOptions.defaults();
-        var profiled = CompressionSupport.applySteps(issue, buildProfileSteps(actualOptions.profile()));
-        var result = compressor.fit(profiled.value(), buildBudgetSteps(), properties.response().maxChars());
-        var notes = CompressionSupport.concatNotes(profiled.notes(), result.notes());
-        if (notes.isEmpty()) {
+        var result = compressor.fit(issue, buildBudgetSteps(), properties.response().maxChars());
+        if (result.notes().isEmpty()) {
             return result.value();
         }
-        return result.value().withCompressionNotes(notes);
-    }
-
-    List<CompressionStep<Issue>> buildProfileSteps(ResponseProfile profile) {
-        if (profile != null && profile.appliesProfileSteps()) {
-            return List.of(
-                    new ChangesetsRevisionOnlyStep(),
-                    new JournalsReviewStep()
-            );
-        }
-        return List.of();
+        return result.value().withCompressionNotes(result.notes());
     }
 
     List<CompressionStep<Issue>> buildBudgetSteps() {
