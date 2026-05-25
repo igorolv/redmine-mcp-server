@@ -34,6 +34,7 @@ class IncidentPromptsTest {
         assertThat(text).contains("12345");
         assertThat(text).contains("getIssue");
         assertThat(text).contains("getAttachment");
+        assertThat(text).contains("focus=\"default\"");
         assertThat(text).contains("maxChars=300");
         assertThat(text).contains("partLimit=300");
         // Brief must explicitly cap previews to the first 10 of >15 attachments.
@@ -42,10 +43,43 @@ class IncidentPromptsTest {
     }
 
     @Test
+    void incidentImplementationUsesImplementationFocus() throws Exception {
+        Method m = IncidentPrompts.class.getMethod("incidentImplementation", int.class);
+        var annotation = m.getAnnotation(McpPrompt.class);
+        assertThat(annotation).isNotNull();
+        assertThat(annotation.name()).isEqualTo("incident-implementation");
+
+        String text = prompts.incidentImplementation(12345);
+        assertThat(text).contains("focus=\"implementation\"");
+        assertThat(text).contains("getAttachment");
+        assertThat(text).contains("maxChars=3000");
+        assertThat(text).contains("Do not call getIssueJournal");
+        assertThat(text).contains("Review Checklist");
+    }
+
+    @Test
+    void incidentTimelineUsesTimelineFocusAndJournalFallback() throws Exception {
+        Method m = IncidentPrompts.class.getMethod("incidentTimeline", int.class);
+        var annotation = m.getAnnotation(McpPrompt.class);
+        assertThat(annotation).isNotNull();
+        assertThat(annotation.name()).isEqualTo("incident-timeline");
+
+        String text = prompts.incidentTimeline(12345);
+        assertThat(text).contains("focus=\"timeline\"");
+        assertThat(text).contains("getIssueJournal");
+        assertThat(text).contains("compressionNotes");
+        assertThat(text).contains("Do not call getAttachment");
+        assertThat(text).contains("Chronology");
+    }
+
+    @Test
     void syncProviderDiscoversPrompt() {
         var provider = new SyncMcpPromptProvider(List.of(prompts));
         var specs = provider.getPromptSpecifications();
         var names = specs.stream().map(s -> s.prompt().name()).toList();
-        assertThat(names).containsExactly("incident-brief");
+        assertThat(names).containsExactly(
+                "incident-brief",
+                "incident-implementation",
+                "incident-timeline");
     }
 }
