@@ -47,7 +47,7 @@ class IssueCompressionTest {
     @Test
     void appliesJournalTailKeepWhenChangesetTrimNotEnough() {
         var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(1800, 3, 20, 10_000, 10_000, 10_000, 5));
+                new RedmineMcpProperties.Response(1800, 3, 10_000, 10_000, 5));
         var compression = TestCompression.issueCompression(props);
         var journals = IntStream.rangeClosed(1, 20)
                 .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
@@ -66,7 +66,7 @@ class IssueCompressionTest {
     void dropsJournalDetailsBeforeAnyNoteCompression() {
         // Budget large enough that detail-drop alone fits — no tail-keep, no note truncation.
         var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(3000, 30, 20, 10_000, 10_000, 10_000, 5));
+                new RedmineMcpProperties.Response(3000, 30, 10_000, 10_000, 5));
         var compression = TestCompression.issueCompression(props);
         var heavyDetails = IntStream.rangeClosed(1, 20)
                 .mapToObj(i -> new Issue.Detail("attr", "field_" + i,
@@ -92,7 +92,7 @@ class IssueCompressionTest {
     void detailsAreAlreadyNullByTheTimeNotesAreTruncated() {
         // Budget tight enough that we have to truncate note bodies; details must be gone first.
         var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(3000, 10, 20, 10_000, 10_000, 100, 5));
+                new RedmineMcpProperties.Response(3000, 10, 10_000, 100, 5));
         var compression = TestCompression.issueCompression(props);
         var details = List.of(
                 new Issue.Detail("attr", "status_id", "1", "2"),
@@ -117,7 +117,7 @@ class IssueCompressionTest {
     @Test
     void truncatesJournalNoteBodiesWhenTailKeepNotEnough() {
         var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(3000, 10, 20, 10_000, 10_000, 100, 5));
+                new RedmineMcpProperties.Response(3000, 10, 10_000, 100, 5));
         var compression = TestCompression.issueCompression(props);
         var journals = IntStream.rangeClosed(1, 5)
                 .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
@@ -142,7 +142,7 @@ class IssueCompressionTest {
         // Each note ~5000 chars; 30 of them ⇒ ~155 KB. The soft tier (tail=30, chars=5000)
         // cannot fit budget=20_000, so the compressor must walk down to the medium tier.
         var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(20_000, 30, 20, 10_000, 10_000, 5_000, 5));
+                new RedmineMcpProperties.Response(20_000, 30, 10_000, 5_000, 5));
         var compression = TestCompression.issueCompression(props);
         var journals = IntStream.rangeClosed(1, 30)
                 .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
@@ -234,7 +234,7 @@ class IssueCompressionTest {
 
     private static RedmineMcpProperties propsWithBudget(int budget) {
         return new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(budget, 30, 20, 10_000, 10_000, 10_000, 5));
+                new RedmineMcpProperties.Response(budget, 30, 10_000, 10_000, 5));
     }
 
     private static Issue stubIssue(List<Issue.Journal> journals, List<Issue.Changeset> changesets) {

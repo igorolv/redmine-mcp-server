@@ -155,6 +155,14 @@ $env:JAVA_HOME="C:\Program Files\Java\jdk-25"
 | `REDMINE_MCP_DATA_DIR` | Каталог локальных данных сервера; по умолчанию `~/.redmine-mcp-server` |
 | `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Лимит текста на один `part` (например, один файл внутри ZIP) для `getAttachment`; по умолчанию `30000` символов. Параметр `partLimit` инструмента переопределяет это значение. |
 | `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Суммарный лимит извлечённого текста на одно вложение в `getAttachment`; по умолчанию `50000` символов. Параметр `maxChars` инструмента переопределяет это значение. |
+| `REDMINE_MCP_RELATED_MAX_SIBLINGS` | Максимум sibling-задач, добавляемых в `related` при чтении задачи; по умолчанию `20` |
+| `REDMINE_MCP_RELATED_MAX_CHILDREN` | Максимум дочерних задач, добавляемых в `related` при чтении задачи; по умолчанию `20` |
+| `REDMINE_MCP_RELATED_MAX_RELATED` | Максимум связанных задач из relations, добавляемых в `related` при чтении задачи; по умолчанию `10` |
+| `REDMINE_MCP_RESPONSE_MAX_CHARS` | Целевой лимит размера ответа перед пошаговым сжатием `getIssue` и `getAttachment`; по умолчанию `50000` символов |
+| `REDMINE_MCP_RESPONSE_JOURNAL_TAIL_KEEP` | Сколько последних journal entries сохраняет budget-компрессия `getIssue` перед более агрессивным сокращением; по умолчанию `30` |
+| `REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS` | Лимит текста одного attachment part при response-компрессии `getAttachment`; по умолчанию `10000` символов |
+| `REDMINE_MCP_RESPONSE_JOURNAL_NOTE_CHARS` | Лимит текста одной journal note при response-компрессии `getIssue`; по умолчанию `5000` символов |
+| `REDMINE_MCP_RESPONSE_IMAGE_PARTS_KEEP` | Сколько image parts сохраняет response-компрессия `getAttachment`; по умолчанию `5` |
 | `REDMINE_MCP_PAGINATION_DEFAULT_LIMIT` | Лимит страницы по умолчанию для list/search-инструментов; по умолчанию `25` |
 | `REDMINE_MCP_PAGINATION_DEFAULT_OFFSET` | Offset по умолчанию для list/search-инструментов; по умолчанию `0` |
 | `REDMINE_MCP_PAGINATION_MEMBERS_DEFAULT_LIMIT` | Лимит страницы по умолчанию для `listProjectMembers`; по умолчанию `100` |

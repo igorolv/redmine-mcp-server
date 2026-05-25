@@ -22,9 +22,7 @@ redmine-mcp:
   response:
     max-chars: ${REDMINE_MCP_RESPONSE_MAX_CHARS:50000}
     journal-tail-keep: ${REDMINE_MCP_RESPONSE_JOURNAL_TAIL_KEEP:30}
-    recent-notes-tail-keep: ${REDMINE_MCP_RESPONSE_RECENT_NOTES_TAIL_KEEP:20}
     attachment-text-part-chars: ${REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS:10000}
-    recent-note-chars: ${REDMINE_MCP_RESPONSE_RECENT_NOTE_CHARS:10000}
     journal-note-chars: ${REDMINE_MCP_RESPONSE_JOURNAL_NOTE_CHARS:5000}
     image-parts-keep: ${REDMINE_MCP_RESPONSE_IMAGE_PARTS_KEEP:5}
   pagination:
