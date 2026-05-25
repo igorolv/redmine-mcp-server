@@ -68,7 +68,7 @@ public class RelatedRefBuilder {
         if (parent == null || parent.children() == null) {
             return false;
         }
-        int maxSiblings = properties.fullContext().maxSiblings();
+        int maxSiblings = properties.related().maxSiblings();
         long siblingsTotal = parent.children().stream()
                 .filter(child -> child.id() != issueId)
                 .count();
@@ -93,7 +93,7 @@ public class RelatedRefBuilder {
         if (mainIssue.children() == null) {
             return false;
         }
-        int maxChildren = properties.fullContext().maxChildren();
+        int maxChildren = properties.related().maxChildren();
         boolean truncated = mainIssue.children().size() > maxChildren;
         int attempts = 0;
         for (var child : mainIssue.children()) {
@@ -114,7 +114,7 @@ public class RelatedRefBuilder {
         if (mainIssue.relations() == null || mainIssue.relations().isEmpty()) {
             return false;
         }
-        int maxRelated = properties.fullContext().maxRelated();
+        int maxRelated = properties.related().maxRelated();
         boolean truncated = mainIssue.relations().size() > maxRelated;
         int relCount = 0;
         for (var rel : mainIssue.relations()) {

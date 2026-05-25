@@ -9,7 +9,7 @@ import java.nio.file.Path;
 public record RedmineMcpProperties(
         String dataDir,
         AttachmentExtraction attachment,
-        FullContext fullContext,
+        Related related,
         Pagination pagination,
         Tree tree,
         Analysis analysis,
@@ -19,9 +19,9 @@ public record RedmineMcpProperties(
     public static final String DEFAULT_DATA_DIR_NAME = ".redmine-mcp-server";
     public static final int DEFAULT_ATTACHMENT_PER_PART_CHARS = 30_000;
     public static final int DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS = 50_000;
-    public static final int DEFAULT_FULL_CONTEXT_MAX_SIBLINGS = 20;
-    public static final int DEFAULT_FULL_CONTEXT_MAX_CHILDREN = 20;
-    public static final int DEFAULT_FULL_CONTEXT_MAX_RELATED = 10;
+    public static final int DEFAULT_RELATED_MAX_SIBLINGS = 20;
+    public static final int DEFAULT_RELATED_MAX_CHILDREN = 20;
+    public static final int DEFAULT_RELATED_MAX_RELATED = 10;
     public static final int DEFAULT_RESPONSE_MAX_CHARS = 50_000;
     public static final int DEFAULT_RESPONSE_JOURNAL_TAIL = 30;
     public static final int DEFAULT_RESPONSE_RECENT_NOTES_TAIL = 20;
@@ -58,12 +58,12 @@ public record RedmineMcpProperties(
         attachment = attachment != null
                 ? attachment
                 : new AttachmentExtraction(DEFAULT_ATTACHMENT_PER_PART_CHARS, DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS);
-        fullContext = fullContext != null
-                ? fullContext
-                : new FullContext(
-                        DEFAULT_FULL_CONTEXT_MAX_SIBLINGS,
-                        DEFAULT_FULL_CONTEXT_MAX_CHILDREN,
-                        DEFAULT_FULL_CONTEXT_MAX_RELATED);
+        related = related != null
+                ? related
+                : new Related(
+                        DEFAULT_RELATED_MAX_SIBLINGS,
+                        DEFAULT_RELATED_MAX_CHILDREN,
+                        DEFAULT_RELATED_MAX_RELATED);
         pagination = pagination != null
                 ? pagination
                 : new Pagination(
@@ -122,20 +122,20 @@ public record RedmineMcpProperties(
         }
     }
 
-    public record FullContext(
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_SIBLINGS) int maxSiblings,
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_CHILDREN) int maxChildren,
-            @DefaultValue("" + DEFAULT_FULL_CONTEXT_MAX_RELATED) int maxRelated
+    public record Related(
+            @DefaultValue("" + DEFAULT_RELATED_MAX_SIBLINGS) int maxSiblings,
+            @DefaultValue("" + DEFAULT_RELATED_MAX_CHILDREN) int maxChildren,
+            @DefaultValue("" + DEFAULT_RELATED_MAX_RELATED) int maxRelated
     ) {
-        public FullContext {
+        public Related {
             if (maxSiblings < 0) {
-                maxSiblings = DEFAULT_FULL_CONTEXT_MAX_SIBLINGS;
+                maxSiblings = DEFAULT_RELATED_MAX_SIBLINGS;
             }
             if (maxChildren < 0) {
-                maxChildren = DEFAULT_FULL_CONTEXT_MAX_CHILDREN;
+                maxChildren = DEFAULT_RELATED_MAX_CHILDREN;
             }
             if (maxRelated < 0) {
-                maxRelated = DEFAULT_FULL_CONTEXT_MAX_RELATED;
+                maxRelated = DEFAULT_RELATED_MAX_RELATED;
             }
         }
     }
