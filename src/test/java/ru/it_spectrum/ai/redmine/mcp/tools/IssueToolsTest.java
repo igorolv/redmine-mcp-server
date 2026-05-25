@@ -266,6 +266,7 @@ class IssueToolsTest {
         assertThat(changeset.has("comments")).isFalse();
         assertThat(changeset.has("user")).isFalse();
         assertThat(changeset.has("committedOn")).isFalse();
+        assertThat(changeset.has("source")).isFalse();
         assertThat(json.get("journals")).hasSize(1);
         assertThat(json.get("journals").get(0).get("notes").asText()).isEqualTo("Important review note");
         assertThat(json.get("journals").get(0).has("details")).isFalse();

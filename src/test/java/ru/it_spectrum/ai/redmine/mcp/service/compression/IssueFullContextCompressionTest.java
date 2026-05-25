@@ -69,6 +69,7 @@ class IssueFullContextCompressionTest {
 
         assertThat(result.issue().changesets().getFirst().revision()).isEqualTo("abc123");
         assertThat(result.issue().changesets().getFirst().comments()).isNull();
+        assertThat(result.issue().changesets().getFirst().source()).isNull();
         assertThat(result.issue().journals()).hasSize(1);
         assertThat(result.issue().journals().getFirst().details()).isNull();
         assertThat(result.recentNotes()).hasSize(1);

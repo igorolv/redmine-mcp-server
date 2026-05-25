@@ -171,6 +171,7 @@ class IssueCompressionTest {
             assertThat(changeset.user()).isNull();
             assertThat(changeset.comments()).isNull();
             assertThat(changeset.committedOn()).isNull();
+            assertThat(changeset.source()).isNull();
         });
         assertThat(result.journals()).hasSize(1);
         assertThat(result.journals().getFirst().notes()).isEqualTo("Useful note");

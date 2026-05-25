@@ -25,15 +25,15 @@ public class ChangesetsRevisionOnlyStep implements CompressionStep<Issue> {
         boolean changed = false;
         var compact = new java.util.ArrayList<Issue.Changeset>(value.changesets().size());
         for (var cs : value.changesets()) {
-            if (cs.user() != null || cs.comments() != null || cs.committedOn() != null) {
+            if (cs.user() != null || cs.comments() != null || cs.committedOn() != null || cs.source() != null) {
                 changed = true;
             }
-            compact.add(new Issue.Changeset(cs.revision(), null, null, null, cs.source()));
+            compact.add(new Issue.Changeset(cs.revision(), null, null, null, null));
         }
         if (!changed) {
             return Optional.empty();
         }
-        String note = "review profile kept all %d changeset revisions and omitted commit comments, users, and timestamps"
+        String note = "review profile kept all %d changeset revisions and omitted commit comments, users, timestamps, and sources"
                 .formatted(value.changesets().size());
         return Optional.of(new Compressed<>(value.withChangesets(List.copyOf(compact)), note));
     }
