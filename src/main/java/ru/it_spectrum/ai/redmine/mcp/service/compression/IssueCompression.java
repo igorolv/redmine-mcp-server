@@ -55,10 +55,19 @@ public class IssueCompression {
     }
 
     List<CompressionStep<Issue>> buildBudgetSteps() {
+        int tail = properties.response().journalTailKeep();
+        int chars = properties.response().journalNoteChars();
         return List.of(
                 new ChangesetCommentsFirstLineStep(),
-                new JournalsTailKeepStep(properties.response().journalTailKeep()),
-                new JournalNoteContentTruncateStep(properties.response().journalNoteChars())
+                // Soft tier: drop oldest history, then trim only the longest notes.
+                new JournalsTailKeepStep(tail),
+                new JournalNoteContentTruncateStep(chars),
+                // Medium tier.
+                new JournalsTailKeepStep(Math.max(1, (tail * 2 + 2) / 3)),
+                new JournalNoteContentTruncateStep(Math.max(500, chars / 2)),
+                // Hard tier — last resort before giving up.
+                new JournalsTailKeepStep(Math.max(1, tail / 3)),
+                new JournalNoteContentTruncateStep(Math.max(200, chars / 5))
         );
     }
 }

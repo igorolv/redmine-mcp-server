@@ -45,7 +45,7 @@ class IssueCompressionTest {
     @Test
     void appliesJournalTailKeepWhenChangesetTrimNotEnough() {
         var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
-                new RedmineMcpProperties.Response(500, 3, 20, 10_000, 10_000, 10_000, 5));
+                new RedmineMcpProperties.Response(1800, 3, 20, 10_000, 10_000, 10_000, 5));
         var compression = TestCompression.issueCompression(props);
         var journals = IntStream.rangeClosed(1, 20)
                 .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
@@ -81,6 +81,51 @@ class IssueCompressionTest {
                         .contains("total: 1000 chars"));
         assertThat(result.compressionNotes()).anyMatch(s ->
                 s.contains("journal note bodies truncated to 100 chars (5 entries affected)"));
+    }
+
+    @Test
+    void escalatesProgressivelyUntilBudgetIsMet() {
+        // Each note ~5000 chars; 30 of them ⇒ ~155 KB. The soft tier (tail=30, chars=5000)
+        // cannot fit budget=20_000, so the compressor must walk down to the medium tier.
+        var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
+                new RedmineMcpProperties.Response(20_000, 30, 20, 10_000, 10_000, 5_000, 5));
+        var compression = TestCompression.issueCompression(props);
+        var journals = IntStream.rangeClosed(1, 30)
+                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
+                        "y".repeat(5_000),
+                        "2026-01-01T00:00:00Z", List.of()))
+                .toList();
+        var issue = stubIssue(journals, List.of());
+
+        var result = compression.compress(issue);
+
+        // Medium tier: tail=20, chars=2500. Total ~50 KB at this point — still too big,
+        // so the hard tier (tail=10, chars=1000) finishes the job.
+        assertThat(result.journals()).hasSizeLessThanOrEqualTo(20);
+        assertThat(result.compressionNotes())
+                .anyMatch(s -> s.contains("journal note bodies truncated to 2500 chars"));
+    }
+
+    @Test
+    void truncationStepIsIdempotentAndKeepsOriginalSize() {
+        // Same step applied twice (5000 then 1000) must keep the original length in the marker.
+        var step1 = new ru.it_spectrum.ai.redmine.mcp.service.compression.steps
+                .JournalNoteContentTruncateStep(5_000);
+        var step2 = new ru.it_spectrum.ai.redmine.mcp.service.compression.steps
+                .JournalNoteContentTruncateStep(1_000);
+        var journals = List.of(new Issue.Journal(1, new Ref(1, "u"),
+                "z".repeat(8_000), "2026-01-01T00:00:00Z", List.of()));
+        var issue = stubIssue(journals, List.of());
+
+        var afterFirst = step1.apply(issue).orElseThrow().value();
+        var afterSecond = step2.apply(afterFirst).orElseThrow().value();
+        String body = afterSecond.journals().getFirst().notes();
+
+        assertThat(body).startsWith("z".repeat(1_000));
+        assertThat(body)
+                .contains("truncated by response compressor")
+                .endsWith("total: 8000 chars)");
+        assertThat(body).hasSize(1_000 + "... (truncated by response compressor; total: 8000 chars)".length());
     }
 
     @Test
