@@ -1,6 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.compression.steps;
 
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.Journal;
 import ru.it_spectrum.ai.redmine.mcp.compression.CompressionStep;
 
 import java.util.List;
@@ -32,13 +33,13 @@ public class JournalsReviewStep implements CompressionStep<Issue> {
         return Optional.of(new Compressed<>(value.withJournals(compact), note));
     }
 
-    public static List<Issue.Journal> compact(List<Issue.Journal> journals) {
+    public static List<Journal> compact(List<Journal> journals) {
         if (journals == null) {
             return null;
         }
         return journals.stream()
                 .filter(journal -> journal.notes() != null && !journal.notes().isBlank())
-                .map(journal -> new Issue.Journal(
+                .map(journal -> new Journal(
                         journal.id(),
                         journal.user(),
                         journal.notes(),

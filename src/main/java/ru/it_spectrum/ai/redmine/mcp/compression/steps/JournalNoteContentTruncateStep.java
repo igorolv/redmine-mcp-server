@@ -1,6 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.compression.steps;
 
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.Journal;
 import ru.it_spectrum.ai.redmine.mcp.compression.CompressionStep;
 
 import java.util.ArrayList;
@@ -42,7 +43,7 @@ public class JournalNoteContentTruncateStep implements CompressionStep<Issue> {
         }
         boolean changed = false;
         int truncatedCount = 0;
-        var newJournals = new ArrayList<Issue.Journal>(value.journals().size());
+        var newJournals = new ArrayList<Journal>(value.journals().size());
         for (var j : value.journals()) {
             String text = j.notes();
             if (text == null || text.length() <= maxChars) {
@@ -67,7 +68,7 @@ public class JournalNoteContentTruncateStep implements CompressionStep<Issue> {
             truncatedCount++;
             String shortened = body.substring(0, maxChars)
                     + TRUNCATION_SUFFIX_PREFIX + originalLen + TRUNCATION_SUFFIX_TAIL;
-            newJournals.add(new Issue.Journal(j.id(), j.user(), shortened, j.createdOn(), j.details()));
+            newJournals.add(new Journal(j.id(), j.user(), shortened, j.createdOn(), j.details()));
         }
         if (!changed) {
             return Optional.empty();

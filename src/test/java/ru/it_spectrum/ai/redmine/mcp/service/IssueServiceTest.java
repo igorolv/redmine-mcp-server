@@ -31,12 +31,13 @@ class IssueServiceTest {
     @Mock
     private RedmineClient client;
 
+    private AttachmentService attachmentService;
     private IssueService service;
 
     @BeforeEach
     void setUp() {
         var properties = TestRedmineMcpProperties.defaults();
-        var attachmentService = mock(AttachmentService.class);
+        attachmentService = mock(AttachmentService.class);
         var relatedRefBuilder = new RelatedRefBuilder(client, attachmentService, properties);
         service = new IssueService(client, attachmentService, relatedRefBuilder, properties);
     }
@@ -47,6 +48,39 @@ class IssueServiceTest {
     void findShouldReturnEmptyWhenIssueMissing() {
         when(client.getIssue(99)).thenReturn(null);
         assertThat(service.find(99)).isEmpty();
+    }
+
+    @Test
+    void getJournalShouldSnapshotIssueAndReturnRequestedJournal() {
+        var journals = List.of(
+                new RedmineIssue.Journal(10, new IdName(42, "John"), "first", "2026-05-15T10:00:00Z", List.of()),
+                new RedmineIssue.Journal(20, new IdName(43, "Jane"), "full note", "2026-05-15T11:00:00Z",
+                        List.of(new RedmineIssue.Detail("attr", "status_id", "1", "2")))
+        );
+        var issue = issueWithJournals(100, "Test", new IdName(1, "New"), new IdName(42, "John"), journals);
+        when(client.getIssue(100)).thenReturn(issue);
+
+        var result = service.getJournal(100, 20);
+
+        assertThat(result.id()).isEqualTo(20);
+        assertThat(result.notes()).isEqualTo("full note");
+        assertThat(result.details()).singleElement().satisfies(detail -> {
+            assertThat(detail.name()).isEqualTo("status_id");
+            assertThat(detail.newValue()).isEqualTo("2");
+        });
+        verify(attachmentService).snapshotIssue(issue);
+    }
+
+    @Test
+    void getJournalShouldThrowWhenJournalMissingAfterSnapshot() {
+        var issue = issueWithJournals(100, "Test", new IdName(1, "New"),
+                new IdName(42, "John"), List.of());
+        when(client.getIssue(100)).thenReturn(issue);
+
+        assertThatThrownBy(() -> service.getJournal(100, 999))
+                .isInstanceOf(IssueJournalNotFoundException.class)
+                .hasMessageContaining("Journal #999 not found in issue #100");
+        verify(attachmentService).snapshotIssue(issue);
     }
 
     // --- list / searchIssues ---

@@ -416,6 +416,61 @@ class IssueToolsTest {
                 .hasMessageContaining("Issue #999 not found");
     }
 
+    // --- getIssueJournal ---
+
+    @Test
+    void shouldReturnFullIssueJournal() {
+        var issue = new RedmineIssue(
+                4183,
+                new IdName(1, "my-project"),
+                new IdName(1, "Bug"),
+                new IdName(1, "Open"),
+                new IdName(2, "Normal"),
+                new IdName(42, "John Doe"),
+                new IdName(42, "John Doe"),
+                null, null, null,
+                "Issue with journals", "desc",
+                null, null, 0,
+                null, null, false,
+                "2026-05-15T00:00:00Z", "2026-05-15T15:05:42Z",
+                null, null,
+                List.of(
+                        new RedmineIssue.Journal(
+                                1001,
+                                new IdName(56, "Igor Olvovsky"),
+                                "Full note text that must not be compressed",
+                                "2026-05-15T14:05:42Z",
+                                List.of(new RedmineIssue.Detail("attr", "status_id", "1", "2"))),
+                        new RedmineIssue.Journal(
+                                1002,
+                                new IdName(56, "Igor Olvovsky"),
+                                "Other note",
+                                "2026-05-15T15:05:42Z",
+                                List.of())
+                ),
+                null, null
+        );
+        when(client.getIssue(4183)).thenReturn(issue);
+
+        var result = ToolJsonTestSupport.stringify(tools.getIssueJournal(4183, 1001));
+
+        assertThat(result).contains("\"id\":1001");
+        assertThat(result).contains("\"name\":\"Igor Olvovsky\"");
+        assertThat(result).contains("Full note text that must not be compressed");
+        assertThat(result).contains("\"details\"");
+        assertThat(result).contains("\"oldValue\":\"1\"");
+        assertThat(result).contains("\"newValue\":\"2\"");
+    }
+
+    @Test
+    void shouldHandleIssueJournalNotFound() {
+        var issue = issue(4183, "Issue with no matching journal", "Open", "my-project");
+        when(client.getIssue(4183)).thenReturn(issue);
+
+        assertThatThrownBy(() -> tools.getIssueJournal(4183, 9999))
+                .hasMessageContaining("Journal #9999 not found in issue #4183");
+    }
+
     // --- searchIssues ---
 
     @Test

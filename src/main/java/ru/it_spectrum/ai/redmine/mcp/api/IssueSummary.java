@@ -41,7 +41,7 @@ public record IssueSummary(
         @Schema(description = "Timestamp of the most recent change in ISO-8601.", format = "date-time", nullable = true)
         String updatedOn,
         @Schema(description = "Project-defined custom field values.", nullable = true)
-        List<Issue.CustomFieldValue> customFields
+        List<CustomFieldValue> customFields
 ) {
 
     public static IssueSummary from(RedmineIssueSummary source) {
@@ -65,7 +65,7 @@ public record IssueSummary(
                 source.estimatedHours(),
                 source.createdOn(),
                 source.updatedOn(),
-                Issue.CustomFieldValue.fromAll(source.customFields())
+                CustomFieldValue.fromAll(source.customFields())
         );
     }
 

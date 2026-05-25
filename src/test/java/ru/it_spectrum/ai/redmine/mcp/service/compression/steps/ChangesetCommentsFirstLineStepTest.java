@@ -1,6 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.service.compression.steps;
 
 import org.junit.jupiter.api.Test;
+import ru.it_spectrum.ai.redmine.mcp.api.Changeset;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
 import ru.it_spectrum.ai.redmine.mcp.compression.steps.ChangesetCommentsFirstLineStep;
@@ -38,7 +39,7 @@ class ChangesetCommentsFirstLineStepTest {
         var result = step.apply(issue).orElseThrow();
         var trimmed = result.value().changesets();
 
-        assertThat(trimmed).extracting(Issue.Changeset::comments)
+        assertThat(trimmed).extracting(Changeset::comments)
                 .containsExactly("Fix login bug", "Refactor module");
         assertThat(result.note()).contains("2 of 2");
     }
@@ -51,15 +52,15 @@ class ChangesetCommentsFirstLineStepTest {
 
         assertThat(cs.revision()).isEqualTo("abc123");
         assertThat(cs.user().name()).isEqualTo("Dev");
-        assertThat(cs.source()).isEqualTo(Issue.Changeset.SOURCE_REDMINE);
+        assertThat(cs.source()).isEqualTo(Changeset.SOURCE_REDMINE);
     }
 
-    private static Issue.Changeset changeset(String revision, String comments) {
-        return new Issue.Changeset(revision, new Ref(1, "Dev"), comments,
-                "2026-01-01T00:00:00Z", Issue.Changeset.SOURCE_REDMINE);
+    private static Changeset changeset(String revision, String comments) {
+        return new Changeset(revision, new Ref(1, "Dev"), comments,
+                "2026-01-01T00:00:00Z", Changeset.SOURCE_REDMINE);
     }
 
-    private static Issue stubIssue(List<Issue.Changeset> changesets) {
+    private static Issue stubIssue(List<Changeset> changesets) {
         return new Issue(1, null, null, null, null, null, null, null, null,
                 "s", "d", null, null, 0, null, null, "t", "t",
                 List.of(), List.of(), List.of(), null, List.copyOf(changesets), null);

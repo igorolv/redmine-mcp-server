@@ -1,7 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.client;
 
 import org.junit.jupiter.api.Test;
-import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.Changeset;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 
@@ -24,7 +24,7 @@ class CommitReferenceExtractorTest {
         assertThat(result).hasSize(1);
         var c = result.getFirst();
         assertThat(c.revision()).isEqualTo("4a900e11f6cacbc4b92b1662f73e3d263d5e5d9b");
-        assertThat(c.source()).isEqualTo(Issue.Changeset.SOURCE_COMMENT_REFERENCE);
+        assertThat(c.source()).isEqualTo(Changeset.SOURCE_COMMENT_REFERENCE);
         assertThat(c.user().id()).isEqualTo(2);
         assertThat(c.committedOn()).isEqualTo("2026-05-15T14:05:42Z");
         assertThat(c.comments()).isNull();
@@ -46,9 +46,9 @@ class CommitReferenceExtractorTest {
 
     @Test
     void deduplicatesAgainstExistingRedmineChangesetByPrefix() {
-        var existing = List.of(new Issue.Changeset(
+        var existing = List.of(new Changeset(
                 "4a900e11f6cacbc4b92b1662f73e3d263d5e5d9b", null, "msg", "2026-05-15T14:00:00Z",
-                Issue.Changeset.SOURCE_REDMINE));
+                Changeset.SOURCE_REDMINE));
         var journal = note(2, "Аноним", "2026-05-15T14:05:42Z",
                 "http://example.com/repo/commit/4a900e11");
 

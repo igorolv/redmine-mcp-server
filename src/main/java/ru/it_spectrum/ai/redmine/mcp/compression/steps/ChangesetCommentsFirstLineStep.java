@@ -1,5 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.compression.steps;
 
+import ru.it_spectrum.ai.redmine.mcp.api.Changeset;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.compression.CompressionStep;
 
@@ -22,7 +23,7 @@ public class ChangesetCommentsFirstLineStep implements CompressionStep<Issue> {
         if (value == null || value.changesets() == null || value.changesets().isEmpty()) {
             return Optional.empty();
         }
-        var trimmed = new java.util.ArrayList<Issue.Changeset>(value.changesets().size());
+        var trimmed = new java.util.ArrayList<Changeset>(value.changesets().size());
         int trimmedCount = 0;
         for (var cs : value.changesets()) {
             String original = cs.comments();
@@ -30,7 +31,7 @@ public class ChangesetCommentsFirstLineStep implements CompressionStep<Issue> {
             if (firstLine == null || firstLine.equals(original)) {
                 trimmed.add(cs);
             } else {
-                trimmed.add(new Issue.Changeset(cs.revision(), cs.user(), firstLine,
+                trimmed.add(new Changeset(cs.revision(), cs.user(), firstLine,
                         cs.committedOn(), cs.source()));
                 trimmedCount++;
             }

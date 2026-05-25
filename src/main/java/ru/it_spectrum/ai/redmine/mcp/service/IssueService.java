@@ -5,6 +5,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueHistory;
 import ru.it_spectrum.ai.redmine.mcp.api.IssuePage;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueTree;
+import ru.it_spectrum.ai.redmine.mcp.api.Journal;
 import ru.it_spectrum.ai.redmine.mcp.api.MyIssues;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
 import ru.it_spectrum.ai.redmine.mcp.api.User;
@@ -67,6 +68,22 @@ public class IssueService {
         attachmentService.snapshotIssue(issue);
         var related = relatedRefBuilder.fetchRelated(issue).toRefs();
         return Optional.of(Issue.from(issue).withRelated(related));
+    }
+
+    public Journal getJournal(int issueId, int journalId) {
+        var issue = client.getIssue(issueId);
+        if (issue == null) {
+            throw new IssueNotFoundException(issueId);
+        }
+        attachmentService.snapshotIssue(issue);
+        if (issue.journals() != null) {
+            for (var journal : issue.journals()) {
+                if (journal != null && journal.id() == journalId) {
+                    return Journal.from(journal);
+                }
+            }
+        }
+        throw new IssueJournalNotFoundException(issueId, journalId);
     }
 
     // --- Listing / search ---

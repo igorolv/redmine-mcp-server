@@ -1,7 +1,10 @@
 package ru.it_spectrum.ai.redmine.mcp.service.compression;
 
 import org.junit.jupiter.api.Test;
+import ru.it_spectrum.ai.redmine.mcp.api.Changeset;
+import ru.it_spectrum.ai.redmine.mcp.api.Detail;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.Journal;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
 import ru.it_spectrum.ai.redmine.mcp.compression.CompressionOptions;
 import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalNoteContentTruncateStep;
@@ -31,8 +34,8 @@ class IssueCompressionTest {
         var compression = TestCompression.issueCompression(props);
         var bigComment = "Header line\n" + "body ".repeat(200);
         var changesets = IntStream.range(0, 10)
-                .mapToObj(i -> new Issue.Changeset("rev" + i, new Ref(1, "u"), bigComment,
-                        "2026-01-01T00:00:00Z", Issue.Changeset.SOURCE_REDMINE))
+                .mapToObj(i -> new Changeset("rev" + i, new Ref(1, "u"), bigComment,
+                        "2026-01-01T00:00:00Z", Changeset.SOURCE_REDMINE))
                 .toList();
         var issue = stubIssue(List.of(), changesets);
 
@@ -40,7 +43,7 @@ class IssueCompressionTest {
 
         assertThat(result.compressionNotes()).isNotNull();
         assertThat(result.compressionNotes()).anyMatch(s -> s.contains("commit messages trimmed"));
-        assertThat(result.changesets()).extracting(Issue.Changeset::comments)
+        assertThat(result.changesets()).extracting(Changeset::comments)
                 .allMatch("Header line"::equals);
     }
 
@@ -50,7 +53,7 @@ class IssueCompressionTest {
                 new RedmineMcpProperties.Response(1800, 3, 10_000, 10_000, 5));
         var compression = TestCompression.issueCompression(props);
         var journals = IntStream.rangeClosed(1, 20)
-                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
+                .mapToObj(i -> new Journal(i, new Ref(1, "u"),
                         "very long note ".repeat(20),
                         "2026-01-0%dT00:00:00Z".formatted(Math.min(i, 9)), List.of()))
                 .toList();
@@ -69,12 +72,12 @@ class IssueCompressionTest {
                 new RedmineMcpProperties.Response(3000, 30, 10_000, 10_000, 5));
         var compression = TestCompression.issueCompression(props);
         var heavyDetails = IntStream.rangeClosed(1, 20)
-                .mapToObj(i -> new Issue.Detail("attr", "field_" + i,
+                .mapToObj(i -> new Detail("attr", "field_" + i,
                         "old_value_with_some_content_" + i,
                         "new_value_with_some_content_" + i))
                 .toList();
         var journals = IntStream.rangeClosed(1, 10)
-                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"), "note " + i,
+                .mapToObj(i -> new Journal(i, new Ref(1, "u"), "note " + i,
                         "2026-01-0%dT00:00:00Z".formatted(Math.min(i, 9)), heavyDetails))
                 .toList();
         var issue = stubIssue(journals, List.of());
@@ -95,10 +98,10 @@ class IssueCompressionTest {
                 new RedmineMcpProperties.Response(3000, 10, 10_000, 100, 5));
         var compression = TestCompression.issueCompression(props);
         var details = List.of(
-                new Issue.Detail("attr", "status_id", "1", "2"),
-                new Issue.Detail("attr", "assigned_to_id", "100", "200"));
+                new Detail("attr", "status_id", "1", "2"),
+                new Detail("attr", "assigned_to_id", "100", "200"));
         var journals = IntStream.rangeClosed(1, 5)
-                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
+                .mapToObj(i -> new Journal(i, new Ref(1, "u"),
                         "x".repeat(1000),
                         "2026-01-0%dT00:00:00Z".formatted(i), details))
                 .toList();
@@ -120,7 +123,7 @@ class IssueCompressionTest {
                 new RedmineMcpProperties.Response(3000, 10, 10_000, 100, 5));
         var compression = TestCompression.issueCompression(props);
         var journals = IntStream.rangeClosed(1, 5)
-                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
+                .mapToObj(i -> new Journal(i, new Ref(1, "u"),
                         "x".repeat(1000),
                         "2026-01-0%dT00:00:00Z".formatted(i), List.of()))
                 .toList();
@@ -145,7 +148,7 @@ class IssueCompressionTest {
                 new RedmineMcpProperties.Response(20_000, 30, 10_000, 5_000, 5));
         var compression = TestCompression.issueCompression(props);
         var journals = IntStream.rangeClosed(1, 30)
-                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
+                .mapToObj(i -> new Journal(i, new Ref(1, "u"),
                         "y".repeat(5_000),
                         "2026-01-01T00:00:00Z", List.of()))
                 .toList();
@@ -165,7 +168,7 @@ class IssueCompressionTest {
         // Same step applied twice (5000 then 1000) must keep the original length in the marker.
         var step1 = new JournalNoteContentTruncateStep(5_000);
         var step2 = new JournalNoteContentTruncateStep(1_000);
-        var journals = List.of(new Issue.Journal(1, new Ref(1, "u"),
+        var journals = List.of(new Journal(1, new Ref(1, "u"),
                 "z".repeat(8_000), "2026-01-01T00:00:00Z", List.of()));
         var issue = stubIssue(journals, List.of());
 
@@ -184,7 +187,7 @@ class IssueCompressionTest {
     void doesNotTruncateJournalNotesWhenWithinBudget() {
         var props = propsWithBudget(100_000);
         var compression = TestCompression.issueCompression(props);
-        var journals = List.of(new Issue.Journal(1, new Ref(1, "u"),
+        var journals = List.of(new Journal(1, new Ref(1, "u"),
                 "x".repeat(50_000), "2026-01-01T00:00:00Z", List.of()));
         var issue = stubIssue(journals, List.of());
 
@@ -199,25 +202,25 @@ class IssueCompressionTest {
         var props = propsWithBudget(100_000);
         var compression = TestCompression.issueCompression(props);
         var journals = List.of(
-                new Issue.Journal(1, new Ref(1, "u"), "Useful note",
+                new Journal(1, new Ref(1, "u"), "Useful note",
                         "2026-01-01T00:00:00Z",
-                        List.of(new Issue.Detail("attr", "status_id", "1", "2"))),
-                new Issue.Journal(2, new Ref(1, "u"), "",
+                        List.of(new Detail("attr", "status_id", "1", "2"))),
+                new Journal(2, new Ref(1, "u"), "",
                         "2026-01-02T00:00:00Z",
-                        List.of(new Issue.Detail("attachment", "10", null, "file.txt")))
+                        List.of(new Detail("attachment", "10", null, "file.txt")))
         );
         var changesets = List.of(
-                new Issue.Changeset("abc123", new Ref(1, "u"), "Subject\nBody",
-                        "2026-01-03T00:00:00Z", Issue.Changeset.SOURCE_REDMINE),
-                new Issue.Changeset("def456", new Ref(2, "v"), "Other",
-                        "2026-01-04T00:00:00Z", Issue.Changeset.SOURCE_COMMENT_REFERENCE)
+                new Changeset("abc123", new Ref(1, "u"), "Subject\nBody",
+                        "2026-01-03T00:00:00Z", Changeset.SOURCE_REDMINE),
+                new Changeset("def456", new Ref(2, "v"), "Other",
+                        "2026-01-04T00:00:00Z", Changeset.SOURCE_COMMENT_REFERENCE)
         );
         var issue = stubIssue(journals, changesets);
 
         var result = compression.compress(issue, CompressionOptions.fromProfile("review"));
 
         assertThat(result.changesets()).hasSize(2);
-        assertThat(result.changesets()).extracting(Issue.Changeset::revision)
+        assertThat(result.changesets()).extracting(Changeset::revision)
                 .containsExactly("abc123", "def456");
         assertThat(result.changesets()).allSatisfy(changeset -> {
             assertThat(changeset.user()).isNull();
@@ -237,7 +240,7 @@ class IssueCompressionTest {
                 new RedmineMcpProperties.Response(budget, 30, 10_000, 10_000, 5));
     }
 
-    private static Issue stubIssue(List<Issue.Journal> journals, List<Issue.Changeset> changesets) {
+    private static Issue stubIssue(List<Journal> journals, List<Changeset> changesets) {
         return new Issue(1, new Ref(1, "p"), new Ref(1, "t"), new Ref(1, "s"), new Ref(1, "pr"),
                 null, null, null, null,
                 "subject", "desc", null, null, 0, null, null, "t", "t",

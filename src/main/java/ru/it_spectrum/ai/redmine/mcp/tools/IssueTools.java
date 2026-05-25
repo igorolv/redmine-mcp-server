@@ -9,8 +9,10 @@ import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueHistory;
 import ru.it_spectrum.ai.redmine.mcp.api.IssuePage;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueTree;
+import ru.it_spectrum.ai.redmine.mcp.api.Journal;
 import ru.it_spectrum.ai.redmine.mcp.api.MyIssues;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
+import ru.it_spectrum.ai.redmine.mcp.service.IssueJournalNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
@@ -190,6 +192,29 @@ public class IssueTools {
 
     public Issue getIssue(int issueId) {
         return getIssue(issueId, null);
+    }
+
+    @McpTool(
+            description = "Get one full journal entry from a Redmine issue by issue ID and journal ID. " +
+            "Use this when getIssue compression notes indicate that older journal entries or long notes were shortened. " +
+            "The issue ID is required so the server can snapshot the exact issue before returning the uncompressed journal entry.",
+            generateOutputSchema = true,
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
+    )
+    public Journal getIssueJournal(
+            @McpToolParam(description = "Issue ID number") int issueId,
+            @McpToolParam(description = "Journal entry ID number from the issue history") int journalId
+    ) {
+        log.info("Tool call: getIssueJournal (issueId={}, journalId={})", issueId, journalId);
+        long start = System.nanoTime();
+        try {
+            var journal = issueService.getJournal(issueId, journalId);
+            ToolLogger.completed(log, "getIssueJournal", start);
+            return journal;
+        } catch (IssueNotFoundException | IssueJournalNotFoundException e) {
+            ToolLogger.failed(log, "getIssueJournal", start, e.getMessage());
+            throw e;
+        }
     }
 
     @McpTool(

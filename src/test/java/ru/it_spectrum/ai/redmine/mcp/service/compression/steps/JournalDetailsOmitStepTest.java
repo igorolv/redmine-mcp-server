@@ -1,7 +1,9 @@
 package ru.it_spectrum.ai.redmine.mcp.service.compression.steps;
 
 import org.junit.jupiter.api.Test;
+import ru.it_spectrum.ai.redmine.mcp.api.Detail;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.Journal;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
 import ru.it_spectrum.ai.redmine.mcp.compression.steps.JournalDetailsOmitStep;
 
@@ -23,8 +25,8 @@ class JournalDetailsOmitStepTest {
     void emptyWhenNoDetailsPresent() {
         var step = new JournalDetailsOmitStep();
         var issue = stubIssue(List.of(
-                new Issue.Journal(1, new Ref(1, "u"), "note", "2026-01-01T00:00:00Z", null),
-                new Issue.Journal(2, new Ref(1, "u"), "note 2", "2026-01-02T00:00:00Z", null)
+                new Journal(1, new Ref(1, "u"), "note", "2026-01-01T00:00:00Z", null),
+                new Journal(2, new Ref(1, "u"), "note 2", "2026-01-02T00:00:00Z", null)
         ));
 
         assertThat(step.apply(issue)).isEmpty();
@@ -34,11 +36,11 @@ class JournalDetailsOmitStepTest {
     void nullsDetailsWhileKeepingNotesAndMetadata() {
         var step = new JournalDetailsOmitStep();
         var issue = stubIssue(List.of(
-                new Issue.Journal(1, new Ref(1, "u"), "Useful note", "2026-01-01T00:00:00Z",
-                        List.of(new Issue.Detail("attr", "status_id", "1", "2"))),
-                new Issue.Journal(2, new Ref(1, "u"), "", "2026-01-02T00:00:00Z",
-                        List.of(new Issue.Detail("attachment", "10", null, "file.txt"))),
-                new Issue.Journal(3, new Ref(1, "u"), "another", "2026-01-03T00:00:00Z", null)
+                new Journal(1, new Ref(1, "u"), "Useful note", "2026-01-01T00:00:00Z",
+                        List.of(new Detail("attr", "status_id", "1", "2"))),
+                new Journal(2, new Ref(1, "u"), "", "2026-01-02T00:00:00Z",
+                        List.of(new Detail("attachment", "10", null, "file.txt"))),
+                new Journal(3, new Ref(1, "u"), "another", "2026-01-03T00:00:00Z", null)
         ));
 
         var result = step.apply(issue).orElseThrow();
@@ -46,7 +48,7 @@ class JournalDetailsOmitStepTest {
         assertThat(result.value().journals()).hasSize(3);
         assertThat(result.value().journals()).allSatisfy(j -> assertThat(j.details()).isNull());
         assertThat(result.value().journals())
-                .extracting(Issue.Journal::id, Issue.Journal::notes, Issue.Journal::createdOn)
+                .extracting(Journal::id, Journal::notes, Journal::createdOn)
                 .containsExactly(
                         org.assertj.core.groups.Tuple.tuple(1, "Useful note", "2026-01-01T00:00:00Z"),
                         org.assertj.core.groups.Tuple.tuple(2, "", "2026-01-02T00:00:00Z"),
@@ -57,10 +59,10 @@ class JournalDetailsOmitStepTest {
     @Test
     void leavesAlreadyNullEntriesUntouched() {
         var step = new JournalDetailsOmitStep();
-        var journals = new ArrayList<Issue.Journal>();
-        journals.add(new Issue.Journal(1, new Ref(1, "u"), "note", "2026-01-01T00:00:00Z", null));
-        journals.add(new Issue.Journal(2, new Ref(1, "u"), "note 2", "2026-01-02T00:00:00Z",
-                List.of(new Issue.Detail("attr", "status_id", "1", "2"))));
+        var journals = new ArrayList<Journal>();
+        journals.add(new Journal(1, new Ref(1, "u"), "note", "2026-01-01T00:00:00Z", null));
+        journals.add(new Journal(2, new Ref(1, "u"), "note 2", "2026-01-02T00:00:00Z",
+                List.of(new Detail("attr", "status_id", "1", "2"))));
         var issue = stubIssue(journals);
 
         var result = step.apply(issue).orElseThrow();
@@ -68,7 +70,7 @@ class JournalDetailsOmitStepTest {
         assertThat(result.note()).contains("1 journal entries");
     }
 
-    private static Issue stubIssue(List<Issue.Journal> journals) {
+    private static Issue stubIssue(List<Journal> journals) {
         return new Issue(1, null, null, null, null, null, null, null, null,
                 "s", "d", null, null, 0, null, null, "t", "t",
                 List.of(), List.of(), journals == null ? null : List.copyOf(journals),

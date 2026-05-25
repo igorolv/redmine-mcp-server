@@ -1,6 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.client;
 
-import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.Changeset;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 
@@ -22,8 +22,8 @@ public final class CommitReferenceExtractor {
     private CommitReferenceExtractor() {
     }
 
-    public static List<Issue.Changeset> extractFromJournals(List<RedmineIssue.Journal> journals,
-                                                            List<Issue.Changeset> existing) {
+    public static List<Changeset> extractFromJournals(List<RedmineIssue.Journal> journals,
+                                                      List<Changeset> existing) {
         if (journals == null || journals.isEmpty()) {
             return List.of();
         }
@@ -35,7 +35,7 @@ public final class CommitReferenceExtractor {
                 }
             }
         }
-        var byRev = new LinkedHashMap<String, Issue.Changeset>();
+        var byRev = new LinkedHashMap<String, Changeset>();
         for (var journal : journals) {
             if (journal == null) continue;
             var notes = journal.notes();
@@ -48,19 +48,19 @@ public final class CommitReferenceExtractor {
                 String existingKey = findMatchingKey(rev, byRev.keySet());
                 if (existingKey != null) {
                     if (rev.length() > existingKey.length()) {
-                        Issue.Changeset prev = byRev.remove(existingKey);
-                        byRev.put(rev, new Issue.Changeset(
+                        Changeset prev = byRev.remove(existingKey);
+                        byRev.put(rev, new Changeset(
                                 rev, prev.user(), null, prev.committedOn(),
-                                Issue.Changeset.SOURCE_COMMENT_REFERENCE));
+                                Changeset.SOURCE_COMMENT_REFERENCE));
                     }
                     continue;
                 }
-                byRev.put(rev, new Issue.Changeset(
+                byRev.put(rev, new Changeset(
                         rev,
                         Ref.from(journal.user()),
                         null,
                         journal.createdOn(),
-                        Issue.Changeset.SOURCE_COMMENT_REFERENCE));
+                        Changeset.SOURCE_COMMENT_REFERENCE));
             }
         }
         return List.copyOf(byRev.values());

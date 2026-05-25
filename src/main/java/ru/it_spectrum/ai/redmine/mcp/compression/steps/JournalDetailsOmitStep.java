@@ -1,6 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.compression.steps;
 
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
+import ru.it_spectrum.ai.redmine.mcp.api.Journal;
 import ru.it_spectrum.ai.redmine.mcp.compression.CompressionStep;
 
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ public class JournalDetailsOmitStep implements CompressionStep<Issue> {
         }
         boolean changed = false;
         int affected = 0;
-        var newJournals = new ArrayList<Issue.Journal>(value.journals().size());
+        var newJournals = new ArrayList<Journal>(value.journals().size());
         for (var j : value.journals()) {
             if (j.details() == null) {
                 newJournals.add(j);
@@ -38,7 +39,7 @@ public class JournalDetailsOmitStep implements CompressionStep<Issue> {
             }
             changed = true;
             affected++;
-            newJournals.add(new Issue.Journal(j.id(), j.user(), j.notes(), j.createdOn(), null));
+            newJournals.add(new Journal(j.id(), j.user(), j.notes(), j.createdOn(), null));
         }
         if (!changed) {
             return Optional.empty();
