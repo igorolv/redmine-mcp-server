@@ -129,6 +129,37 @@ class IssueFullContextCompressionTest {
         assertThat(result.compressionNotes()).anyMatch(s -> s.contains("context issue payloads"));
     }
 
+    @Test
+    void budgetDropsDetailsBeforeTouchingNoteBodies() {
+        // Budget tight enough to force into note-truncation; details must be gone first
+        // both on the inner issue and on recentNotes.
+        var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
+                new RedmineMcpProperties.Response(5000, 10, 10, 10_000, 200, 200, 5));
+        var compression = TestCompression.contextCompression(props);
+        var heavyDetails = List.of(
+                new Issue.Detail("attr", "status_id", "1", "2"),
+                new Issue.Detail("attr", "assigned_to_id", "100", "200"));
+        var journals = IntStream.rangeClosed(1, 4)
+                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
+                        "x".repeat(800),
+                        "2026-01-0%dT00:00:00Z".formatted(i), heavyDetails))
+                .toList();
+        var recentNotes = IntStream.rangeClosed(1, 4)
+                .mapToObj(i -> new Issue.Journal(100 + i, new Ref(1, "u"),
+                        "y".repeat(800),
+                        "2026-01-0%dT00:00:00Z".formatted(i), heavyDetails))
+                .toList();
+        var ctx = contextWith(null, journals, recentNotes);
+
+        var result = compression.compress(ctx);
+
+        assertThat(result.issue().journals()).allSatisfy(j -> assertThat(j.details()).isNull());
+        assertThat(result.recentNotes()).allSatisfy(j -> assertThat(j.details()).isNull());
+        assertThat(result.compressionNotes())
+                .anyMatch(s -> s.contains("omitted field-change details from") && s.contains("journal entries"))
+                .anyMatch(s -> s.contains("omitted field-change details from") && s.contains("recent-note entries"));
+    }
+
     private static RedmineMcpProperties props(int budget, int imagePartsKeep) {
         return new RedmineMcpProperties(null, null, null, null, null, null, null,
                 new RedmineMcpProperties.Response(budget, 30, 20, 10_000, 10_000, 10_000, imagePartsKeep));

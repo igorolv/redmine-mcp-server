@@ -10,10 +10,12 @@ import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ContextIssuesIssu
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetsRevisionOnlyStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetCommentsFirstLineStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.InnerIssueStep;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalDetailsOmitStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalNoteContentTruncateStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsReviewStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsTailKeepStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNoteContentTruncateStep;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNotesDetailsOmitStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNotesReviewStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.RecentNotesTailKeepStep;
 
@@ -73,6 +75,11 @@ public class IssueFullContextCompression {
                 new InnerIssueStep(new ChangesetCommentsFirstLineStep()),
                 new ContextIssuesIssueStep(new ChangesetCommentsFirstLineStep()),
                 new AttachmentTextPartsTruncateStep(response.attachmentTextPartChars()),
+                // Drop field-change details everywhere before touching note bodies — details
+                // are far cheaper to lose than human notes.
+                new InnerIssueStep(new JournalDetailsOmitStep()),
+                new ContextIssuesIssueStep(new JournalDetailsOmitStep()),
+                new RecentNotesDetailsOmitStep(),
                 new ContextIssuesIssueStep(new JournalsReviewStep()),
                 new ContextIssuesIssueStep(new JournalsTailKeepStep(response.journalTailKeep())),
                 new ContextIssuesIssueStep(new JournalNoteContentTruncateStep(response.journalNoteChars())),

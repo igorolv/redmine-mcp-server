@@ -61,6 +61,58 @@ class IssueCompressionTest {
     }
 
     @Test
+    void dropsJournalDetailsBeforeAnyNoteCompression() {
+        // Budget large enough that detail-drop alone fits — no tail-keep, no note truncation.
+        var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
+                new RedmineMcpProperties.Response(3000, 30, 20, 10_000, 10_000, 10_000, 5));
+        var compression = TestCompression.issueCompression(props);
+        var heavyDetails = IntStream.rangeClosed(1, 20)
+                .mapToObj(i -> new Issue.Detail("attr", "field_" + i,
+                        "old_value_with_some_content_" + i,
+                        "new_value_with_some_content_" + i))
+                .toList();
+        var journals = IntStream.rangeClosed(1, 10)
+                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"), "note " + i,
+                        "2026-01-0%dT00:00:00Z".formatted(Math.min(i, 9)), heavyDetails))
+                .toList();
+        var issue = stubIssue(journals, List.of());
+
+        var result = compression.compress(issue);
+
+        assertThat(result.journals()).hasSize(10);
+        assertThat(result.journals()).allSatisfy(j -> assertThat(j.details()).isNull());
+        assertThat(result.journals()).allSatisfy(j -> assertThat(j.notes()).startsWith("note "));
+        assertThat(result.compressionNotes())
+                .anyMatch(s -> s.contains("omitted field-change details"));
+    }
+
+    @Test
+    void detailsAreAlreadyNullByTheTimeNotesAreTruncated() {
+        // Budget tight enough that we have to truncate note bodies; details must be gone first.
+        var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
+                new RedmineMcpProperties.Response(3000, 10, 20, 10_000, 10_000, 100, 5));
+        var compression = TestCompression.issueCompression(props);
+        var details = List.of(
+                new Issue.Detail("attr", "status_id", "1", "2"),
+                new Issue.Detail("attr", "assigned_to_id", "100", "200"));
+        var journals = IntStream.rangeClosed(1, 5)
+                .mapToObj(i -> new Issue.Journal(i, new Ref(1, "u"),
+                        "x".repeat(1000),
+                        "2026-01-0%dT00:00:00Z".formatted(i), details))
+                .toList();
+        var issue = stubIssue(journals, List.of());
+
+        var result = compression.compress(issue);
+
+        assertThat(result.journals()).allSatisfy(j -> assertThat(j.details()).isNull());
+        assertThat(result.journals()).anySatisfy(j ->
+                assertThat(j.notes()).contains("truncated by response compressor"));
+        assertThat(result.compressionNotes())
+                .anyMatch(s -> s.contains("omitted field-change details"))
+                .anyMatch(s -> s.contains("journal note bodies truncated"));
+    }
+
+    @Test
     void truncatesJournalNoteBodiesWhenTailKeepNotEnough() {
         var props = new RedmineMcpProperties(null, null, null, null, null, null, null,
                 new RedmineMcpProperties.Response(3000, 10, 20, 10_000, 10_000, 100, 5));

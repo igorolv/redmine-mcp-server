@@ -5,6 +5,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetsRevisionOnlyStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.ChangesetCommentsFirstLineStep;
+import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalDetailsOmitStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalNoteContentTruncateStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsReviewStep;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.steps.JournalsTailKeepStep;
@@ -59,6 +60,9 @@ public class IssueCompression {
         int chars = properties.response().journalNoteChars();
         return List.of(
                 new ChangesetCommentsFirstLineStep(),
+                // Notes are far more valuable than field-change details: drop details first
+                // so that by the time we start thinning or truncating notes, details are gone.
+                new JournalDetailsOmitStep(),
                 // Soft tier: drop oldest history, then trim only the longest notes.
                 new JournalsTailKeepStep(tail),
                 new JournalNoteContentTruncateStep(chars),
