@@ -179,7 +179,7 @@ public class IssueTools {
     )
     public Issue getIssue(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Response focus: default, implementation, timeline, or full. The implementation focus keeps implementation-relevant text and all changeset revisions while omitting verbose history.", required = false) String focus
+            @McpToolParam(description = "Response focus: default, implementation, timeline, changesets, or full. The implementation focus keeps implementation-relevant text and all changeset revisions while omitting verbose history. The changesets focus keeps issue identity fields and VCS changesets only.", required = false) String focus
     ) {
         log.info("Tool call: getIssue (issueId={}, focus={})", issueId, focus);
         long start = System.nanoTime();

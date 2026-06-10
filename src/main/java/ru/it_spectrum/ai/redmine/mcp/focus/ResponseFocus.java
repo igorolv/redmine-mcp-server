@@ -6,7 +6,8 @@ public enum ResponseFocus {
     DEFAULT,
     IMPLEMENTATION,
     TIMELINE,
-    FULL;
+    FULL,
+    CHANGESETS;
 
     public static ResponseFocus from(String value) {
         if (value == null || value.isBlank()) {
@@ -17,8 +18,9 @@ public enum ResponseFocus {
             case "implementation" -> IMPLEMENTATION;
             case "timeline" -> TIMELINE;
             case "full" -> FULL;
+            case "changesets" -> CHANGESETS;
             default -> throw new IllegalArgumentException(
-                    "Unsupported focus '%s'. Supported values: default, implementation, timeline, full."
+                    "Unsupported focus '%s'. Supported values: default, implementation, timeline, full, changesets."
                             .formatted(value));
         };
     }

@@ -3,6 +3,7 @@ package ru.it_spectrum.ai.redmine.mcp.focus;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.focus.steps.ChangesetsRevisionOnlyFocusStep;
+import ru.it_spectrum.ai.redmine.mcp.focus.steps.IssueChangesetsFocusStep;
 import ru.it_spectrum.ai.redmine.mcp.focus.steps.IssueTimelineFocusStep;
 import ru.it_spectrum.ai.redmine.mcp.focus.steps.JournalsImplementationFocusStep;
 
@@ -30,6 +31,7 @@ public class IssueFocus {
                     new JournalsImplementationFocusStep()
             );
             case TIMELINE -> List.of(new IssueTimelineFocusStep());
+            case CHANGESETS -> List.of(new IssueChangesetsFocusStep());
             case DEFAULT, FULL -> List.of();
         };
     }
