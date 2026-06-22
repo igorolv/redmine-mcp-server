@@ -30,9 +30,7 @@ public class IssueStructureTools {
 
     @McpTool(
             description = "Build a full issue dependency tree: parent chain up to root, " +
-            "subtasks down to specified depth, and direct relations. " +
-            "Shows hierarchy with status and assignee for each node. " +
-            "Useful for understanding task breakdown and dependencies at a glance.",
+            "subtasks down to the given depth, and direct relations.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -54,9 +52,9 @@ public class IssueStructureTools {
     }
 
     @McpTool(
-            description = "Get interpreted history timeline for a Redmine issue: human-readable field changes, " +
-            "creation and update events with notes, and aggregated time spent in each status. " +
-            "Use when you need just the change log without the rest of the full context.",
+            description = "Get an interpreted change-history timeline for an issue: human-readable field changes, " +
+            "events with notes, and time aggregated per status. Use when you want just the change log, " +
+            "not the full issue context.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
