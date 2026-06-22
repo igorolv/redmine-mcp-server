@@ -69,7 +69,7 @@ AI-клиент запускает сервер как дочерний проц
 
 | Tool | Описание |
 |---|---|
-| `getAttachment` | Скачивает оригинальный файл вложения в локальный snapshot-каталог, возвращает `localPath`/`fileUri` и сразу добавляет текстовый контекст в `parts[]`, если формат поддержан: txt/log/xml/json/csv, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), ZIP. ZIP может дать отдельную часть на каждый entry. Параметры: `issueId`, `attachmentId`, `maxChars`, `partLimit`, `focus` (`default`, `implementation`, `timeline`, `full`; опц.) |
+| `getAttachment` | Скачивает оригинальный файл вложения в локальный snapshot-каталог, возвращает `localPath`/`fileUri` и сразу добавляет текстовый контекст в `parts[]`, если формат поддержан: txt/log/xml/json/csv, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), ZIP. ZIP может дать отдельную часть на каждый entry. Параметры: `issueId`, `attachmentId`, `maxChars`, `partLimit` |
 | `getWikiPage` | Содержимое wiki-страницы проекта |
 | `listWikiPages` | Список всех wiki-страниц проекта |
 | `searchWikiPages` | Полнотекстовый поиск по wiki-страницам. Параметры: `query`, `projectId`, `limit`, `offset` |
@@ -344,7 +344,7 @@ AI-клиент получает ровно те данные, которые з
 | ZIP-архив суммарно | до 50 MB извлечённых данных |
 | `getIssueTree` | глубина до 5, максимум 50 задач |
 
-`getIssue` и `getAttachment` поддерживают параметр `focus`. `default` сохраняет обычную
+`getIssue` поддерживает параметр `focus`. `default` сохраняет обычную
 форму ответа и применяет компрессию только при превышении бюджета ответа. `implementation`
 предназначен для работы с реализацией по задаче: полная issue всё равно сохраняется на диск,
 а в ответе tool сохраняются описание, человеческие заметки, метаданные вложений и все revisions

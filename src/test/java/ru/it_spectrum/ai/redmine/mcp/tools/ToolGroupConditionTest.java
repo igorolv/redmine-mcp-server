@@ -9,7 +9,6 @@ import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.compression.AttachmentContentCompression;
 import ru.it_spectrum.ai.redmine.mcp.compression.IssueCompression;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
-import ru.it_spectrum.ai.redmine.mcp.focus.AttachmentContentFocus;
 import ru.it_spectrum.ai.redmine.mcp.focus.IssueFocus;
 import ru.it_spectrum.ai.redmine.mcp.service.AnalysisService;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
@@ -103,7 +102,6 @@ class ToolGroupConditionTest {
         @Bean AnalysisService analysisService() { return mock(AnalysisService.class); }
         @Bean IssueFocus issueFocus() { return mock(IssueFocus.class); }
         @Bean IssueCompression issueCompression() { return mock(IssueCompression.class); }
-        @Bean AttachmentContentFocus attachmentContentFocus() { return mock(AttachmentContentFocus.class); }
         @Bean AttachmentContentCompression attachmentContentCompression() { return mock(AttachmentContentCompression.class); }
     }
 }
