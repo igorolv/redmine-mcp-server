@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.SearchResult;
 import ru.it_spectrum.ai.redmine.mcp.api.WikiPage;
@@ -13,6 +14,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
 
 @Service
+@ConditionalOnProperty(prefix = "redmine-mcp.tools", name = "wiki", havingValue = "true", matchIfMissing = true)
 public class WikiTools {
 
     private static final Logger log = LoggerFactory.getLogger(WikiTools.class);

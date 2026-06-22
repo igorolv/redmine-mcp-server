@@ -12,6 +12,22 @@ spring:
 # Top-level server data directory. Runtime logs are written under this directory.
 redmine-mcp:
   data-dir: ${REDMINE_MCP_DATA_DIR:${user.home}/.redmine-mcp-server}
+  # Which tool groups are exposed in the MCP tools/list manifest. All groups are on by default;
+  # turn groups off (e.g. REDMINE_MCP_TOOLS_RELEASE_ANALYTICS=false) to shrink the manifest for
+  # small-context (local) models that would otherwise be flooded with tool and output schemas at
+  # session start. Each flag toggles one @Service tool class.
+  tools:
+    issue: ${REDMINE_MCP_TOOLS_ISSUE:true}                       # listIssues/searchIssues/getIssue/getMyIssues/getIssueJournal
+    issue-structure: ${REDMINE_MCP_TOOLS_ISSUE_STRUCTURE:true}   # getIssueTree/getIssueHistory
+    project: ${REDMINE_MCP_TOOLS_PROJECT:true}                   # listProjects/getProject/listProjectMembers/listVersions
+    search: ${REDMINE_MCP_TOOLS_SEARCH:true}                     # searchAll
+    attachment: ${REDMINE_MCP_TOOLS_ATTACHMENT:true}             # getAttachment
+    wiki: ${REDMINE_MCP_TOOLS_WIKI:true}                         # getWikiPage/listWikiPages/searchWikiPages
+    time-entry: ${REDMINE_MCP_TOOLS_TIME_ENTRY:true}             # listTimeEntries/getMyTimeEntries
+    reference-data: ${REDMINE_MCP_TOOLS_REFERENCE_DATA:true}     # listQueries/listStatuses/listTrackers/listPriorities/listIssueCategories/listTimeEntryActivities
+    user: ${REDMINE_MCP_TOOLS_USER:true}                         # getCurrentUser
+    issue-analytics: ${REDMINE_MCP_TOOLS_ISSUE_ANALYTICS:true}   # getBlockerChain/getStaleIssues
+    release-analytics: ${REDMINE_MCP_TOOLS_RELEASE_ANALYTICS:true} # getProjectSummary/getUserWorkload/getVersionChangelog/getReleaseRisks/compareVersions
   attachment:
     per-part-chars: ${REDMINE_MCP_ATTACHMENT_PER_PART_CHARS:30000}
     per-attachment-chars: ${REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS:50000}

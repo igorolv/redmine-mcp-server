@@ -102,7 +102,7 @@ config/       — Spring @ConfigurationProperties, beans, MCP customizer
 | Package | Responsibility | What goes here |
 |---|---|---|
 | `RedmineMcpServerApplication` | Spring Boot entry point. Empty by design. | Nothing. |
-| `tools/` | Thin `@McpTool` / `@McpPrompt` adapters. Spring `@Service` beans. | One class per logical domain (`IssueTools`, `ProjectTools`, `AnalysisTools`, `IncidentPrompts`, …). Plus the shared `ToolLogger`. |
+| `tools/` | Thin `@McpTool` / `@McpPrompt` adapters. Spring `@Service` beans. | One class per logical domain / toggle group (`IssueTools`, `IssueStructureTools`, `ProjectTools`, `IssueAnalyticsTools`, `ReleaseAnalyticsTools`, `IncidentPrompts`, …). Plus the shared `ToolLogger`. |
 | `service/` | Business logic. Calls `RedmineClient`, maps `client.model.*` → `api.*`. | Domain services (`IssueService`, `AnalysisService`, `AttachmentService`, `IssueSnapshotService`, …) and the typed exceptions tools throw (`IssueNotFoundException`, `ResourceUnavailableException`, `AttachmentNotFoundException`, …). |
 | `client/` | `RedmineClient` — wrapper over Redmine REST API using `RestClient`. | HTTP/JSON glue only. No domain decisions. |
 | `client/model/` | Raw Redmine DTOs (mirror Redmine REST shape). | Add fields here when Redmine adds a field you need. **Never expose these on the MCP wire.** |
@@ -168,6 +168,25 @@ Concrete walkthrough — follow the pattern of `IssueTools#getIssue`.
    regressions, not just Java equality. See `IssueToolsTest` for the pattern.
 5. **Document the tool in README.md.** The README table is the user-facing catalogue;
    keep it in sync. Bump the "31 read-only MCP tools" count when adding or removing tools.
+
+### Tool group gating
+
+Each `*Tools` `@Service` is gated by `@ConditionalOnProperty(prefix = "redmine-mcp.tools",
+name = "<group>", havingValue = "true", matchIfMissing = true)`. All groups are **on by default**
+(`matchIfMissing = true`), so the out-of-the-box manifest is unchanged; operators turn a group off
+(e.g. `REDMINE_MCP_TOOLS_RELEASE_ANALYTICS=false`) to shrink the `tools/list` manifest for small-context
+models. The group name is the kebab-case domain (`issue`, `issue-structure`, `project`, `search`,
+`attachment`, `wiki`, `time-entry`, `reference-data`, `user`, `issue-analytics`,
+`release-analytics`). `IncidentPrompts` is **not** gated — prompts stay always available.
+
+When you add a **new tool class** (not just a method on an existing one):
+
+1. Annotate it with `@ConditionalOnProperty` using a new `redmine-mcp.tools.<group>` name.
+2. Add the flag to `application.yml` under `redmine-mcp.tools` (default `true`, with a
+   `REDMINE_MCP_TOOLS_<UPPER_SNAKE>` env override).
+3. Add a row to the *Группы инструментов* table in `README.md`.
+4. Extend `ToolGroupConditionTest` (an `ApplicationContextRunner` test, no live Redmine) to cover
+   the new group's default-on and toggled-off paths.
 
 ---
 

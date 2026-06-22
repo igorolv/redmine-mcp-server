@@ -4,26 +4,31 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
-import ru.it_spectrum.ai.redmine.mcp.api.BlockerChain;
 import ru.it_spectrum.ai.redmine.mcp.api.ProjectSummary;
 import ru.it_spectrum.ai.redmine.mcp.api.ReleaseRisks;
-import ru.it_spectrum.ai.redmine.mcp.api.StaleIssues;
 import ru.it_spectrum.ai.redmine.mcp.api.UserWorkload;
 import ru.it_spectrum.ai.redmine.mcp.api.VersionChangelog;
 import ru.it_spectrum.ai.redmine.mcp.api.VersionComparison;
 import ru.it_spectrum.ai.redmine.mcp.service.AnalysisService;
-import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceUnavailableException;
 
+/**
+ * Project / release reporting: aggregated project summaries, version changelogs, release-risk
+ * assessment, version comparison, and per-user workload. These are the heaviest output schemas in
+ * the server and are the lowest-frequency reads, so they sit behind their own
+ * {@code redmine-mcp.tools.release-analytics} flag.
+ */
 @Service
-public class AnalysisTools {
+@ConditionalOnProperty(prefix = "redmine-mcp.tools", name = "release-analytics", havingValue = "true", matchIfMissing = true)
+public class ReleaseAnalyticsTools {
 
-    private static final Logger log = LoggerFactory.getLogger(AnalysisTools.class);
+    private static final Logger log = LoggerFactory.getLogger(ReleaseAnalyticsTools.class);
 
     private final AnalysisService analysisService;
 
-    public AnalysisTools(AnalysisService analysisService) {
+    public ReleaseAnalyticsTools(AnalysisService analysisService) {
         this.analysisService = analysisService;
     }
 
@@ -85,48 +90,6 @@ public class AnalysisTools {
         long start = System.nanoTime();
         var result = analysisService.getVersionChangelog(projectId, versionId);
         ToolLogger.completed(log, "getVersionChangelog", start);
-        return result;
-    }
-
-    @McpTool(
-            description = "Trace the blocking dependency chain for an issue. " +
-            "Shows what blocks this issue (must be resolved first) and what this issue blocks. " +
-            "Follows blocks/blocked_by relations recursively to reveal the critical path, " +
-            "bounded by depth 10 and 30 fetched issues.",
-            generateOutputSchema = true,
-            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
-    )
-    public BlockerChain getBlockerChain(
-            @McpToolParam(description = "Issue ID number") int issueId
-    ) {
-        log.info("Tool call: getBlockerChain (issueId={})", issueId);
-        long start = System.nanoTime();
-        try {
-            var result = analysisService.getBlockerChain(issueId);
-            ToolLogger.completed(log, "getBlockerChain", start);
-            return result;
-        } catch (ResourceNotFoundException e) {
-            ToolLogger.failed(log, "getBlockerChain", start, e.getMessage());
-            throw e;
-        }
-    }
-
-    @McpTool(
-            description = "Find open issues that haven't been updated for a specified number of days. " +
-            "Sorted by staleness (oldest first). Useful for identifying neglected or forgotten tasks.",
-            generateOutputSchema = true,
-            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
-    )
-    public StaleIssues getStaleIssues(
-            @McpToolParam(description = "Project identifier") String projectId,
-            @McpToolParam(description = "Minimum days since last update, uses configured default when omitted", required = false) Integer daysSinceUpdate,
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit
-    ) {
-        log.info("Tool call: getStaleIssues (projectId={}, daysSinceUpdate={}, limit={})",
-                projectId, daysSinceUpdate, limit);
-        long start = System.nanoTime();
-        var result = analysisService.getStaleIssues(projectId, daysSinceUpdate, limit);
-        ToolLogger.completed(log, "getStaleIssues", start);
         return result;
     }
 

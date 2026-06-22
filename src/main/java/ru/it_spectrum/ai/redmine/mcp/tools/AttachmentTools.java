@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.AttachmentContent;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentDownloadFailedException;
@@ -15,6 +16,7 @@ import ru.it_spectrum.ai.redmine.mcp.focus.AttachmentContentFocus;
 import ru.it_spectrum.ai.redmine.mcp.focus.ResponseFocus;
 
 @Service
+@ConditionalOnProperty(prefix = "redmine-mcp.tools", name = "attachment", havingValue = "true", matchIfMissing = true)
 public class AttachmentTools {
 
     private static final Logger log = LoggerFactory.getLogger(AttachmentTools.class);

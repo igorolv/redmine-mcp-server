@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.MembershipPage;
 import ru.it_spectrum.ai.redmine.mcp.api.Project;
@@ -14,6 +15,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.ProjectService;
 import ru.it_spectrum.ai.redmine.mcp.service.ResourceNotFoundException;
 
 @Service
+@ConditionalOnProperty(prefix = "redmine-mcp.tools", name = "project", havingValue = "true", matchIfMissing = true)
 public class ProjectTools {
 
     private static final Logger log = LoggerFactory.getLogger(ProjectTools.class);

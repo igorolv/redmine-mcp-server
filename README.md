@@ -106,6 +106,32 @@ AI-клиент запускает сервер как дочерний проц
 
 Все инструменты **read-only** — данные в Redmine не изменяются.
 
+### Группы инструментов (включение/выключение)
+
+Инструменты сгруппированы по доменам, и каждую группу можно отключить переменной окружения.
+Все группы включены по умолчанию — «из коробки» набор инструментов не меняется. Отключение
+групп уменьшает MCP-манифест `tools/list`, который клиент загружает в контекст модели при старте
+сессии. Это полезно для моделей с небольшим контекстом (локальных): отключите ненужные группы,
+чтобы оставить только те инструменты, которые модели реально нужны.
+
+| Переменная | Группа (инструменты) |
+|---|---|
+| `REDMINE_MCP_TOOLS_ISSUE` | Задачи (основное): `listIssues`, `searchIssues`, `getIssue`, `getMyIssues`, `getIssueJournal` |
+| `REDMINE_MCP_TOOLS_ISSUE_STRUCTURE` | Структура/история задачи: `getIssueTree`, `getIssueHistory` |
+| `REDMINE_MCP_TOOLS_PROJECT` | Проекты: `listProjects`, `getProject`, `listProjectMembers`, `listVersions` |
+| `REDMINE_MCP_TOOLS_SEARCH` | Поиск: `searchAll` |
+| `REDMINE_MCP_TOOLS_ATTACHMENT` | Вложения: `getAttachment` |
+| `REDMINE_MCP_TOOLS_WIKI` | Wiki: `getWikiPage`, `listWikiPages`, `searchWikiPages` |
+| `REDMINE_MCP_TOOLS_TIME_ENTRY` | Трудозатраты: `listTimeEntries`, `getMyTimeEntries` |
+| `REDMINE_MCP_TOOLS_REFERENCE_DATA` | Справочники: `listQueries`, `listStatuses`, `listTrackers`, `listPriorities`, `listIssueCategories`, `listTimeEntryActivities` |
+| `REDMINE_MCP_TOOLS_USER` | Пользователь: `getCurrentUser` |
+| `REDMINE_MCP_TOOLS_ISSUE_ANALYTICS` | Аналитика по задачам: `getBlockerChain`, `getStaleIssues` |
+| `REDMINE_MCP_TOOLS_RELEASE_ANALYTICS` | Релизная/проектная аналитика: `getProjectSummary`, `getUserWorkload`, `getVersionChangelog`, `getReleaseRisks`, `compareVersions` |
+
+Каждая переменная принимает `true` (по умолчанию) или `false`. Пример: чтобы оставить только
+работу с задачами и проектами, отключите остальные группы — `REDMINE_MCP_TOOLS_RELEASE_ANALYTICS=false`,
+`REDMINE_MCP_TOOLS_WIKI=false` и т.д. MCP-промпты (`incident-*`) этими флагами не затрагиваются.
+
 ## MCP-промпты
 
 Сервер также экспортирует **MCP prompts** для типовых сценариев работы с инцидентами:
@@ -419,12 +445,14 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   │   ├── AnalysisService.java           — аналитика, риски, blocker chain
 │   │   └── ...                            — сервисы проектов, wiki, поиска, справочников, трудозатрат
 │   └── tools/
-│       ├── AnalysisTools.java             — 7 MCP-инструментов аналитики и анализа рисков
 │       ├── AttachmentTools.java           — 1 MCP-инструмент для файлов и контекста вложений
 │       ├── IncidentPrompts.java           — MCP-промпт для расследования инцидентов
-│       ├── IssueTools.java                — MCP-инструменты для задач
+│       ├── IssueAnalyticsTools.java       — 2 MCP-инструмента аналитики по задачам (blocker chain, stale)
+│       ├── IssueStructureTools.java       — 2 MCP-инструмента: дерево задачи и история изменений
+│       ├── IssueTools.java                — 5 основных MCP-инструментов для задач
 │       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
 │       ├── ReferenceDataTools.java        — 6 MCP-инструментов для справочников
+│       ├── ReleaseAnalyticsTools.java     — 5 MCP-инструментов релизной/проектной аналитики
 │       ├── SearchTools.java               — 1 MCP-инструмент для глобального поиска
 │       ├── TimeEntryTools.java            — 2 MCP-инструмента для трудозатрат
 │       ├── UserTools.java                 — 1 MCP-инструмент для текущего пользователя

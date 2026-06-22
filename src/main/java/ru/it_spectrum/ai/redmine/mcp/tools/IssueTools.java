@@ -4,11 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
-import ru.it_spectrum.ai.redmine.mcp.api.IssueHistory;
 import ru.it_spectrum.ai.redmine.mcp.api.IssuePage;
-import ru.it_spectrum.ai.redmine.mcp.api.IssueTree;
 import ru.it_spectrum.ai.redmine.mcp.api.Journal;
 import ru.it_spectrum.ai.redmine.mcp.api.MyIssues;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
@@ -23,6 +22,7 @@ import ru.it_spectrum.ai.redmine.mcp.focus.ResponseFocus;
 import java.util.Map;
 
 @Service
+@ConditionalOnProperty(prefix = "redmine-mcp.tools", name = "issue", havingValue = "true", matchIfMissing = true)
 public class IssueTools {
 
     private static final Logger log = LoggerFactory.getLogger(IssueTools.class);
@@ -142,31 +142,6 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Build a full issue dependency tree: parent chain up to root, " +
-            "subtasks down to specified depth, and direct relations. " +
-            "Shows hierarchy with status and assignee for each node. " +
-            "Useful for understanding task breakdown and dependencies at a glance.",
-            generateOutputSchema = true,
-            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
-    )
-    public IssueTree getIssueTree(
-            @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "How deep to traverse children, uses configured default and max when omitted", required = false) Integer depth
-    ) {
-        log.info("Tool call: getIssueTree (issueId={}, depth={})", issueId, depth);
-        long start = System.nanoTime();
-        IssueTree view;
-        try {
-            view = issueService.getTree(issueId, depth);
-            ToolLogger.completed(log, "getIssueTree", start);
-        } catch (IssueNotFoundException e) {
-            ToolLogger.failed(log, "getIssueTree", start, e.getMessage());
-            throw e;
-        }
-        return view;
-    }
-
-    @McpTool(
             description = "Get detailed information about a specific Redmine issue by its ID. " +
             "Returns full issue details including description, status, assignee, dates, " +
             "subtasks (children), relations, notes (journals), attachments list, " +
@@ -220,28 +195,6 @@ public class IssueTools {
             ToolLogger.failed(log, "getIssueJournal", start, e.getMessage());
             throw e;
         }
-    }
-
-    @McpTool(
-            description = "Get interpreted history timeline for a Redmine issue: human-readable field changes, " +
-            "creation and update events with notes, and aggregated time spent in each status. " +
-            "Use when you need just the change log without the rest of the full context.",
-            generateOutputSchema = true,
-            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
-    )
-    public IssueHistory getIssueHistory(
-            @McpToolParam(description = "Issue ID number") int issueId
-    ) {
-        log.info("Tool call: getIssueHistory (issueId={})", issueId);
-        long start = System.nanoTime();
-        var maybeHistory = issueService.getHistory(issueId);
-        if (maybeHistory.isEmpty()) {
-            var e = new IssueNotFoundException(issueId);
-            ToolLogger.failed(log, "getIssueHistory", start, e.getMessage());
-            throw e;
-        }
-        ToolLogger.completed(log, "getIssueHistory", start);
-        return maybeHistory.get();
     }
 
 }
