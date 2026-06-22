@@ -33,10 +33,8 @@ public class ReleaseAnalyticsTools {
     }
 
     @McpTool(
-            description = "Get an aggregated summary of a Redmine project. " +
-            "Returns total open/closed counts, plus breakdowns by status, tracker, priority, and assignee " +
-            "for analyzed open issues; overdue count; estimated vs spent hours. " +
-            "Optionally filter by version/milestone. Analysis scans up to the configured issue budget and reports truncation.",
+            description = "Get an aggregated summary of a Redmine project: counts and breakdowns by status, " +
+            "tracker, priority, and assignee, overdue count, and estimated vs spent hours.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -53,9 +51,7 @@ public class ReleaseAnalyticsTools {
 
     @McpTool(
             description = "Get workload analysis for a user: open issues grouped by project and priority, " +
-            "overdue count, estimated vs spent hours, and top issues by priority. " +
-            "Defaults to the current authenticated user if no userId is provided. " +
-            "Analysis scans up to the configured issue budget and reports truncation.",
+            "overdue count, estimated vs spent hours, and top issues. Defaults to the current user if userId is omitted.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -76,9 +72,8 @@ public class ReleaseAnalyticsTools {
     }
 
     @McpTool(
-            description = "Get a changelog for a specific version/milestone: issues grouped by tracker, " +
-            "with status and summary. Shows both open and closed issues for the version. " +
-            "Analysis scans up to the configured issue budget and reports truncation.",
+            description = "Get a changelog for a version/milestone: issues grouped by tracker, " +
+            "including both open and closed.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -94,9 +89,8 @@ public class ReleaseAnalyticsTools {
     }
 
     @McpTool(
-            description = "Assess release risks for a version/milestone: identifies open blockers, " +
-            "overdue issues, high-priority unresolved issues, and unassigned tasks. " +
-            "Provides a risk score summary. Analysis scans up to the configured issue budget and reports truncation.",
+            description = "Assess release risks for a version/milestone: open blockers, overdue issues, " +
+            "high-priority unresolved issues, and unassigned tasks, with a risk score.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -112,10 +106,8 @@ public class ReleaseAnalyticsTools {
     }
 
     @McpTool(
-            description = "Compare two versions/milestones: shows issues unique to each version, " +
-            "shared issues, and status completion percentages. " +
-            "Useful for understanding scope changes between releases. " +
-            "Analysis scans up to the configured issue budget per version and reports truncation.",
+            description = "Compare two versions/milestones: issues unique to each, shared issues, " +
+            "and status completion percentages.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
