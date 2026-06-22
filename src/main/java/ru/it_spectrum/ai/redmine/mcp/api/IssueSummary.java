@@ -8,7 +8,7 @@ import java.util.List;
 
 @Schema(description = "Compact issue projection used in list and search results. Heavy fields (description, journals, attachments) and low-signal fields (author, isPrivate, spentHours) are omitted — fetch the full Issue when they are needed.")
 public record IssueSummary(
-        @Schema(description = "Issue identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345")
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int id,
         @Schema(description = "Project the issue belongs to.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref project,
@@ -26,7 +26,7 @@ public record IssueSummary(
         Ref fixedVersion,
         @Schema(description = "Issue category.", nullable = true)
         Ref category,
-        @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.REQUIRED, example = "API returns 500 on empty payload", nullable = true)
+        @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String subject,
         @Schema(description = "Planned start date in ISO-8601.", format = "date", nullable = true)
         String startDate,

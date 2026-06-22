@@ -9,7 +9,7 @@ import java.util.List;
 @Schema(description = "Single history entry: a user comment, a set of field changes, or both.")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Journal(
-        @Schema(description = "Journal entry identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int id,
         @Schema(description = "Author of the change.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref user,

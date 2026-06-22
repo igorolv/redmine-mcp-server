@@ -10,11 +10,11 @@ import java.util.List;
 public record IssuePage(
         @Schema(description = "Issues on this page.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<IssueSummary> issues,
-        @Schema(description = "Total number of issues matching the query across all pages.", requiredMode = Schema.RequiredMode.REQUIRED, example = "137")
+        @Schema(description = "Total number of issues matching the query across all pages.", requiredMode = Schema.RequiredMode.REQUIRED)
         int totalCount,
-        @Schema(description = "Zero-based offset of the first issue on this page.", requiredMode = Schema.RequiredMode.REQUIRED, example = "0")
+        @Schema(description = "Zero-based offset of the first issue on this page.", requiredMode = Schema.RequiredMode.REQUIRED)
         int offset,
-        @Schema(description = "Maximum number of issues that may appear on this page.", requiredMode = Schema.RequiredMode.REQUIRED, example = "25")
+        @Schema(description = "Maximum number of issues that may appear on this page.", requiredMode = Schema.RequiredMode.REQUIRED)
         int limit
 ) {
     public static IssuePage from(RedmineIssueSummary.Page page) {

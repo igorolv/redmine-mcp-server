@@ -7,15 +7,15 @@ import java.util.List;
 
 @Schema(description = "Redmine project. Numeric `status` field and audit timestamps are omitted — they carry low signal for LLM consumers.")
 public record Project(
-        @Schema(description = "Project numeric identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "5")
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int id,
-        @Schema(description = "Display name shown in the UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "Backend services", nullable = true)
+        @Schema(description = "Display name shown in the UI.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String name,
-        @Schema(description = "URL-safe project slug. Either this or the numeric id can be used as projectId for other tools.", requiredMode = Schema.RequiredMode.REQUIRED, example = "backend", nullable = true)
+        @Schema(description = "URL-safe project slug. Either this or the numeric id can be used as projectId for other tools.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String identifier,
         @Schema(description = "Project description (Textile/Markdown markup).", nullable = true)
         String description,
-        @Schema(description = "Optional homepage URL configured for the project.", example = "https://example.com", nullable = true)
+        @Schema(description = "Optional homepage URL configured for the project.", nullable = true)
         String homepage,
         @Schema(description = "Parent project reference, null for top-level projects.", nullable = true)
         Ref parent,

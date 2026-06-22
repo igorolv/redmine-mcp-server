@@ -11,7 +11,7 @@ import java.util.List;
 @Schema(description = "Full Redmine issue with description, relations, history notes, child tasks and attachments.")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record Issue(
-        @Schema(description = "Issue identifier (the # shown in Redmine).", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345")
+        @Schema(description = "Issue identifier (the # shown in Redmine).", requiredMode = Schema.RequiredMode.REQUIRED)
         int id,
         @Schema(description = "Project the issue belongs to.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref project,
@@ -29,23 +29,23 @@ public record Issue(
         Ref fixedVersion,
         @Schema(description = "Issue category within the project.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref category,
-        @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, example = "API returns 500 on empty payload", nullable = true)
+        @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String subject,
         @Schema(description = "Long-form description of the issue, may contain Textile or Markdown markup depending on the Redmine instance.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String description,
-        @Schema(description = "Planned start date in ISO-8601 (yyyy-MM-dd).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date", example = "2025-04-01", nullable = true)
+        @Schema(description = "Planned start date in ISO-8601 (yyyy-MM-dd).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date", nullable = true)
         String startDate,
-        @Schema(description = "Planned due date in ISO-8601 (yyyy-MM-dd).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date", example = "2025-04-15", nullable = true)
+        @Schema(description = "Planned due date in ISO-8601 (yyyy-MM-dd).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date", nullable = true)
         String dueDate,
-        @Schema(description = "Completion percentage from 0 to 100.", requiredMode = Schema.RequiredMode.REQUIRED, example = "60")
+        @Schema(description = "Completion percentage from 0 to 100.", requiredMode = Schema.RequiredMode.REQUIRED)
         int doneRatio,
-        @Schema(description = "Estimated effort in hours.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, example = "8.0", nullable = true)
+        @Schema(description = "Estimated effort in hours.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Double estimatedHours,
-        @Schema(description = "Aggregated time already logged against the issue, in hours.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, example = "3.5", nullable = true)
+        @Schema(description = "Aggregated time already logged against the issue, in hours.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Double spentHours,
-        @Schema(description = "Creation timestamp in ISO-8601.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date-time", example = "2024-12-31T10:15:30Z", nullable = true)
+        @Schema(description = "Creation timestamp in ISO-8601.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date-time", nullable = true)
         String createdOn,
-        @Schema(description = "Timestamp of the most recent change in ISO-8601.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date-time", example = "2025-01-15T09:00:00Z", nullable = true)
+        @Schema(description = "Timestamp of the most recent change in ISO-8601.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date-time", nullable = true)
         String updatedOn,
         @Schema(description = "Project-defined custom field values, in display form.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<CustomFieldValue> customFields,

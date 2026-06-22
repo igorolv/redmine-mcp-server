@@ -5,13 +5,13 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
 
 @Schema(description = "Redmine user, trimmed to fields relevant for LLM context (no API keys, group memberships, or audit timestamps).")
 public record User(
-        @Schema(description = "User identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "42")
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int id,
-        @Schema(description = "Login name.", example = "ivan.petrov", nullable = true)
+        @Schema(description = "Login name.", nullable = true)
         String login,
-        @Schema(description = "Display name (firstname + lastname).", example = "Ivan Petrov", nullable = true)
+        @Schema(description = "Display name (firstname + lastname).", nullable = true)
         String name,
-        @Schema(description = "Email address, may be absent if not visible to the API caller.", example = "ivan.petrov@example.com", nullable = true)
+        @Schema(description = "Email address, may be absent if not visible to the API caller.", nullable = true)
         String mail
 ) {
     public static User from(RedmineUser source) {

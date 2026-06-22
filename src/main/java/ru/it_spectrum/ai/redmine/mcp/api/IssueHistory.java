@@ -57,7 +57,7 @@ public record IssueHistory(
             String fromTimestamp,
             @Schema(description = "When the issue left this status; null when the issue is currently in this status.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date-time", nullable = true)
             String toTimestamp,
-            @Schema(description = "Human-readable duration (e.g. `3 days`, `< 1 hour`).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, example = "3 days", nullable = true)
+            @Schema(description = "Human-readable duration (e.g. `3 days`, `< 1 hour`).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             String duration
     ) {
     }

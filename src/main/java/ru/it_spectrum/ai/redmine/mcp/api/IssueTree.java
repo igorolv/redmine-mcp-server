@@ -12,7 +12,7 @@ public record IssueTree(
         List<Issue> ancestors,
         @Schema(description = "The root issue plus its descendant subtree, expanded up to the requested depth.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Node subtree,
-        @Schema(description = "Total issues fetched while building the tree (visibility into rate-limited traversal).", requiredMode = Schema.RequiredMode.REQUIRED, example = "12")
+        @Schema(description = "Total issues fetched while building the tree (visibility into rate-limited traversal).", requiredMode = Schema.RequiredMode.REQUIRED)
         int fetchedCount,
         @Schema(description = "True when traversal stopped at the safety limit and additional branches/depths exist.", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean limitReached

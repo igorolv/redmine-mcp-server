@@ -8,7 +8,7 @@ import java.util.List;
 @Schema(description = "Lightweight reference to a related issue (parent, sibling, child, or related-via-relation) with enough metadata for the caller to decide whether to fetch the full issue.")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record RelatedRef(
-        @Schema(description = "Identifier of the related issue.", requiredMode = Schema.RequiredMode.REQUIRED, example = "12345")
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int issueId,
         @Schema(description = "Subject (title) of the related issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String subject,

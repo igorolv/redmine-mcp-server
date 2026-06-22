@@ -5,7 +5,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry;
 
 @Schema(description = "Single logged time entry in Redmine. Audit timestamps (created_on / updated_on) are omitted — `spentOn` is the date that matters for time-tracking analysis.")
 public record TimeEntry(
-        @Schema(description = "Time entry identifier.", requiredMode = Schema.RequiredMode.REQUIRED, example = "9876")
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int id,
         @Schema(description = "Project the time was logged against.", nullable = true)
         Ref project,
@@ -15,11 +15,11 @@ public record TimeEntry(
         Ref user,
         @Schema(description = "Activity classification (Development, Testing, Design, ...).", nullable = true)
         Ref activity,
-        @Schema(description = "Logged hours.", requiredMode = Schema.RequiredMode.REQUIRED, example = "2.5")
+        @Schema(description = "Logged hours.", requiredMode = Schema.RequiredMode.REQUIRED)
         double hours,
         @Schema(description = "Optional comment supplied with the time entry.", nullable = true)
         String comments,
-        @Schema(description = "Date the work was performed, ISO-8601 (yyyy-MM-dd).", format = "date", example = "2025-03-15", nullable = true)
+        @Schema(description = "Date the work was performed, ISO-8601 (yyyy-MM-dd).", format = "date", nullable = true)
         String spentOn
 ) {
     public static TimeEntry from(RedmineTimeEntry source) {

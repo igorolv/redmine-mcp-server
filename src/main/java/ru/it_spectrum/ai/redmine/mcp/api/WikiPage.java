@@ -7,11 +7,11 @@ import java.util.List;
 
 @Schema(description = "Redmine wiki page. When returned from the index listing only metadata fields are populated; fetch a specific page to retrieve `text` and attachments.")
 public record WikiPage(
-        @Schema(description = "Page title (URL-escaped form used as the path).", requiredMode = Schema.RequiredMode.REQUIRED, example = "Getting_Started", nullable = true)
+        @Schema(description = "Page title (URL-escaped form used as the path).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String title,
         @Schema(description = "Page body in Textile or Markdown markup depending on the Redmine instance. Null in index listings.", nullable = true)
         String text,
-        @Schema(description = "Monotonic revision number of the page.", requiredMode = Schema.RequiredMode.REQUIRED, example = "7")
+        @Schema(description = "Monotonic revision number of the page.", requiredMode = Schema.RequiredMode.REQUIRED)
         int version,
         @Schema(description = "Author of the most recent revision.", nullable = true)
         Ref author,

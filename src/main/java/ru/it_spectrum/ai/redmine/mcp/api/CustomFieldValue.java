@@ -9,7 +9,7 @@ import java.util.List;
 @Schema(description = "Project-defined custom field value in display form.")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record CustomFieldValue(
-        @Schema(description = "Custom field name as configured in the project.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, example = "Customer code", nullable = true)
+        @Schema(description = "Custom field name as configured in the project.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String name,
         @Schema(description = "Effective values (single-valued fields produce one element).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<String> values

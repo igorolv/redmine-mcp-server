@@ -9,13 +9,13 @@ public record Version(
         int id,
         @Schema(description = "Project the version belongs to.", nullable = true)
         Ref project,
-        @Schema(description = "Version name as shown in the UI.", requiredMode = Schema.RequiredMode.REQUIRED, example = "v1.2.0", nullable = true)
+        @Schema(description = "Version name as shown in the UI.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String name,
         @Schema(description = "Optional description of the version's scope.", nullable = true)
         String description,
         @Schema(description = "Lifecycle status of the version.", allowableValues = {"open", "locked", "closed"}, nullable = true)
         String status,
-        @Schema(description = "Planned release date in ISO-8601.", format = "date", example = "2025-06-30", nullable = true)
+        @Schema(description = "Planned release date in ISO-8601.", format = "date", nullable = true)
         String dueDate,
         @Schema(description = "Sharing scope of the version across projects.",
                 allowableValues = {"none", "descendants", "hierarchy", "tree", "system"}, nullable = true)
