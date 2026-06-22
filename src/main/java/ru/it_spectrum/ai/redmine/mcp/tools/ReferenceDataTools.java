@@ -105,8 +105,8 @@ public class ReferenceDataTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public QueryPage listQueries(
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
+            @McpToolParam(description = "Pagination offset", required = false) Integer offset
     ) {
         log.info("Tool call: listQueries (limit={}, offset={})", limit, offset);
         long start = System.nanoTime();

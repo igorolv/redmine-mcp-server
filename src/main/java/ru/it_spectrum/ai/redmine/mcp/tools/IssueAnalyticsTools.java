@@ -58,9 +58,9 @@ public class IssueAnalyticsTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public StaleIssues getStaleIssues(
-            @McpToolParam(description = "Project identifier") String projectId,
-            @McpToolParam(description = "Minimum days since last update, uses configured default when omitted", required = false) Integer daysSinceUpdate,
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId,
+            @McpToolParam(description = "Minimum days since last update", required = false) Integer daysSinceUpdate,
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit
     ) {
         log.info("Tool call: getStaleIssues (projectId={}, daysSinceUpdate={}, limit={})",
                 projectId, daysSinceUpdate, limit);

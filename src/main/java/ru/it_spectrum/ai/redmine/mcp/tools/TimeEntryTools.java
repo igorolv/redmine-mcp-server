@@ -34,13 +34,13 @@ public class TimeEntryTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public TimeEntryPage listTimeEntries(
-            @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
-            @McpToolParam(description = "Issue ID to filter by (optional)", required = false) Integer issueId,
-            @McpToolParam(description = "User ID to filter by (optional)", required = false) Integer userId,
-            @McpToolParam(description = "From date, YYYY-MM-DD (optional)", required = false) String from,
-            @McpToolParam(description = "To date, YYYY-MM-DD (optional)", required = false) String to,
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+            @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
+            @McpToolParam(description = "Issue ID", required = false) Integer issueId,
+            @McpToolParam(description = "User ID", required = false) Integer userId,
+            @McpToolParam(description = "From date, YYYY-MM-DD", required = false) String from,
+            @McpToolParam(description = "To date, YYYY-MM-DD", required = false) String to,
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
+            @McpToolParam(description = "Pagination offset", required = false) Integer offset
     ) {
         log.info("Tool call: listTimeEntries (projectId={}, issueId={}, userId={}, from={}, to={}, limit={}, offset={})",
                 projectId, issueId, userId, from, to, limit, offset);
@@ -62,12 +62,12 @@ public class TimeEntryTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public MyTimeEntries getMyTimeEntries(
-            @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
-            @McpToolParam(description = "Issue ID to filter by (optional)", required = false) Integer issueId,
-            @McpToolParam(description = "From date, YYYY-MM-DD (optional)", required = false) String from,
-            @McpToolParam(description = "To date, YYYY-MM-DD (optional)", required = false) String to,
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+            @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
+            @McpToolParam(description = "Issue ID", required = false) Integer issueId,
+            @McpToolParam(description = "From date, YYYY-MM-DD", required = false) String from,
+            @McpToolParam(description = "To date, YYYY-MM-DD", required = false) String to,
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
+            @McpToolParam(description = "Pagination offset", required = false) Integer offset
     ) {
         log.info("Tool call: getMyTimeEntries (projectId={}, issueId={}, from={}, to={}, limit={}, offset={})",
                 projectId, issueId, from, to, limit, offset);

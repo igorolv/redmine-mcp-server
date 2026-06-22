@@ -315,8 +315,13 @@ result. Don't call `pandoc` from a parser directly — route through `DocxPandoc
 - **Logging format.** `log.info("Tool call: <name> (k1={}, k2={})", ...)` on entry,
   `ToolLogger.completed/failed` on exit. Don't invent variants.
 - **No abbreviations in tool / parameter descriptions.** They are read by language models
-  picking which tool to call. Be explicit; the cost of a few extra words is paid once at
-  authoring time, the benefit is paid every call.
+  picking which tool to call. Be explicit and clear — never introduce abbreviations. This is
+  about *clarity*, not verbosity: do strip duplicated/boilerplate prose that adds no signal
+  (optionality markers like `(optional)` that `required = false` already conveys, restatements
+  of internally-forced defaults/caps, the same phrasing repeated across params), as long as
+  every fact the model needs to call the tool correctly survives. Each `@McpToolParam` and
+  `@McpTool.description` is re-sent to every client at `tools/list` time, so redundancy there
+  is paid on every connect.
 - **Tests assert on JSON, not Java equality.** Use `ToolJsonTestSupport.stringify(result)`
   and `assertThat(json).contains(...)`. This catches Jackson misconfigurations that pure
   Java equality misses.

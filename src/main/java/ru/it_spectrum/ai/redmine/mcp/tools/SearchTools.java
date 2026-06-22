@@ -32,10 +32,10 @@ public class SearchTools {
     )
     public SearchResult searchAll(
             @McpToolParam(description = "Search query text") String query,
-            @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
-            @McpToolParam(description = "Comma-separated content types to include: issues, wiki_pages, news, documents, changesets, messages, projects (optional)", required = false) String types,
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+            @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
+            @McpToolParam(description = "Comma-separated content types to include: issues, wiki_pages, news, documents, changesets, messages, projects", required = false) String types,
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
+            @McpToolParam(description = "Pagination offset", required = false) Integer offset
     ) {
         log.info("Tool call: searchAll (query={}, projectId={}, types={}, limit={}, offset={})",
                 query, projectId, types, limit, offset);

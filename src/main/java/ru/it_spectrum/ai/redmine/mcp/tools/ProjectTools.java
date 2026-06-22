@@ -35,8 +35,8 @@ public class ProjectTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public ProjectPage listProjects(
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
+            @McpToolParam(description = "Pagination offset", required = false) Integer offset
     ) {
         log.info("Tool call: listProjects (limit={}, offset={})", limit, offset);
         long start = System.nanoTime();
@@ -55,7 +55,7 @@ public class ProjectTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Project getProject(
-            @McpToolParam(description = "Project identifier (string slug) or numeric ID") String projectId
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId
     ) {
         log.info("Tool call: getProject (projectId={})", projectId);
         long start = System.nanoTime();
@@ -76,8 +76,8 @@ public class ProjectTools {
     )
     public MembershipPage listProjectMembers(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
-            @McpToolParam(description = "Maximum number of results, uses configured members default when omitted", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
+            @McpToolParam(description = "Pagination offset", required = false) Integer offset
     ) {
         log.info("Tool call: listProjectMembers (projectId={}, limit={}, offset={})", projectId, limit, offset);
         long start = System.nanoTime();

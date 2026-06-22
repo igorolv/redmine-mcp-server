@@ -41,8 +41,8 @@ public class ReleaseAnalyticsTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public ProjectSummary getProjectSummary(
-            @McpToolParam(description = "Project identifier") String projectId,
-            @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId,
+            @McpToolParam(description = "Version/milestone ID", required = false) Integer versionId
     ) {
         log.info("Tool call: getProjectSummary (projectId={}, versionId={})", projectId, versionId);
         long start = System.nanoTime();
@@ -60,8 +60,8 @@ public class ReleaseAnalyticsTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public UserWorkload getUserWorkload(
-            @McpToolParam(description = "User ID (optional, defaults to current user)", required = false) Integer userId,
-            @McpToolParam(description = "Project identifier to limit scope (optional)", required = false) String projectId
+            @McpToolParam(description = "User ID; defaults to current user", required = false) Integer userId,
+            @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId
     ) {
         log.info("Tool call: getUserWorkload (userId={}, projectId={})", userId, projectId);
         long start = System.nanoTime();
@@ -83,7 +83,7 @@ public class ReleaseAnalyticsTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public VersionChangelog getVersionChangelog(
-            @McpToolParam(description = "Project identifier") String projectId,
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId,
             @McpToolParam(description = "Version/milestone ID") int versionId
     ) {
         log.info("Tool call: getVersionChangelog (projectId={}, versionId={})", projectId, versionId);
@@ -101,7 +101,7 @@ public class ReleaseAnalyticsTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public ReleaseRisks getReleaseRisks(
-            @McpToolParam(description = "Project identifier") String projectId,
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId,
             @McpToolParam(description = "Version/milestone ID") int versionId
     ) {
         log.info("Tool call: getReleaseRisks (projectId={}, versionId={})", projectId, versionId);
@@ -120,7 +120,7 @@ public class ReleaseAnalyticsTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public VersionComparison compareVersions(
-            @McpToolParam(description = "Project identifier") String projectId,
+            @McpToolParam(description = "Project identifier or numeric ID") String projectId,
             @McpToolParam(description = "First version/milestone ID") int versionId1,
             @McpToolParam(description = "Second version/milestone ID") int versionId2
     ) {

@@ -38,7 +38,7 @@ public class IssueStructureTools {
     )
     public IssueTree getIssueTree(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "How deep to traverse children, uses configured default and max when omitted", required = false) Integer depth
+            @McpToolParam(description = "How deep to traverse children", required = false) Integer depth
     ) {
         log.info("Tool call: getIssueTree (issueId={}, depth={})", issueId, depth);
         long start = System.nanoTime();

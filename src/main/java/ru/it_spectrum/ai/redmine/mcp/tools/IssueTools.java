@@ -50,17 +50,17 @@ public class IssueTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public IssuePage listIssues(
-            @McpToolParam(description = "Project identifier (optional)", required = false) String projectId,
-            @McpToolParam(description = "Status filter: open, closed, * (all), or numeric status ID (optional)", required = false) String statusId,
-            @McpToolParam(description = "Tracker ID to filter by (optional)", required = false) Integer trackerId,
-            @McpToolParam(description = "Assigned user ID to filter by (optional)", required = false) Integer assignedToId,
-            @McpToolParam(description = "Priority ID to filter by (optional)", required = false) Integer priorityId,
-            @McpToolParam(description = "Version/milestone ID to filter by (optional)", required = false) Integer versionId,
-            @McpToolParam(description = "Saved query ID to apply (optional). Use listQueries to find available queries.", required = false) Integer queryId,
-            @McpToolParam(description = "Custom field filters in query-string form, e.g. 'cf_10=rtk&cf_3=502167' (optional)", required = false) String customFieldFilters,
-            @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc' (optional)", required = false) String sort,
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+            @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
+            @McpToolParam(description = "Status filter: open, closed, * (all), or numeric status ID", required = false) String statusId,
+            @McpToolParam(description = "Tracker ID", required = false) Integer trackerId,
+            @McpToolParam(description = "Assigned user ID", required = false) Integer assignedToId,
+            @McpToolParam(description = "Priority ID", required = false) Integer priorityId,
+            @McpToolParam(description = "Version/milestone ID", required = false) Integer versionId,
+            @McpToolParam(description = "Saved query ID; use listQueries to find available queries", required = false) Integer queryId,
+            @McpToolParam(description = "Custom field filters in query-string form, e.g. 'cf_10=rtk&cf_3=502167'", required = false) String customFieldFilters,
+            @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc'", required = false) String sort,
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
+            @McpToolParam(description = "Pagination offset", required = false) Integer offset
     ) {
         log.info("Tool call: listIssues (projectId={}, statusId={}, trackerId={}, assignedToId={}, priorityId={}, versionId={}, queryId={}, customFieldFilters={}, sort={}, limit={}, offset={})",
                 projectId, statusId, trackerId, assignedToId, priorityId, versionId, queryId, customFieldFilters, sort, limit, offset);
@@ -97,9 +97,9 @@ public class IssueTools {
     )
     public IssuePage searchIssues(
             @McpToolParam(description = "Search query text") String query,
-            @McpToolParam(description = "Project identifier to limit search scope (optional)", required = false) String projectId,
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+            @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
+            @McpToolParam(description = "Pagination offset", required = false) Integer offset
     ) {
         log.info("Tool call: searchIssues (query={}, projectId={}, limit={}, offset={})", query, projectId, limit, offset);
         long start = System.nanoTime();
@@ -119,11 +119,11 @@ public class IssueTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public MyIssues getMyIssues(
-            @McpToolParam(description = "Project identifier to filter by (optional)", required = false) String projectId,
-            @McpToolParam(description = "Status filter: open (default), closed, * (all), or numeric status ID (optional)", required = false) String statusId,
-            @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc' (optional)", required = false) String sort,
-            @McpToolParam(description = "Maximum number of results, uses configured default when omitted", required = false) Integer limit,
-            @McpToolParam(description = "Offset for pagination, default 0", required = false) Integer offset
+            @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
+            @McpToolParam(description = "Status filter: open (default), closed, * (all), or numeric status ID", required = false) String statusId,
+            @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc'", required = false) String sort,
+            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
+            @McpToolParam(description = "Pagination offset", required = false) Integer offset
     ) {
         log.info("Tool call: getMyIssues (projectId={}, statusId={}, sort={}, limit={}, offset={})",
                 projectId, statusId, sort, limit, offset);
@@ -142,19 +142,16 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Get detailed information about a specific Redmine issue by its ID. " +
-            "Returns full issue details including description, status, assignee, dates, " +
-            "subtasks (children), relations, notes (journals), attachments list, " +
-            "and associated repository changesets/revisions when visible to the Redmine user. " +
-            "Use focus='implementation' when you need the implementation context: issue text, " +
-            "human journal notes, attachment metadata, and all changeset revisions while omitting verbose history. " +
-            "Use focus='timeline' for who-did-what-and-when questions.",
+            description = "Get detailed information about a specific Redmine issue by its ID: description, status, " +
+            "assignee, dates, subtasks, relations, journals (notes), attachments list, and repository changesets " +
+            "visible to the user. Use focus='implementation' for implementation context, or focus='timeline' for " +
+            "who-did-what-and-when questions.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Issue getIssue(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Response focus: default, implementation, timeline, changesets, or full. The implementation focus keeps implementation-relevant text and all changeset revisions while omitting verbose history. The changesets focus keeps issue identity fields and VCS changesets only.", required = false) String focus
+            @McpToolParam(description = "Response focus: default, implementation, timeline, changesets, or full. implementation keeps implementation-relevant text and all changeset revisions; changesets keeps issue identity fields and changesets only.", required = false) String focus
     ) {
         log.info("Tool call: getIssue (issueId={}, focus={})", issueId, focus);
         long start = System.nanoTime();

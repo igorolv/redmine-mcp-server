@@ -33,27 +33,21 @@ public class AttachmentTools {
     }
 
     @McpTool(
-            description = "Get an attachment from Redmine. Always downloads the original file into the local " +
-            "issue snapshot directory and returns localPath/fileUri. Also extracts text context into parts[] " +
-            "when supported: text files, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives. " +
-            "ZIP archives can produce one part per archive entry. Images and other binary files return " +
-            "metadata, localPath/fileUri, and a note without text parts. " +
-            "Extracted text is capped by a total character budget shared across all parts (configurable " +
-            "default, override with maxChars) and by a per-part cap (override with partLimit). When text " +
-            "is cut, the affected part has truncated=true and the response has truncated=true. The full " +
-            "file is always available via localPath/fileUri regardless of text limits. " +
-            "focus accepts default, implementation, timeline, or full; attachment text remains bounded by " +
-            "the same explicit maxChars/partLimit budgets. " +
-            "Use getIssue first when you need attachment IDs; getIssue returns the issue attachments list.",
+            description = "Get an attachment from Redmine. Downloads the original file into the local issue " +
+            "snapshot directory and returns localPath/fileUri. Extracts text into parts[] for text files, PDF, " +
+            "Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives (one part per entry); images and " +
+            "other binary files return metadata only. Extracted text is bounded by a total budget (maxChars) and " +
+            "a per-part cap (partLimit); when cut, the affected part and the response are marked truncated=true. " +
+            "The full file is always available via localPath/fileUri. Call getIssue first to get attachment IDs.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public AttachmentContent getAttachment(
             @McpToolParam(description = "Issue ID number") int issueId,
             @McpToolParam(description = "Attachment ID number") int attachmentId,
-            @McpToolParam(description = "Total character budget for extracted text across all parts. Uses configured default when omitted.", required = false) Integer maxChars,
-            @McpToolParam(description = "Per-part character cap for extracted text. Uses configured default when omitted.", required = false) Integer partLimit,
-            @McpToolParam(description = "Response focus: default, implementation, timeline, or full. Use implementation when the attachment is being loaded as implementation context.", required = false) String focus
+            @McpToolParam(description = "Total character budget for extracted text across all parts", required = false) Integer maxChars,
+            @McpToolParam(description = "Per-part character cap for extracted text", required = false) Integer partLimit,
+            @McpToolParam(description = "Response focus: default, implementation, timeline, or full", required = false) String focus
     ) {
         return getAttachmentInternal(issueId, attachmentId, maxChars, partLimit, focus);
     }
