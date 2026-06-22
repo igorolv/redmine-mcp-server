@@ -63,7 +63,7 @@ AI-клиент запускает сервер как дочерний проц
 
 | Tool | Описание |
 |---|---|
-| `searchAll` | Глобальный поиск по Redmine: задачи, wiki, новости, документы, коммиты и др. Параметры: `query`, `projectId`, `types`, `limit`, `offset` |
+| `searchAll` | Глобальный поиск по Redmine: задачи, wiki, новости, документы, коммиты и др. Параметры: `searchQuery`, `projectId`, `types`, `limit`, `offset` |
 
 ### Вложения и Wiki
 
@@ -72,7 +72,7 @@ AI-клиент запускает сервер как дочерний проц
 | `getAttachment` | Скачивает оригинальный файл вложения в локальный snapshot-каталог, возвращает `localPath`/`fileUri` и сразу добавляет текстовый контекст в `parts[]`, если формат поддержан: txt/log/xml/json/csv, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), ZIP. ZIP может дать отдельную часть на каждый entry. Параметры: `issueId`, `attachmentId`, `maxChars`, `partLimit` |
 | `getWikiPage` | Содержимое wiki-страницы проекта |
 | `listWikiPages` | Список всех wiki-страниц проекта |
-| `searchWikiPages` | Полнотекстовый поиск по wiki-страницам. Параметры: `query`, `projectId`, `limit`, `offset` |
+| `searchWikiPages` | Полнотекстовый поиск по wiki-страницам. Параметры: `searchQuery`, `projectId`, `limit`, `offset` |
 
 ### Трудозатраты
 

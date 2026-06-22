@@ -60,7 +60,7 @@ public class ReleaseAnalyticsTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public UserWorkload getUserWorkload(
-            @McpToolParam(description = "User ID; defaults to current user", required = false) Integer userId,
+            @McpToolParam(description = "", required = false) Integer userId,
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId
     ) {
         log.info("Tool call: getUserWorkload (userId={}, projectId={})", userId, projectId);

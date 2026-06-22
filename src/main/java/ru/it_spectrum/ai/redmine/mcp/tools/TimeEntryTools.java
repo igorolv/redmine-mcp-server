@@ -35,12 +35,12 @@ public class TimeEntryTools {
     )
     public TimeEntryPage listTimeEntries(
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
-            @McpToolParam(description = "Issue ID", required = false) Integer issueId,
-            @McpToolParam(description = "User ID", required = false) Integer userId,
+            @McpToolParam(description = "", required = false) Integer issueId,
+            @McpToolParam(description = "", required = false) Integer userId,
             @McpToolParam(description = "From date, YYYY-MM-DD", required = false) String from,
             @McpToolParam(description = "To date, YYYY-MM-DD", required = false) String to,
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
-            @McpToolParam(description = "Pagination offset", required = false) Integer offset
+            @McpToolParam(description = "", required = false) Integer limit,
+            @McpToolParam(description = "", required = false) Integer offset
     ) {
         log.info("Tool call: listTimeEntries (projectId={}, issueId={}, userId={}, from={}, to={}, limit={}, offset={})",
                 projectId, issueId, userId, from, to, limit, offset);
@@ -63,11 +63,11 @@ public class TimeEntryTools {
     )
     public MyTimeEntries getMyTimeEntries(
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
-            @McpToolParam(description = "Issue ID", required = false) Integer issueId,
+            @McpToolParam(description = "", required = false) Integer issueId,
             @McpToolParam(description = "From date, YYYY-MM-DD", required = false) String from,
             @McpToolParam(description = "To date, YYYY-MM-DD", required = false) String to,
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
-            @McpToolParam(description = "Pagination offset", required = false) Integer offset
+            @McpToolParam(description = "", required = false) Integer limit,
+            @McpToolParam(description = "", required = false) Integer offset
     ) {
         log.info("Tool call: getMyTimeEntries (projectId={}, issueId={}, from={}, to={}, limit={}, offset={})",
                 projectId, issueId, from, to, limit, offset);

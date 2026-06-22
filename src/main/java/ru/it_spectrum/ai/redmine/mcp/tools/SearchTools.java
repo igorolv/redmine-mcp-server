@@ -31,20 +31,20 @@ public class SearchTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public SearchResult searchAll(
-            @McpToolParam(description = "Search query text") String query,
+            @McpToolParam(description = "") String searchQuery,
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
             @McpToolParam(description = "Comma-separated content types to include: issues, wiki_pages, news, documents, changesets, messages, projects", required = false) String types,
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
-            @McpToolParam(description = "Pagination offset", required = false) Integer offset
+            @McpToolParam(description = "", required = false) Integer limit,
+            @McpToolParam(description = "", required = false) Integer offset
     ) {
-        log.info("Tool call: searchAll (query={}, projectId={}, types={}, limit={}, offset={})",
-                query, projectId, types, limit, offset);
+        log.info("Tool call: searchAll (searchQuery={}, projectId={}, types={}, limit={}, offset={})",
+                searchQuery, projectId, types, limit, offset);
         long start = System.nanoTime();
         int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
         int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
         try {
-            var result = searchService.searchAll(query, projectId, types, actualOffset, actualLimit);
+            var result = searchService.searchAll(searchQuery, projectId, types, actualOffset, actualLimit);
             ToolLogger.completed(log, "searchAll", start);
             return result;
         } catch (IllegalArgumentException e) {

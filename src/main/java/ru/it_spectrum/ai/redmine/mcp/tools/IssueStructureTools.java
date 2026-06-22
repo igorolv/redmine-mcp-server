@@ -37,7 +37,7 @@ public class IssueStructureTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public IssueTree getIssueTree(
-            @McpToolParam(description = "Issue ID") int issueId,
+            @McpToolParam(description = "") int issueId,
             @McpToolParam(description = "How deep to traverse children", required = false) Integer depth
     ) {
         log.info("Tool call: getIssueTree (issueId={}, depth={})", issueId, depth);
@@ -61,7 +61,7 @@ public class IssueStructureTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public IssueHistory getIssueHistory(
-            @McpToolParam(description = "Issue ID") int issueId
+            @McpToolParam(description = "") int issueId
     ) {
         log.info("Tool call: getIssueHistory (issueId={})", issueId);
         long start = System.nanoTime();

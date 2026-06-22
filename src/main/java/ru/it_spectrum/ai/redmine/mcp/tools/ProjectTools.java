@@ -35,8 +35,8 @@ public class ProjectTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public ProjectPage listProjects(
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
-            @McpToolParam(description = "Pagination offset", required = false) Integer offset
+            @McpToolParam(description = "", required = false) Integer limit,
+            @McpToolParam(description = "", required = false) Integer offset
     ) {
         log.info("Tool call: listProjects (limit={}, offset={})", limit, offset);
         long start = System.nanoTime();
@@ -76,8 +76,8 @@ public class ProjectTools {
     )
     public MembershipPage listProjectMembers(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
-            @McpToolParam(description = "Pagination offset", required = false) Integer offset
+            @McpToolParam(description = "", required = false) Integer limit,
+            @McpToolParam(description = "", required = false) Integer offset
     ) {
         log.info("Tool call: listProjectMembers (projectId={}, limit={}, offset={})", projectId, limit, offset);
         long start = System.nanoTime();

@@ -36,8 +36,8 @@ public class AttachmentTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public AttachmentContent getAttachment(
-            @McpToolParam(description = "Issue ID") int issueId,
-            @McpToolParam(description = "Attachment ID") int attachmentId,
+            @McpToolParam(description = "") int issueId,
+            @McpToolParam(description = "") int attachmentId,
             @McpToolParam(description = "Total character budget for extracted text across all parts", required = false) Integer maxChars,
             @McpToolParam(description = "Per-part character cap for extracted text", required = false) Integer partLimit
     ) {

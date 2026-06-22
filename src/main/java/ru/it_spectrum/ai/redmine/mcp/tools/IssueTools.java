@@ -50,14 +50,14 @@ public class IssueTools {
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
             @McpToolParam(description = "Status filter: open, closed, * (all), or numeric status ID", required = false) String statusId,
             @McpToolParam(description = "Tracker ID (issue type); from listTrackers", required = false) Integer trackerId,
-            @McpToolParam(description = "Assigned user ID; from listProjectMembers", required = false) Integer assignedToId,
-            @McpToolParam(description = "Priority ID", required = false) Integer priorityId,
+            @McpToolParam(description = "", required = false) Integer assignedToId,
+            @McpToolParam(description = "", required = false) Integer priorityId,
             @McpToolParam(description = "Version/milestone ID", required = false) Integer versionId,
             @McpToolParam(description = "Saved query ID; from listQueries", required = false) Integer queryId,
             @McpToolParam(description = "Custom field filters in query-string form, e.g. 'cf_10=rtk&cf_3=502167'", required = false) String customFieldFilters,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc'", required = false) String sort,
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
-            @McpToolParam(description = "Pagination offset", required = false) Integer offset
+            @McpToolParam(description = "", required = false) Integer limit,
+            @McpToolParam(description = "", required = false) Integer offset
     ) {
         log.info("Tool call: listIssues (projectId={}, statusId={}, trackerId={}, assignedToId={}, priorityId={}, versionId={}, queryId={}, customFieldFilters={}, sort={}, limit={}, offset={})",
                 projectId, statusId, trackerId, assignedToId, priorityId, versionId, queryId, customFieldFilters, sort, limit, offset);
@@ -91,17 +91,17 @@ public class IssueTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public IssuePage searchIssues(
-            @McpToolParam(description = "Search query text") String query,
+            @McpToolParam(description = "") String searchQuery,
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
-            @McpToolParam(description = "Pagination offset", required = false) Integer offset
+            @McpToolParam(description = "", required = false) Integer limit,
+            @McpToolParam(description = "", required = false) Integer offset
     ) {
-        log.info("Tool call: searchIssues (query={}, projectId={}, limit={}, offset={})", query, projectId, limit, offset);
+        log.info("Tool call: searchIssues (searchQuery={}, projectId={}, limit={}, offset={})", searchQuery, projectId, limit, offset);
         long start = System.nanoTime();
         int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
         int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
-        var result = issueService.searchIssues(query, projectId, actualOffset, actualLimit);
+        var result = issueService.searchIssues(searchQuery, projectId, actualOffset, actualLimit);
         ToolLogger.completed(log, "searchIssues", start);
         return result;
     }
@@ -116,8 +116,8 @@ public class IssueTools {
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
             @McpToolParam(description = "Status filter: open (default), closed, * (all), or numeric status ID", required = false) String statusId,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc'", required = false) String sort,
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
-            @McpToolParam(description = "Pagination offset", required = false) Integer offset
+            @McpToolParam(description = "", required = false) Integer limit,
+            @McpToolParam(description = "", required = false) Integer offset
     ) {
         log.info("Tool call: getMyIssues (projectId={}, statusId={}, sort={}, limit={}, offset={})",
                 projectId, statusId, sort, limit, offset);
@@ -142,7 +142,7 @@ public class IssueTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Issue getIssue(
-            @McpToolParam(description = "Issue ID") int issueId,
+            @McpToolParam(description = "") int issueId,
             @McpToolParam(description = "Response focus: default, implementation (implementation-relevant text and all changeset revisions), timeline (who-did-what-and-when), changesets (issue identity fields and changesets only), or full (no compression).", required = false) String focus
     ) {
         log.info("Tool call: getIssue (issueId={}, focus={})", issueId, focus);
@@ -170,7 +170,7 @@ public class IssueTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Journal getIssueJournal(
-            @McpToolParam(description = "Issue ID") int issueId,
+            @McpToolParam(description = "") int issueId,
             @McpToolParam(description = "Journal entry ID; from getIssue journals") int journalId
     ) {
         log.info("Tool call: getIssueJournal (issueId={}, journalId={})", issueId, journalId);

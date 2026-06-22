@@ -37,7 +37,7 @@ public class IssueAnalyticsTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public BlockerChain getBlockerChain(
-            @McpToolParam(description = "Issue ID") int issueId
+            @McpToolParam(description = "") int issueId
     ) {
         log.info("Tool call: getBlockerChain (issueId={})", issueId);
         long start = System.nanoTime();
@@ -60,7 +60,7 @@ public class IssueAnalyticsTools {
     public StaleIssues getStaleIssues(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
             @McpToolParam(description = "Minimum days since last update", required = false) Integer daysSinceUpdate,
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit
+            @McpToolParam(description = "", required = false) Integer limit
     ) {
         log.info("Tool call: getStaleIssues (projectId={}, daysSinceUpdate={}, limit={})",
                 projectId, daysSinceUpdate, limit);

@@ -73,18 +73,18 @@ public class WikiTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public SearchResult searchWikiPages(
-            @McpToolParam(description = "Search query text") String query,
+            @McpToolParam(description = "") String searchQuery,
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
-            @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
-            @McpToolParam(description = "Pagination offset", required = false) Integer offset
+            @McpToolParam(description = "", required = false) Integer limit,
+            @McpToolParam(description = "", required = false) Integer offset
     ) {
-        log.info("Tool call: searchWikiPages (query={}, projectId={}, limit={}, offset={})",
-                query, projectId, limit, offset);
+        log.info("Tool call: searchWikiPages (searchQuery={}, projectId={}, limit={}, offset={})",
+                searchQuery, projectId, limit, offset);
         long start = System.nanoTime();
         int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
         int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
 
-        var result = wikiService.searchPages(query, projectId, actualOffset, actualLimit);
+        var result = wikiService.searchPages(searchQuery, projectId, actualOffset, actualLimit);
         ToolLogger.completed(log, "searchWikiPages", start);
         return result;
     }
