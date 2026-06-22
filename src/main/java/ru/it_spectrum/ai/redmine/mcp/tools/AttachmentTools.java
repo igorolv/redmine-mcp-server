@@ -29,12 +29,9 @@ public class AttachmentTools {
     }
 
     @McpTool(
-            description = "Get an attachment from Redmine. Downloads the original file and returns localPath/fileUri " +
-            "(the full file, regardless of any text truncation). Extracts text into parts[] for text files, PDF, " +
-            "Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives (one part per entry); images and " +
-            "other binary files return metadata only. Extracted text is capped by maxChars (total) and partLimit " +
-            "(per part); when cut, the affected part and the response are marked truncated=true. " +
-            "Call getIssue first to get attachment IDs.",
+            description = "Get a Redmine attachment: downloads the file locally and extracts its text for text " +
+            "files, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives; images and other " +
+            "binaries return metadata only. Call getIssue first to get attachment IDs.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
