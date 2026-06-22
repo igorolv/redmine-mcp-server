@@ -136,14 +136,14 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Get detailed information about a Redmine issue by ID: description, status, assignee, " +
-            "dates, subtasks, relations, journals (notes), attachments, and repository changesets visible to the user.",
+            description = "Get full details of a Redmine issue by ID, including subtasks, relations, " +
+            "journals (notes), attachments, and changesets.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Issue getIssue(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Response focus: default, implementation (implementation-relevant text and all changeset revisions), timeline (who-did-what-and-when), changesets (issue identity fields and changesets only), or full.", required = false) String focus
+            @McpToolParam(description = "Response focus: default, implementation (implementation-relevant text and all changeset revisions), timeline (who-did-what-and-when), changesets (issue identity fields and changesets only), or full (no compression).", required = false) String focus
     ) {
         log.info("Tool call: getIssue (issueId={}, focus={})", issueId, focus);
         long start = System.nanoTime();
@@ -164,14 +164,14 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Get one full, uncompressed journal entry from a Redmine issue by issue ID and journal ID. " +
+            description = "Get one full, uncompressed journal entry from a Redmine issue. " +
             "Use this when getIssue compression notes indicate that older journal entries or long notes were shortened.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Journal getIssueJournal(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Journal entry ID number from the issue history") int journalId
+            @McpToolParam(description = "Journal entry ID; from getIssue journals") int journalId
     ) {
         log.info("Tool call: getIssueJournal (issueId={}, journalId={})", issueId, journalId);
         long start = System.nanoTime();
