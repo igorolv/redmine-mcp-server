@@ -9,9 +9,9 @@ public record BlockerChain(
         @Schema(description = "The issue the chain is centred on.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Opaque<Issue> root,
         @Schema(description = "Issues that block the root (recursively), each annotated with its depth from the root.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<List<Node>> blockedBy,
+        List<Opaque<Node>> blockedBy,
         @Schema(description = "Issues that depend on the root (recursively), each annotated with its depth from the root.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<List<Node>> blocks,
+        List<Opaque<Node>> blocks,
         @Schema(description = "End-to-end depth of the chain (upstream + 1 + downstream).", requiredMode = Schema.RequiredMode.REQUIRED)
         int chainDepth,
         @Schema(description = "Total number of distinct issues in the chain (including the root).", requiredMode = Schema.RequiredMode.REQUIRED)

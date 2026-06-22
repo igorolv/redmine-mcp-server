@@ -9,9 +9,9 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record IssueHistory(
         @Schema(description = "Chronological timeline of creation and update events.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<List<TimelineEntry>> timeline,
+        List<Opaque<TimelineEntry>> timeline,
         @Schema(description = "How long the issue stayed in each status, derived from journal entries.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<List<StatusDuration>> statusDurations
+        List<Opaque<StatusDuration>> statusDurations
 ) {
 
     @Schema(description = "Kind of timeline entry.")

@@ -181,7 +181,7 @@ public class IssueService {
         boolean limitReached = fetchCount[0] >= properties.tree().maxIssues();
         return new IssueTree(
                 Opaque.of(Issue.from(root)),
-                Opaque.of(ancestors.stream().map(Issue::from).toList()),
+                ancestors.stream().map(Issue::from).map(Opaque::of).toList(),
                 Opaque.of(subtree),
                 fetchCount[0],
                 limitReached
@@ -255,7 +255,9 @@ public class IssueService {
         }
 
         var durations = computeStatusDurations(statusSnapshots);
-        return new IssueHistory(Opaque.of(List.copyOf(timeline)), Opaque.of(durations));
+        return new IssueHistory(
+                List.copyOf(timeline).stream().map(Opaque::of).toList(),
+                durations.stream().map(Opaque::of).toList());
     }
 
     // --- Tree helpers ---

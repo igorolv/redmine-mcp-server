@@ -20,7 +20,7 @@ public record VersionChangelog(
         @Schema(description = "True when the analyzed set is a truncated slice of the full issue set.", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean truncated,
         @Schema(description = "Issues grouped by tracker name (Bug, Feature, ...).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<Map<String, List<IssueSummary>>> byTracker,
+        Map<String, List<Opaque<IssueSummary>>> byTracker,
         @Schema(description = "Open / closed / total counts within the analyzed set.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         IssueCountSummary counts,
         @Schema(description = "Estimated vs spent hours across the analyzed set.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)

@@ -24,9 +24,9 @@ public record UserWorkload(
         @Schema(description = "Number of analyzed issues whose due date is in the past.", requiredMode = Schema.RequiredMode.REQUIRED)
         int overdue,
         @Schema(description = "Per-project breakdown of the user's workload.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<List<ProjectShare>> byProject,
+        List<Opaque<ProjectShare>> byProject,
         @Schema(description = "Up to 10 most important open issues for the user, sorted by priority then by due date.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<List<IssueSummary>> topIssues
+        List<Opaque<IssueSummary>> topIssues
 ) {
 
     @Schema(description = "Workload contribution from a single project.")

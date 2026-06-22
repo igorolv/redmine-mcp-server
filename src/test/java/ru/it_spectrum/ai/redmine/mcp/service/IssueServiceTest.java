@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueHistory;
+import ru.it_spectrum.ai.redmine.mcp.api.Opaque;
 import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient.SearchWithIssueSummaries;
@@ -168,7 +169,8 @@ class IssueServiceTest {
         var view = service.getTree(3, 2);
 
         assertThat(view.root().unwrap().id()).isEqualTo(3);
-        assertThat(view.ancestors().unwrap()).extracting(Issue::id).containsExactly(2, 1);
+        assertThat(view.ancestors().stream().map(Opaque::unwrap).toList())
+                .extracting(Issue::id).containsExactly(2, 1);
         assertThat(view.subtree().unwrap().id()).isEqualTo(3);
         assertThat(view.fetchedCount()).isEqualTo(3);
         assertThat(view.limitReached()).isFalse();
@@ -221,7 +223,7 @@ class IssueServiceTest {
 
         var view = service.buildHistory(issue);
 
-        var timeline = view.timeline().unwrap();
+        var timeline = view.timeline().stream().map(Opaque::unwrap).toList();
         assertThat(timeline).hasSize(2);
         var created = timeline.get(0);
         assertThat(created.kind()).isEqualTo(IssueHistory.Kind.CREATED);
@@ -236,9 +238,10 @@ class IssueServiceTest {
             assertThat(c.newValue()).isEqualTo("In Progress");
         });
 
-        assertThat(view.statusDurations().unwrap()).extracting(IssueHistory.StatusDuration::statusName)
+        var durations = view.statusDurations().stream().map(Opaque::unwrap).toList();
+        assertThat(durations).extracting(IssueHistory.StatusDuration::statusName)
                 .containsExactly("New", "In Progress");
-        assertThat(view.statusDurations().unwrap().get(1).toTimestamp()).isNull();
+        assertThat(durations.get(1).toTimestamp()).isNull();
     }
 
     @Test

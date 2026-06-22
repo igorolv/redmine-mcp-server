@@ -13,11 +13,11 @@ public record VersionComparison(
         @Schema(description = "Scope statistics for the second version.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Scope second,
         @Schema(description = "Issues present only in the first version.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<List<IssueSummary>> onlyInFirst,
+        List<Opaque<IssueSummary>> onlyInFirst,
         @Schema(description = "Issues present only in the second version.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<List<IssueSummary>> onlyInSecond,
+        List<Opaque<IssueSummary>> onlyInSecond,
         @Schema(description = "Issues present in both versions.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Opaque<List<IssueSummary>> inBoth
+        List<Opaque<IssueSummary>> inBoth
 ) {
 
     @Schema(description = "Per-version scope statistics.")

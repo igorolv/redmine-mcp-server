@@ -140,8 +140,8 @@ public class AnalysisService {
                 batch.totalCount, issues.size(), batch.truncated(),
                 new HoursSummary(estimated, spent),
                 (int) overdueCount,
-                Opaque.of(projects),
-                Opaque.of(sorted)
+                projects.stream().map(Opaque::of).toList(),
+                sorted.stream().map(Opaque::of).toList()
         ));
     }
 
@@ -164,7 +164,10 @@ public class AnalysisService {
         return new VersionChangelog(
                 projectId, versionId, Version.from(version),
                 batch.totalCount, issues.size(), batch.truncated(),
-                Opaque.of(byTracker),
+                byTracker.entrySet().stream()
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey,
+                                e -> e.getValue().stream().map(Opaque::of).toList())),
                 new IssueCountSummary((int) open, (int) closed, issues.size()),
                 new HoursSummary(estimated, spent)
         );
@@ -194,7 +197,9 @@ public class AnalysisService {
         int totalDepth = upstreamDepth + 1 + downstreamDepth;
         int totalIssues = 1 + blockedBy.size() + blocks.size();
 
-        return new BlockerChain(Opaque.of(Issue.from(root)), Opaque.of(blockedBy), Opaque.of(blocks), totalDepth, totalIssues);
+        return new BlockerChain(Opaque.of(Issue.from(root)),
+                blockedBy.stream().map(Opaque::of).toList(),
+                blocks.stream().map(Opaque::of).toList(), totalDepth, totalIssues);
     }
 
     public StaleIssues getStaleIssues(String projectId, Integer daysSinceUpdate, Integer limit) {
@@ -221,7 +226,8 @@ public class AnalysisService {
         var staleItems = stale.stream()
                 .map(i -> new StaleIssues.Entry(IssueSummary.from(i), daysAgo(i.updatedOn()), isOverdue(i)))
                 .toList();
-        return new StaleIssues(projectId, minDays, actualLimit, Opaque.of(staleItems), oldest);
+        return new StaleIssues(projectId, minDays, actualLimit,
+                staleItems.stream().map(Opaque::of).toList(), oldest);
     }
 
     public ReleaseRisks getReleaseRisks(String projectId, int versionId) {
@@ -259,7 +265,7 @@ public class AnalysisService {
                 projectId, versionId, Version.from(version),
                 batch.totalCount, issues.size(), batch.truncated(),
                 highPriorityNames,
-                Opaque.of(categories),
+                categories.stream().map(Opaque::of).toList(),
                 new ReleaseRisks.Score(riskItems, categories.size(), issues.size())
         );
     }
@@ -293,7 +299,9 @@ public class AnalysisService {
                 new VersionComparison.Scope(versionId2, v2Name, Version.from(v2Meta), batch2.totalCount,
                         batch2.issues.size(), (int) closed2, batch2.issues.size() - (int) closed2,
                         completionPercent(closed2, batch2.issues.size()), batch2.truncated()),
-                Opaque.of(onlyIn1), Opaque.of(onlyIn2), Opaque.of(inBoth)
+                onlyIn1.stream().map(Opaque::of).toList(),
+                onlyIn2.stream().map(Opaque::of).toList(),
+                inBoth.stream().map(Opaque::of).toList()
         );
     }
 
