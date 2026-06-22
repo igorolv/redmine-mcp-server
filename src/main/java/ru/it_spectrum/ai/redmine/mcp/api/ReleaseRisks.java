@@ -11,7 +11,7 @@ public record ReleaseRisks(
         String projectId,
         @Schema(description = "Version/milestone identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
         int versionId,
-        @Schema(description = "Version metadata, null when the version could not be resolved.", nullable = true)
+        @Schema(description = "Version metadata, null when the version could not be resolved.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Version version,
         @Schema(description = "Total open issues for the version across all pages.", requiredMode = Schema.RequiredMode.REQUIRED)
         int totalOpenIssues,

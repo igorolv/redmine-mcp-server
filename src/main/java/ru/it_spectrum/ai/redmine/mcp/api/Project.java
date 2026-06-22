@@ -13,17 +13,17 @@ public record Project(
         String name,
         @Schema(description = "URL-safe project slug. Either this or the numeric id can be used as projectId for other tools.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String identifier,
-        @Schema(description = "Project description (Textile/Markdown markup).", nullable = true)
+        @Schema(description = "Project description (Textile/Markdown markup).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String description,
-        @Schema(description = "Optional homepage URL configured for the project.", nullable = true)
+        @Schema(description = "Optional homepage URL configured for the project.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String homepage,
-        @Schema(description = "Parent project reference, null for top-level projects.", nullable = true)
+        @Schema(description = "Parent project reference, null for top-level projects.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref parent,
         @Schema(description = "True when the project is visible to anonymous users.", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean isPublic,
-        @Schema(description = "Trackers enabled for this project (Bug, Feature, ...).", nullable = true)
+        @Schema(description = "Trackers enabled for this project (Bug, Feature, ...).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Ref> trackers,
-        @Schema(description = "Names of enabled Redmine modules (e.g. issue_tracking, wiki, repository).", nullable = true)
+        @Schema(description = "Names of enabled Redmine modules (e.g. issue_tracking, wiki, repository).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<String> enabledModules
 ) {
     public static Project from(RedmineProject source) {

@@ -18,29 +18,29 @@ public record IssueSummary(
         Ref status,
         @Schema(description = "Priority.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref priority,
-        @Schema(description = "User currently assigned, null when unassigned.", nullable = true)
+        @Schema(description = "User currently assigned, null when unassigned.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref assignedTo,
-        @Schema(description = "Parent issue reference if this is a subtask.", nullable = true)
+        @Schema(description = "Parent issue reference if this is a subtask.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref parent,
-        @Schema(description = "Target version / milestone.", nullable = true)
+        @Schema(description = "Target version / milestone.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref fixedVersion,
-        @Schema(description = "Issue category.", nullable = true)
+        @Schema(description = "Issue category.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref category,
         @Schema(description = "Short title of the issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String subject,
-        @Schema(description = "Planned start date in ISO-8601.", format = "date", nullable = true)
+        @Schema(description = "Planned start date in ISO-8601.", format = "date", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String startDate,
-        @Schema(description = "Planned due date in ISO-8601.", format = "date", nullable = true)
+        @Schema(description = "Planned due date in ISO-8601.", format = "date", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String dueDate,
         @Schema(description = "Completion percentage from 0 to 100.", requiredMode = Schema.RequiredMode.REQUIRED)
         int doneRatio,
-        @Schema(description = "Estimated effort in hours.", nullable = true)
+        @Schema(description = "Estimated effort in hours.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Double estimatedHours,
-        @Schema(description = "Creation timestamp in ISO-8601.", format = "date-time", nullable = true)
+        @Schema(description = "Creation timestamp in ISO-8601.", format = "date-time", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String createdOn,
-        @Schema(description = "Timestamp of the most recent change in ISO-8601.", format = "date-time", nullable = true)
+        @Schema(description = "Timestamp of the most recent change in ISO-8601.", format = "date-time", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String updatedOn,
-        @Schema(description = "Project-defined custom field values.", nullable = true)
+        @Schema(description = "Project-defined custom field values.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<CustomFieldValue> customFields
 ) {
 

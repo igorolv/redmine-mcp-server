@@ -7,20 +7,20 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineVersion;
 public record Version(
         @Schema(description = "Version identifier.", requiredMode = Schema.RequiredMode.REQUIRED)
         int id,
-        @Schema(description = "Project the version belongs to.", nullable = true)
+        @Schema(description = "Project the version belongs to.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref project,
         @Schema(description = "Version name as shown in the UI.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String name,
-        @Schema(description = "Optional description of the version's scope.", nullable = true)
+        @Schema(description = "Optional description of the version's scope.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String description,
-        @Schema(description = "Lifecycle status of the version.", allowableValues = {"open", "locked", "closed"}, nullable = true)
+        @Schema(description = "Lifecycle status of the version.", allowableValues = {"open", "locked", "closed"}, requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String status,
-        @Schema(description = "Planned release date in ISO-8601.", format = "date", nullable = true)
+        @Schema(description = "Planned release date in ISO-8601.", format = "date", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String dueDate,
         @Schema(description = "Sharing scope of the version across projects.",
-                allowableValues = {"none", "descendants", "hierarchy", "tree", "system"}, nullable = true)
+                allowableValues = {"none", "descendants", "hierarchy", "tree", "system"}, requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String sharing,
-        @Schema(description = "Wiki page title that holds the release notes for this version, when configured.", nullable = true)
+        @Schema(description = "Wiki page title that holds the release notes for this version, when configured.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String wikiPageTitle
 ) {
     public static Version from(RedmineVersion source) {

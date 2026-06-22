@@ -35,11 +35,11 @@ public record SearchResult(
             @Schema(description = "Kind of entity that matched.", requiredMode = Schema.RequiredMode.REQUIRED,
                     allowableValues = {"issue", "issue-closed", "wiki-page", "news", "document", "changeset", "message", "project"}, nullable = true)
             String type,
-            @Schema(description = "Direct link to the entity in the Redmine UI.", nullable = true)
+            @Schema(description = "Direct link to the entity in the Redmine UI.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             String url,
-            @Schema(description = "Snippet around the match, may be truncated.", nullable = true)
+            @Schema(description = "Snippet around the match, may be truncated.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             String description,
-            @Schema(description = "Timestamp of the matched entity in ISO-8601.", format = "date-time", nullable = true)
+            @Schema(description = "Timestamp of the matched entity in ISO-8601.", format = "date-time", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             String datetime
     ) {
         public static Hit from(RedmineSearchResult.ResultItem source) {

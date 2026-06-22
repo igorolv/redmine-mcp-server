@@ -24,11 +24,11 @@ public record IssueTree(
             int id,
             @Schema(description = "Subject of the issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             String subject,
-            @Schema(description = "Workflow status; null when this node is a stub (only the child reference was available).", nullable = true)
+            @Schema(description = "Workflow status; null when this node is a stub (only the child reference was available).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             Ref status,
-            @Schema(description = "Tracker type.", nullable = true)
+            @Schema(description = "Tracker type.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             Ref tracker,
-            @Schema(description = "Assigned user; null when unassigned or stub.", nullable = true)
+            @Schema(description = "Assigned user; null when unassigned or stub.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             Ref assignedTo,
             @Schema(description = "Child nodes; empty when this node is a leaf or a stub.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             List<Node> children,

@@ -9,19 +9,19 @@ import java.util.List;
 public record WikiPage(
         @Schema(description = "Page title (URL-escaped form used as the path).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String title,
-        @Schema(description = "Page body in Textile or Markdown markup depending on the Redmine instance. Null in index listings.", nullable = true)
+        @Schema(description = "Page body in Textile or Markdown markup depending on the Redmine instance. Null in index listings.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String text,
         @Schema(description = "Monotonic revision number of the page.", requiredMode = Schema.RequiredMode.REQUIRED)
         int version,
-        @Schema(description = "Author of the most recent revision.", nullable = true)
+        @Schema(description = "Author of the most recent revision.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref author,
-        @Schema(description = "Comment attached to the most recent revision.", nullable = true)
+        @Schema(description = "Comment attached to the most recent revision.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String comments,
-        @Schema(description = "When the page was first created, ISO-8601.", format = "date-time", nullable = true)
+        @Schema(description = "When the page was first created, ISO-8601.", format = "date-time", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String createdOn,
-        @Schema(description = "When the page was last edited, ISO-8601.", format = "date-time", nullable = true)
+        @Schema(description = "When the page was last edited, ISO-8601.", format = "date-time", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String updatedOn,
-        @Schema(description = "Files attached to the page. Empty in index listings.", nullable = true)
+        @Schema(description = "Files attached to the page. Empty in index listings.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Attachment> attachments
 ) {
     public static WikiPage from(RedmineWikiPage source) {

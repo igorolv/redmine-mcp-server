@@ -7,11 +7,11 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
 public record User(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int id,
-        @Schema(description = "Login name.", nullable = true)
+        @Schema(description = "Login name.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String login,
-        @Schema(description = "Display name (firstname + lastname).", nullable = true)
+        @Schema(description = "Display name (firstname + lastname).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String name,
-        @Schema(description = "Email address, may be absent if not visible to the API caller.", nullable = true)
+        @Schema(description = "Email address, may be absent if not visible to the API caller.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String mail
 ) {
     public static User from(RedmineUser source) {
