@@ -29,10 +29,8 @@ public class IssueAnalyticsTools {
     }
 
     @McpTool(
-            description = "Trace the blocking dependency chain for an issue. " +
-            "Shows what blocks this issue (must be resolved first) and what this issue blocks. " +
-            "Follows blocks/blocked_by relations recursively to reveal the critical path, " +
-            "bounded by depth 10 and 30 fetched issues.",
+            description = "Trace the blocking dependency chain for an issue: what blocks it and what it blocks, " +
+            "following blocks/blocked_by relations recursively to reveal the critical path.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -52,8 +50,7 @@ public class IssueAnalyticsTools {
     }
 
     @McpTool(
-            description = "Find open issues that haven't been updated for a specified number of days. " +
-            "Sorted by staleness (oldest first). Useful for identifying neglected or forgotten tasks.",
+            description = "Find open issues not updated for a given number of days, most stale first.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
