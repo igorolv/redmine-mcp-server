@@ -28,8 +28,7 @@ public class WikiTools {
     }
 
     @McpTool(
-            description = "Get a wiki page from a Redmine project. " +
-            "Returns the page title, content (in Textile/Markdown markup), author, and attachments.",
+            description = "Get a wiki page from a Redmine project; content is in Textile/Markdown markup.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -50,8 +49,7 @@ public class WikiTools {
     }
 
     @McpTool(
-            description = "List all wiki pages in a Redmine project. " +
-            "Returns page titles and dates. Use getWikiPage to read a specific page's content.",
+            description = "List wiki pages in a Redmine project. Use getWikiPage to read a page's content.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -67,8 +65,7 @@ public class WikiTools {
 
     @McpTool(
             description = "Search Redmine wiki pages using full-text search. " +
-            "Returns wiki search hits with title, URL, description excerpt, and datetime. " +
-            "Use getWikiPage to read a specific page's full content.",
+            "Use getWikiPage to read a page's full content.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
