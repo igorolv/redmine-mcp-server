@@ -27,9 +27,8 @@ public class TimeEntryTools {
     }
 
     @McpTool(
-            description = "List time entries (time tracking / logged hours) in Redmine. " +
-            "Filter by project, issue, user, or date range. " +
-            "Returns hours, activity type, user, date, and comments.",
+            description = "List time entries (logged hours) in Redmine. " +
+            "Filter by project, issue, user, or date range.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -54,10 +53,8 @@ public class TimeEntryTools {
     }
 
     @McpTool(
-            description = "List time entries for the currently authenticated user. " +
-            "Convenient shortcut — no need to call getCurrentUser first. " +
-            "Filter by project, issue, or date range. " +
-            "Returns hours, activity type, date, and comments.",
+            description = "List time entries (logged hours) for the currently authenticated user — " +
+            "no need to call getCurrentUser first.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
