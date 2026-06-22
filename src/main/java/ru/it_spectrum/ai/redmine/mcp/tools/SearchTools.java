@@ -25,8 +25,8 @@ public class SearchTools {
     }
 
     @McpTool(
-            description = "Search across Redmine content. Returns generic search hits with title, type, URL, " +
-            "description excerpt, and datetime. Use searchIssues for issue summaries and searchWikiPages for wiki-only results.",
+            description = "Search across Redmine content. Use searchIssues for issue summaries " +
+            "or searchWikiPages for wiki-only results.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
