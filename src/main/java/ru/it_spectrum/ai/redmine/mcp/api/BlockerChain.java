@@ -7,11 +7,11 @@ import java.util.List;
 @Schema(description = "Blocking-dependency chain centred on an issue. `blockedBy` is the upstream chain (must be resolved first), `blocks` is the downstream chain (waits for this issue).")
 public record BlockerChain(
         @Schema(description = "The issue the chain is centred on.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        Issue root,
+        Opaque<Issue> root,
         @Schema(description = "Issues that block the root (recursively), each annotated with its depth from the root.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        List<Node> blockedBy,
+        Opaque<List<Node>> blockedBy,
         @Schema(description = "Issues that depend on the root (recursively), each annotated with its depth from the root.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        List<Node> blocks,
+        Opaque<List<Node>> blocks,
         @Schema(description = "End-to-end depth of the chain (upstream + 1 + downstream).", requiredMode = Schema.RequiredMode.REQUIRED)
         int chainDepth,
         @Schema(description = "Total number of distinct issues in the chain (including the root).", requiredMode = Schema.RequiredMode.REQUIRED)

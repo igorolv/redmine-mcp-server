@@ -13,7 +13,7 @@ public record StaleIssues(
         @Schema(description = "Maximum number of results the search was capped at.", requiredMode = Schema.RequiredMode.REQUIRED)
         int limit,
         @Schema(description = "Stale issues that crossed the threshold.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        List<Entry> issues,
+        Opaque<List<Entry>> issues,
         @Schema(description = "How many days the oldest returned issue has been untouched. 0 when the result set is empty.", requiredMode = Schema.RequiredMode.REQUIRED)
         long oldestDaysSinceUpdated
 ) {

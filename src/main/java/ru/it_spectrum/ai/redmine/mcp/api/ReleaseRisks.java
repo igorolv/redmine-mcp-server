@@ -22,7 +22,7 @@ public record ReleaseRisks(
         @Schema(description = "Priority names treated as 'high' by the heuristic (top third of the priority ladder, or just the highest one).", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Set<String> highPriorityNames,
         @Schema(description = "Risk categories that contain at least one issue.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        List<Category> categories,
+        Opaque<List<Category>> categories,
         @Schema(description = "Aggregate risk score.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Score score
 ) {

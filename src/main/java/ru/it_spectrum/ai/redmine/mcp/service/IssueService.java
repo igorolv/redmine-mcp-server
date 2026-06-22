@@ -7,6 +7,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.IssuePage;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueTree;
 import ru.it_spectrum.ai.redmine.mcp.api.Journal;
 import ru.it_spectrum.ai.redmine.mcp.api.MyIssues;
+import ru.it_spectrum.ai.redmine.mcp.api.Opaque;
 import ru.it_spectrum.ai.redmine.mcp.api.Ref;
 import ru.it_spectrum.ai.redmine.mcp.api.User;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
@@ -179,9 +180,9 @@ public class IssueService {
 
         boolean limitReached = fetchCount[0] >= properties.tree().maxIssues();
         return new IssueTree(
-                Issue.from(root),
-                ancestors.stream().map(Issue::from).toList(),
-                subtree,
+                Opaque.of(Issue.from(root)),
+                Opaque.of(ancestors.stream().map(Issue::from).toList()),
+                Opaque.of(subtree),
                 fetchCount[0],
                 limitReached
         );
@@ -254,7 +255,7 @@ public class IssueService {
         }
 
         var durations = computeStatusDurations(statusSnapshots);
-        return new IssueHistory(List.copyOf(timeline), durations);
+        return new IssueHistory(Opaque.of(List.copyOf(timeline)), Opaque.of(durations));
     }
 
     // --- Tree helpers ---

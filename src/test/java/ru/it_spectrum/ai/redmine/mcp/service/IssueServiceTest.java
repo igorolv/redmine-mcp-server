@@ -167,9 +167,9 @@ class IssueServiceTest {
 
         var view = service.getTree(3, 2);
 
-        assertThat(view.root().id()).isEqualTo(3);
-        assertThat(view.ancestors()).extracting(Issue::id).containsExactly(2, 1);
-        assertThat(view.subtree().id()).isEqualTo(3);
+        assertThat(view.root().unwrap().id()).isEqualTo(3);
+        assertThat(view.ancestors().unwrap()).extracting(Issue::id).containsExactly(2, 1);
+        assertThat(view.subtree().unwrap().id()).isEqualTo(3);
         assertThat(view.fetchedCount()).isEqualTo(3);
         assertThat(view.limitReached()).isFalse();
     }
@@ -183,8 +183,9 @@ class IssueServiceTest {
 
         var view = service.getTree(1, 1);
 
-        assertThat(view.subtree().children()).hasSize(1);
-        var l1Node = view.subtree().children().get(0);
+        var subtree = view.subtree().unwrap();
+        assertThat(subtree.children()).hasSize(1);
+        var l1Node = subtree.children().get(0);
         assertThat(l1Node.id()).isEqualTo(2);
         assertThat(l1Node.children()).hasSize(1);
         var l2Stub = l1Node.children().get(0);
@@ -220,12 +221,13 @@ class IssueServiceTest {
 
         var view = service.buildHistory(issue);
 
-        assertThat(view.timeline()).hasSize(2);
-        var created = view.timeline().get(0);
+        var timeline = view.timeline().unwrap();
+        assertThat(timeline).hasSize(2);
+        var created = timeline.get(0);
         assertThat(created.kind()).isEqualTo(IssueHistory.Kind.CREATED);
         assertThat(created.actor()).isEqualTo("John");
 
-        var updated = view.timeline().get(1);
+        var updated = timeline.get(1);
         assertThat(updated.kind()).isEqualTo(IssueHistory.Kind.UPDATED);
         assertThat(updated.note()).isEqualTo("Starting");
         assertThat(updated.changes()).singleElement().satisfies(c -> {
@@ -234,9 +236,9 @@ class IssueServiceTest {
             assertThat(c.newValue()).isEqualTo("In Progress");
         });
 
-        assertThat(view.statusDurations()).extracting(IssueHistory.StatusDuration::statusName)
+        assertThat(view.statusDurations().unwrap()).extracting(IssueHistory.StatusDuration::statusName)
                 .containsExactly("New", "In Progress");
-        assertThat(view.statusDurations().get(1).toTimestamp()).isNull();
+        assertThat(view.statusDurations().unwrap().get(1).toTimestamp()).isNull();
     }
 
     @Test
