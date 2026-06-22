@@ -37,7 +37,7 @@ public class IssueAnalyticsTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public BlockerChain getBlockerChain(
-            @McpToolParam(description = "Issue ID number") int issueId
+            @McpToolParam(description = "Issue ID") int issueId
     ) {
         log.info("Tool call: getBlockerChain (issueId={})", issueId);
         long start = System.nanoTime();

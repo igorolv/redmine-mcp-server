@@ -142,7 +142,7 @@ public class IssueTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Issue getIssue(
-            @McpToolParam(description = "Issue ID number") int issueId,
+            @McpToolParam(description = "Issue ID") int issueId,
             @McpToolParam(description = "Response focus: default, implementation (implementation-relevant text and all changeset revisions), timeline (who-did-what-and-when), changesets (issue identity fields and changesets only), or full (no compression).", required = false) String focus
     ) {
         log.info("Tool call: getIssue (issueId={}, focus={})", issueId, focus);
@@ -170,7 +170,7 @@ public class IssueTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Journal getIssueJournal(
-            @McpToolParam(description = "Issue ID number") int issueId,
+            @McpToolParam(description = "Issue ID") int issueId,
             @McpToolParam(description = "Journal entry ID; from getIssue journals") int journalId
     ) {
         log.info("Tool call: getIssueJournal (issueId={}, journalId={})", issueId, journalId);
