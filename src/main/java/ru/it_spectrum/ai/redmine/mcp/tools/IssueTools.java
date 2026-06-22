@@ -41,22 +41,19 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "List issues in Redmine with flexible filtering by project, status, tracker, " +
-            "assignee, priority, version, or saved query. Use statusId='*' to include closed issues. " +
-            "Use queryId to apply a saved Redmine query (custom filter) — get available IDs via listQueries. " +
-            "Use customFieldFilters to pass native Redmine filters like 'cf_10=rtk&cf_3=502167'. " +
-            "Supports sorting and pagination.",
+            description = "List issues in Redmine, filtered by project, status, tracker, assignee, " +
+            "priority, version, or saved query, with sorting and pagination.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public IssuePage listIssues(
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
             @McpToolParam(description = "Status filter: open, closed, * (all), or numeric status ID", required = false) String statusId,
-            @McpToolParam(description = "Tracker ID", required = false) Integer trackerId,
-            @McpToolParam(description = "Assigned user ID", required = false) Integer assignedToId,
+            @McpToolParam(description = "Tracker ID (issue type); from listTrackers", required = false) Integer trackerId,
+            @McpToolParam(description = "Assigned user ID; from listProjectMembers", required = false) Integer assignedToId,
             @McpToolParam(description = "Priority ID", required = false) Integer priorityId,
             @McpToolParam(description = "Version/milestone ID", required = false) Integer versionId,
-            @McpToolParam(description = "Saved query ID; use listQueries to find available queries", required = false) Integer queryId,
+            @McpToolParam(description = "Saved query ID; from listQueries", required = false) Integer queryId,
             @McpToolParam(description = "Custom field filters in query-string form, e.g. 'cf_10=rtk&cf_3=502167'", required = false) String customFieldFilters,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc'", required = false) String sort,
             @McpToolParam(description = "Maximum number of results", required = false) Integer limit,
@@ -89,9 +86,7 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Search for issues in Redmine using full-text search. " +
-            "Returns a list of matching issues with their details (subject, status, assignee, etc). " +
-            "Supports pagination via offset/limit parameters.",
+            description = "Search for issues in Redmine using full-text search.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -112,9 +107,8 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "List issues assigned to the currently authenticated user. " +
-            "Convenient shortcut — no need to call getCurrentUser first. " +
-            "Supports filtering by project, status, and sorting. Uses statusId='open' by default.",
+            description = "List issues assigned to the currently authenticated user — " +
+            "no need to call getCurrentUser first.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -142,16 +136,14 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Get detailed information about a specific Redmine issue by its ID: description, status, " +
-            "assignee, dates, subtasks, relations, journals (notes), attachments list, and repository changesets " +
-            "visible to the user. Use focus='implementation' for implementation context, or focus='timeline' for " +
-            "who-did-what-and-when questions.",
+            description = "Get detailed information about a Redmine issue by ID: description, status, assignee, " +
+            "dates, subtasks, relations, journals (notes), attachments, and repository changesets visible to the user.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Issue getIssue(
             @McpToolParam(description = "Issue ID number") int issueId,
-            @McpToolParam(description = "Response focus: default, implementation, timeline, changesets, or full. implementation keeps implementation-relevant text and all changeset revisions; changesets keeps issue identity fields and changesets only.", required = false) String focus
+            @McpToolParam(description = "Response focus: default, implementation (implementation-relevant text and all changeset revisions), timeline (who-did-what-and-when), changesets (issue identity fields and changesets only), or full.", required = false) String focus
     ) {
         log.info("Tool call: getIssue (issueId={}, focus={})", issueId, focus);
         long start = System.nanoTime();
@@ -172,9 +164,8 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Get one full journal entry from a Redmine issue by issue ID and journal ID. " +
-            "Use this when getIssue compression notes indicate that older journal entries or long notes were shortened. " +
-            "The issue ID is required so the server can snapshot the exact issue before returning the uncompressed journal entry.",
+            description = "Get one full, uncompressed journal entry from a Redmine issue by issue ID and journal ID. " +
+            "Use this when getIssue compression notes indicate that older journal entries or long notes were shortened.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
