@@ -40,7 +40,7 @@ public class ReleaseAnalyticsTools {
     )
     public ProjectSummary getProjectSummary(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
-            @McpToolParam(description = "Version/milestone ID", required = false) Integer versionId
+            @McpToolParam(description = "Version/milestone ID; from listVersions", required = false) Integer versionId
     ) {
         log.info("Tool call: getProjectSummary (projectId={}, versionId={})", projectId, versionId);
         long start = System.nanoTime();
@@ -79,7 +79,7 @@ public class ReleaseAnalyticsTools {
     )
     public VersionChangelog getVersionChangelog(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
-            @McpToolParam(description = "Version/milestone ID") int versionId
+            @McpToolParam(description = "Version/milestone ID; from listVersions") int versionId
     ) {
         log.info("Tool call: getVersionChangelog (projectId={}, versionId={})", projectId, versionId);
         long start = System.nanoTime();
@@ -96,7 +96,7 @@ public class ReleaseAnalyticsTools {
     )
     public ReleaseRisks getReleaseRisks(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
-            @McpToolParam(description = "Version/milestone ID") int versionId
+            @McpToolParam(description = "Version/milestone ID; from listVersions") int versionId
     ) {
         log.info("Tool call: getReleaseRisks (projectId={}, versionId={})", projectId, versionId);
         long start = System.nanoTime();
@@ -113,8 +113,8 @@ public class ReleaseAnalyticsTools {
     )
     public VersionComparison compareVersions(
             @McpToolParam(description = "Project identifier or numeric ID") String projectId,
-            @McpToolParam(description = "First version/milestone ID") int versionId1,
-            @McpToolParam(description = "Second version/milestone ID") int versionId2
+            @McpToolParam(description = "First version/milestone ID; from listVersions") int versionId1,
+            @McpToolParam(description = "Second version/milestone ID; from listVersions") int versionId2
     ) {
         log.info("Tool call: compareVersions (projectId={}, versionId1={}, versionId2={})",
                 projectId, versionId1, versionId2);

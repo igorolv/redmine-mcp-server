@@ -48,11 +48,11 @@ public class IssueTools {
     )
     public IssuePage listIssues(
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
-            @McpToolParam(description = "Status filter: open, closed, * (all), or numeric status ID", required = false) String statusId,
+            @McpToolParam(description = "Status filter: open, closed, * (all), or a numeric status ID from listStatuses", required = false) String statusId,
             @McpToolParam(description = "Tracker ID (issue type); from listTrackers", required = false) Integer trackerId,
-            @McpToolParam(description = "Assigned user ID", required = false) Integer assignedToUserId,
-            @McpToolParam(description = "", required = false) Integer priorityId,
-            @McpToolParam(description = "Version/milestone ID", required = false) Integer versionId,
+            @McpToolParam(description = "", required = false) Integer assignedToUserId,
+            @McpToolParam(description = "Priority ID; from listPriorities", required = false) Integer priorityId,
+            @McpToolParam(description = "Version/milestone ID; from listVersions", required = false) Integer versionId,
             @McpToolParam(description = "Saved query ID; from listQueries", required = false) Integer queryId,
             @McpToolParam(description = "Custom field filters in query-string form, e.g. 'cf_10=rtk&cf_3=502167'", required = false) String customFieldFilters,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc'", required = false) String sort,
@@ -114,7 +114,7 @@ public class IssueTools {
     )
     public MyIssues getMyIssues(
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
-            @McpToolParam(description = "Status filter: open (default), closed, * (all), or numeric status ID", required = false) String statusId,
+            @McpToolParam(description = "Status filter: open (default), closed, * (all), or a numeric status ID from listStatuses", required = false) String statusId,
             @McpToolParam(description = "Sort field and direction, e.g. 'updated_on:desc'", required = false) String sort,
             @McpToolParam(description = "", required = false) Integer limit,
             @McpToolParam(description = "", required = false) Integer offset
