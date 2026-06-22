@@ -50,7 +50,7 @@ public class IssueTools {
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
             @McpToolParam(description = "Status filter: open, closed, * (all), or numeric status ID", required = false) String statusId,
             @McpToolParam(description = "Tracker ID (issue type); from listTrackers", required = false) Integer trackerId,
-            @McpToolParam(description = "", required = false) Integer assignedToId,
+            @McpToolParam(description = "Assigned user ID", required = false) Integer assignedToUserId,
             @McpToolParam(description = "", required = false) Integer priorityId,
             @McpToolParam(description = "Version/milestone ID", required = false) Integer versionId,
             @McpToolParam(description = "Saved query ID; from listQueries", required = false) Integer queryId,
@@ -59,8 +59,8 @@ public class IssueTools {
             @McpToolParam(description = "", required = false) Integer limit,
             @McpToolParam(description = "", required = false) Integer offset
     ) {
-        log.info("Tool call: listIssues (projectId={}, statusId={}, trackerId={}, assignedToId={}, priorityId={}, versionId={}, queryId={}, customFieldFilters={}, sort={}, limit={}, offset={})",
-                projectId, statusId, trackerId, assignedToId, priorityId, versionId, queryId, customFieldFilters, sort, limit, offset);
+        log.info("Tool call: listIssues (projectId={}, statusId={}, trackerId={}, assignedToUserId={}, priorityId={}, versionId={}, queryId={}, customFieldFilters={}, sort={}, limit={}, offset={})",
+                projectId, statusId, trackerId, assignedToUserId, priorityId, versionId, queryId, customFieldFilters, sort, limit, offset);
         long start = System.nanoTime();
         int actualLimit = limit != null ? limit : properties.pagination().defaultLimit();
         int actualOffset = offset != null ? offset : properties.pagination().defaultOffset();
@@ -72,7 +72,7 @@ public class IssueTools {
             throw e;
         }
 
-        var page = issueService.list(projectId, statusId, trackerId, assignedToId,
+        var page = issueService.list(projectId, statusId, trackerId, assignedToUserId,
                 priorityId, versionId, queryId, parsedCustomFieldFilters, sort, actualOffset, actualLimit);
         ToolLogger.completed(log, "listIssues", start);
         return page;
