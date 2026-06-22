@@ -1,7 +1,7 @@
 package ru.it_spectrum.ai.redmine.mcp.api;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.mcp.annotation.method.tool.utils.McpJsonSchemaGenerator;
 
@@ -146,7 +146,7 @@ class OutputSchemaSmokeTest {
             if (required != null && required.isArray()) {
                 required.forEach(value -> fields.add(value.asText()));
             }
-            node.fields().forEachRemaining(entry -> collectRequiredFields(entry.getValue(), fields));
+            node.properties().forEach(entry -> collectRequiredFields(entry.getValue(), fields));
         } else if (node.isArray()) {
             node.forEach(value -> collectRequiredFields(value, fields));
         }

@@ -1,6 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp.service.compression;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import ru.it_spectrum.ai.redmine.mcp.compression.AttachmentContentCompression;
 import ru.it_spectrum.ai.redmine.mcp.compression.IssueCompression;
 import ru.it_spectrum.ai.redmine.mcp.compression.ResponseCompressor;

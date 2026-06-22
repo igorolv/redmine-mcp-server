@@ -1,10 +1,11 @@
 package ru.it_spectrum.ai.redmine.mcp.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
@@ -67,7 +68,7 @@ public class IssueSnapshotService {
             if (issue.attachments() != null) {
                 writeAttachmentsManifest(issue.id(), snapshottedAt, issue.attachments());
             }
-        } catch (IOException e) {
+        } catch (IOException | JacksonException e) {
             log.warn("Failed to write issue #{} snapshot: {}", issue.id(), e.getMessage());
         }
     }
