@@ -26,8 +26,7 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List all available issue statuses in Redmine. " +
-            "Returns status IDs and names. Use these IDs for filtering in listIssues.",
+            description = "List issue statuses in Redmine; use their IDs as statusId in listIssues.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -40,8 +39,7 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List all available trackers in Redmine. " +
-            "Returns tracker IDs and names. Use these IDs for filtering in listIssues.",
+            description = "List trackers (issue types) in Redmine; use their IDs as trackerId in listIssues.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -54,8 +52,7 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List all available issue priorities in Redmine. " +
-            "Returns priority IDs and names. Use these IDs for filtering in listIssues.",
+            description = "List issue priorities in Redmine; use their IDs as priorityId in listIssues.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -68,8 +65,7 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List issue categories for a specific Redmine project. " +
-            "Returns category IDs and names. Categories are project-specific.",
+            description = "List issue categories of a Redmine project.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -84,8 +80,7 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List all available time entry activity types in Redmine. " +
-            "Returns activity IDs and names for interpreting existing time entries.",
+            description = "List time entry activity types in Redmine, for interpreting time entries.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -98,9 +93,8 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List saved queries (custom filters) available in Redmine. " +
-            "Returns query IDs and names. Use the query ID with listIssues(queryId) " +
-            "to apply a saved filter — especially useful for queries that use custom fields.",
+            description = "List saved queries (stored filters) in Redmine; apply one via listIssues(queryId), " +
+            "especially for custom-field filters.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
