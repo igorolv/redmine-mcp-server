@@ -1,5 +1,6 @@
 package ru.it_spectrum.ai.redmine.mcp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.method.tool.utils.McpJsonSchemaGenerator;
@@ -23,18 +24,33 @@ import java.util.regex.Pattern;
  */
 class InputVsOutputSchemaSizeTest {
 
-    record Row(String tool, int descChars, int inChars, int outChars) {
+    record Row(String tool, int descChars, int inChars, int inWire, int outChars) {
         int promptChars() { return descChars + inChars; }
+    }
+
+    /**
+     * Length of the schema as it actually crosses the wire: the MCP SDK stores inputSchema as a
+     * {@code Map<String,Object>} (parsed from this string) and the transport re-serializes it with a
+     * default ObjectMapper, i.e. compact, no pretty-print indentation. {@code generateForMethodInput}
+     * returns a {@code toPrettyString()} form, so its raw length over-counts by all the whitespace.
+     */
+    private static int wireLen(ObjectMapper mapper, String prettyJson) {
+        try {
+            return mapper.writeValueAsString(mapper.readTree(prettyJson)).length();
+        } catch (Exception e) {
+            return prettyJson.length();
+        }
     }
 
     @Test
     void measureInputVsOutputSchemaSizes() {
+        var mapper = new ObjectMapper();
         var scanner = new ClassPathScanningCandidateComponentProvider(false);
         scanner.addIncludeFilter(new RegexPatternTypeFilter(Pattern.compile(".*")));
         var candidates = scanner.findCandidateComponents("ru.it_spectrum.ai.redmine.mcp.tools");
 
         List<Row> rows = new ArrayList<>();
-        int totalDesc = 0, totalIn = 0, totalOut = 0;
+        int totalDesc = 0, totalIn = 0, totalInWire = 0, totalOut = 0;
         for (var bd : candidates) {
             Class<?> cls;
             try {
@@ -49,7 +65,9 @@ class InputVsOutputSchemaSizeTest {
                 int descLen = t.description().length();
                 // McpJsonSchemaGenerator is the generator the MCP server actually uses to build the
                 // advertised inputSchema: it reads @McpToolParam descriptions and honours required=false.
-                int inLen = McpJsonSchemaGenerator.generateForMethodInput(m).length();
+                String inSchema = McpJsonSchemaGenerator.generateForMethodInput(m);
+                int inLen = inSchema.length();
+                int inWire = wireLen(mapper, inSchema);
 
                 int outLen = 0;
                 Type rt = m.getGenericReturnType();
@@ -59,21 +77,23 @@ class InputVsOutputSchemaSizeTest {
 
                 totalDesc += descLen;
                 totalIn += inLen;
+                totalInWire += inWire;
                 totalOut += outLen;
-                rows.add(new Row(m.getName(), descLen, inLen, outLen));
+                rows.add(new Row(m.getName(), descLen, inLen, inWire, outLen));
             }
         }
 
         rows.sort(Comparator.comparingInt(Row::promptChars).reversed());
         System.out.println("\n===== INPUT vs OUTPUT SCHEMA SIZE REPORT =====");
         System.out.printf("tools: %d%n", rows.size());
-        System.out.printf("TOTAL tool-description chars: %d%n", totalDesc);
-        System.out.printf("TOTAL input-schema chars    : %d%n", totalIn);
-        System.out.printf("=> in-context per connect   : %d (desc + input)%n", totalDesc + totalIn);
-        System.out.printf("TOTAL output-schema chars   : %d%n%n", totalOut);
-        System.out.printf("%-7s  %-7s  %-7s  %s%n", "desc", "in", "out", "tool");
+        System.out.printf("TOTAL tool-description chars : %d%n", totalDesc);
+        System.out.printf("TOTAL input-schema (pretty)  : %d%n", totalIn);
+        System.out.printf("TOTAL input-schema (wire)    : %d  <- compact, what clients actually receive%n", totalInWire);
+        System.out.printf("=> in-context per connect    : %d (desc + input wire)%n", totalDesc + totalInWire);
+        System.out.printf("TOTAL output-schema chars    : %d%n%n", totalOut);
+        System.out.printf("%-7s  %-7s  %-7s  %-7s  %s%n", "desc", "in", "inWire", "out", "tool");
         for (Row r : rows) {
-            System.out.printf("%-7d  %-7d  %-7d  %s%n", r.descChars(), r.inChars(), r.outChars(), r.tool());
+            System.out.printf("%-7d  %-7d  %-7d  %-7d  %s%n", r.descChars(), r.inChars(), r.inWire(), r.outChars(), r.tool());
         }
         System.out.println("==============================================\n");
     }
