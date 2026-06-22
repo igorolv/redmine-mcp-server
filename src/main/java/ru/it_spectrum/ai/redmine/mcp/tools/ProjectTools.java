@@ -29,8 +29,7 @@ public class ProjectTools {
     }
 
     @McpTool(
-            description = "List all projects available in Redmine. " +
-            "Returns project names, identifiers, and descriptions. Supports pagination.",
+            description = "List all projects in Redmine.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -49,8 +48,7 @@ public class ProjectTools {
     }
 
     @McpTool(
-            description = "Get detailed information about a specific Redmine project. " +
-            "Returns project name, description, trackers, enabled modules, and other details.",
+            description = "Get detailed information about a Redmine project, including its trackers and enabled modules.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -90,8 +88,7 @@ public class ProjectTools {
     }
 
     @McpTool(
-            description = "List versions (milestones) of a Redmine project. " +
-            "Returns version names, statuses, due dates, and descriptions.",
+            description = "List versions (milestones) of a Redmine project.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
