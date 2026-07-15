@@ -22,8 +22,8 @@ public class UserTools {
     }
 
     @McpTool(
-            description = "Get the currently authenticated Redmine user (id, login, display name, email). " +
-            "Useful to find your own user ID for filtering (e.g. assigned_to_id in listIssues).",
+            description = "Get the currently authenticated Redmine user; source of your own user ID for " +
+            "the assignedToUserId and userId filter parameters.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

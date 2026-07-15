@@ -29,9 +29,9 @@ public class AttachmentTools {
     }
 
     @McpTool(
-            description = "Get a Redmine attachment: downloads the file locally and extracts its text for text " +
-            "files, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), and ZIP archives; images and other " +
-            "binaries return metadata only. Call getIssue first to get attachment IDs.",
+            description = "Download a Redmine attachment locally and extract its text (plain text, PDF, .docx, " +
+            ".xlsx, .pptx, ZIP); images and other binaries return metadata and the local file path only. " +
+            "Attachment IDs come from getIssue.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

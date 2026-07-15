@@ -64,8 +64,7 @@ public class WikiTools {
     }
 
     @McpTool(
-            description = "Search Redmine wiki pages using full-text search. " +
-            "Use getWikiPage to read a page's full content.",
+            description = "Full-text search over Redmine wiki pages; read full pages with getWikiPage.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

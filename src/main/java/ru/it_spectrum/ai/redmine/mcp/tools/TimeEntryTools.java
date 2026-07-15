@@ -27,8 +27,7 @@ public class TimeEntryTools {
     }
 
     @McpTool(
-            description = "List time entries (logged hours) in Redmine. " +
-            "Filter by project, issue, user, or date range.",
+            description = "List time entries (logged hours) in Redmine.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -36,8 +35,8 @@ public class TimeEntryTools {
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
             @McpToolParam(description = "", required = false) Integer issueId,
             @McpToolParam(description = "", required = false) Integer userId,
-            @McpToolParam(description = "From date, YYYY-MM-DD", required = false) String from,
-            @McpToolParam(description = "To date, YYYY-MM-DD", required = false) String to,
+            @McpToolParam(description = "YYYY-MM-DD", required = false) String from,
+            @McpToolParam(description = "YYYY-MM-DD", required = false) String to,
             @McpToolParam(description = "", required = false) Integer limit,
             @McpToolParam(description = "", required = false) Integer offset
     ) {
@@ -61,8 +60,8 @@ public class TimeEntryTools {
     public MyTimeEntries getMyTimeEntries(
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
             @McpToolParam(description = "", required = false) Integer issueId,
-            @McpToolParam(description = "From date, YYYY-MM-DD", required = false) String from,
-            @McpToolParam(description = "To date, YYYY-MM-DD", required = false) String to,
+            @McpToolParam(description = "YYYY-MM-DD", required = false) String from,
+            @McpToolParam(description = "YYYY-MM-DD", required = false) String to,
             @McpToolParam(description = "", required = false) Integer limit,
             @McpToolParam(description = "", required = false) Integer offset
     ) {

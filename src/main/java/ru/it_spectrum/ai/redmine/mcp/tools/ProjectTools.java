@@ -48,7 +48,7 @@ public class ProjectTools {
     }
 
     @McpTool(
-            description = "Get detailed information about a Redmine project, including its trackers and enabled modules.",
+            description = "Get a Redmine project's details, including its trackers and enabled modules.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

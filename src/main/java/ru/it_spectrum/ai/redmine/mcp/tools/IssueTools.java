@@ -41,14 +41,13 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "List issues in Redmine, filtered by project, status, tracker, assignee, " +
-            "priority, version, or saved query, with sorting and pagination.",
+            description = "List issues in Redmine by field filters; for free-text search use searchIssues.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public IssuePage listIssues(
             @McpToolParam(description = "Project identifier or numeric ID", required = false) String projectId,
-            @McpToolParam(description = "Status filter: open, closed, * (all), or a numeric status ID from listStatuses", required = false) String statusId,
+            @McpToolParam(description = "Status filter: open (default), closed, * (all), or a numeric status ID from listStatuses", required = false) String statusId,
             @McpToolParam(description = "Tracker ID (issue type); from listTrackers", required = false) Integer trackerId,
             @McpToolParam(description = "", required = false) Integer assignedToUserId,
             @McpToolParam(description = "Priority ID; from listPriorities", required = false) Integer priorityId,
@@ -86,7 +85,7 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Search for issues in Redmine using full-text search.",
+            description = "Full-text search for issues in Redmine.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -164,8 +163,8 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Get one full, uncompressed journal entry from a Redmine issue. " +
-            "Use this when getIssue compression notes indicate that older journal entries or long notes were shortened.",
+            description = "Get one full, uncompressed journal entry from a Redmine issue; " +
+            "use when getIssue compression notes report dropped or shortened journals.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

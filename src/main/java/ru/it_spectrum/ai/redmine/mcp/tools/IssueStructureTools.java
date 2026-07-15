@@ -52,9 +52,8 @@ public class IssueStructureTools {
     }
 
     @McpTool(
-            description = "Get an interpreted change-history timeline for an issue: human-readable field changes, " +
-            "events with notes, and time aggregated per status. Use when you want just the change log, " +
-            "not the full issue context.",
+            description = "Get the change-history timeline of an issue: field changes, notes, and time " +
+            "aggregated per status. Use for just the change log without the full issue context.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
