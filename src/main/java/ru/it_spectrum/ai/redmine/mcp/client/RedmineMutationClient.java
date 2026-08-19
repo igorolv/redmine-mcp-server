@@ -10,6 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueMutation;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntryMutation;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPageMutation;
 
 import java.nio.file.Path;
 import java.util.function.Supplier;
@@ -46,6 +47,14 @@ public class RedmineMutationClient {
         execute(() -> restClient.put()
                 .uri("/issues/{id}.json", issueId)
                 .body(new RedmineIssueMutation.Request(fields))
+                .retrieve()
+                .toBodilessEntity());
+    }
+
+    public void putWikiPage(String projectId, String pageTitle, RedmineWikiPageMutation.Fields fields) {
+        execute(() -> restClient.put()
+                .uri("/projects/{projectId}/wiki/{pageTitle}.json", projectId, pageTitle)
+                .body(new RedmineWikiPageMutation.Request(fields))
                 .retrieve()
                 .toBodilessEntity());
     }

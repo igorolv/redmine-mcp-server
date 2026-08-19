@@ -21,12 +21,13 @@ Core invariants — never break these without an explicit conversation:
 
 1. **Write access is opt-in and narrowly scoped.** Without `REDMINE_MCP_WRITE_ENABLED=true`, no
    write tool bean exists and no MCP tool may issue `POST`, `PUT`, `DELETE`, or `PATCH`. With the
-   flag enabled, only `IssueWriteTools` and `TimeEntryWriteTools` may expose the approved operations:
-   create/update an issue, add an issue note, upload/attach a file, and create a time entry for the
-   API-key user. They use `RedmineMutationClient`, only `POST`/`PUT`, and the permissions/workflow of
-   `REDMINE_API_KEY`. Do not add `DELETE`/`PATCH`, journal mutation, wiki writes, time-entry updates or
-   time-entry deletion without another explicit design conversation. New descriptions, notes, and
-   time-entry comments use `AI_EDIT:`; uploaded filenames use `AI_EDIT__`.
+   flag enabled, only `IssueWriteTools`, `TimeEntryWriteTools`, and `WikiWriteTools` may expose the
+   approved operations: create/update an issue, add an issue note, upload/attach a file, create a time
+   entry for the API-key user, and create/update a wiki page. They use `RedmineMutationClient`, only
+   `POST`/`PUT`, and the permissions/workflow of `REDMINE_API_KEY`. Do not add `DELETE`/`PATCH`, journal
+   mutation, wiki deletion/rename/protection, wiki attachments, time-entry updates, or time-entry
+   deletion without another explicit design conversation. New descriptions, notes, time-entry
+   comments, and wiki revision comments use `AI_EDIT:`; uploaded filenames use `AI_EDIT__`.
 2. **Stdio only.** The server has `spring.main.web-application-type: none`. It must never open
    an HTTP port, never write to `System.out` (stdout is the MCP transport channel — anything
    written there corrupts the JSON-RPC stream).
@@ -188,7 +189,7 @@ models. The group name is the kebab-case domain (`issue`, `issue-structure`, `pr
 `attachment`, `wiki`, `time-entry`, `reference-data`, `user`, `issue-analytics`,
 `release-analytics`). `IncidentPrompts` is **not** gated — prompts stay always available.
 
-`IssueWriteTools` and `TimeEntryWriteTools` are deliberate exceptions: they are gated by
+`IssueWriteTools`, `TimeEntryWriteTools`, and `WikiWriteTools` are deliberate exceptions: they are gated by
 `redmine-mcp.write.enabled` / `REDMINE_MCP_WRITE_ENABLED`, which defaults to `false`, and must not be
 folded into a default-on `redmine-mcp.tools.*` group.
 
@@ -347,10 +348,13 @@ result. Don't call `pandoc` from a parser directly — route through `DocxPandoc
 ## 11. Things NOT to do
 
 - **Do not expand the approved mutation surface.** The only write tools are `createIssue`,
-  `updateIssue`, `addIssueNote`, `attachFileToIssue`, and `createTimeEntry`, all absent unless write
-  mode is explicitly enabled. `createTimeEntry` always creates the entry for the API-key user. In
-  particular, do not add update/delete journal notes or update/delete time entries: the compatibility
-  baseline is Redmine 4.0.4 and those operations require a separate design conversation.
+  `updateIssue`, `addIssueNote`, `attachFileToIssue`, `createTimeEntry`, `createWikiPage`, and
+  `updateWikiPage`, all absent unless write mode is explicitly enabled. `createTimeEntry` always
+  creates the entry for the API-key user. `updateWikiPage` replaces the complete page body and
+  requires the current version returned by `getWikiPage`; wiki AI markers belong in revision comments,
+  not page text. In particular, do not add update/delete journal notes, update/delete time entries,
+  or wiki deletion/rename/protection/attachments: the compatibility baseline is Redmine 4.0.4 and
+  those operations require a separate design conversation.
 - **Do not leak `client/model/*` types onto the MCP wire.** They mirror Redmine's REST
   schema and change when Redmine changes. Map to an `api.*` record at the service boundary.
 - **Do not put feature flags in `RedmineClientProperties`.** It is reserved for the

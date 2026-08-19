@@ -9,6 +9,7 @@ import org.springframework.web.client.RestClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineCustomFieldValue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueMutation;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntryMutation;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPageMutation;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -97,6 +98,38 @@ class RedmineMutationClientTest {
         var timeEntry = client.createTimeEntry(fields);
 
         assertThat(timeEntry.id()).isEqualTo(321);
+        server.verify();
+    }
+
+    @Test
+    void shouldCreateWikiPageWithJsonBody() {
+        var fields = new RedmineWikiPageMutation.Fields(
+                "h1. Runbook", "AI_EDIT:\n\nInitial draft", "Operations", null);
+        server.expect(requestTo("http://redmine.test/projects/backend/wiki/Runbook.json"))
+                .andExpect(method(PUT))
+                .andExpect(content().json("""
+                        {"wiki_page":{"text":"h1. Runbook","comments":"AI_EDIT:\\n\\nInitial draft",
+                        "parent_title":"Operations"}}
+                        """))
+                .andRespond(withStatus(org.springframework.http.HttpStatus.CREATED));
+
+        client.putWikiPage("backend", "Runbook", fields);
+
+        server.verify();
+    }
+
+    @Test
+    void shouldUpdateWikiPageWithVersion() {
+        var fields = new RedmineWikiPageMutation.Fields("Updated", "AI_EDIT:", null, 3);
+        server.expect(requestTo("http://redmine.test/projects/backend/wiki/Runbook.json"))
+                .andExpect(method(PUT))
+                .andExpect(content().json("""
+                        {"wiki_page":{"text":"Updated","comments":"AI_EDIT:","version":3}}
+                        """))
+                .andRespond(withSuccess());
+
+        client.putWikiPage("backend", "Runbook", fields);
+
         server.verify();
     }
 

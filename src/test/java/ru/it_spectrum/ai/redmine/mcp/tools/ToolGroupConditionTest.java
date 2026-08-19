@@ -21,6 +21,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryService;
 import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryMutationService;
 import ru.it_spectrum.ai.redmine.mcp.service.UserService;
 import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
+import ru.it_spectrum.ai.redmine.mcp.service.WikiMutationService;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -51,6 +52,7 @@ class ToolGroupConditionTest {
             assertThat(ctx).hasSingleBean(ReleaseAnalyticsTools.class);
             assertThat(ctx).doesNotHaveBean(IssueWriteTools.class);
             assertThat(ctx).doesNotHaveBean(TimeEntryWriteTools.class);
+            assertThat(ctx).doesNotHaveBean(WikiWriteTools.class);
         });
     }
 
@@ -60,6 +62,7 @@ class ToolGroupConditionTest {
                 .run(ctx -> {
                     assertThat(ctx).hasSingleBean(IssueWriteTools.class);
                     assertThat(ctx).hasSingleBean(TimeEntryWriteTools.class);
+                    assertThat(ctx).hasSingleBean(WikiWriteTools.class);
                 });
     }
 
@@ -97,7 +100,7 @@ class ToolGroupConditionTest {
             IssueTools.class, IssueStructureTools.class, ProjectTools.class, SearchTools.class,
             AttachmentTools.class, WikiTools.class, TimeEntryTools.class, ReferenceDataTools.class,
             UserTools.class, IssueAnalyticsTools.class, ReleaseAnalyticsTools.class,
-            IssueWriteTools.class, TimeEntryWriteTools.class
+            IssueWriteTools.class, TimeEntryWriteTools.class, WikiWriteTools.class
     })
     static class Tools {
     }
@@ -108,6 +111,7 @@ class ToolGroupConditionTest {
         @Bean IssueService issueService() { return mock(IssueService.class); }
         @Bean IssueMutationService issueMutationService() { return mock(IssueMutationService.class); }
         @Bean TimeEntryMutationService timeEntryMutationService() { return mock(TimeEntryMutationService.class); }
+        @Bean WikiMutationService wikiMutationService() { return mock(WikiMutationService.class); }
         @Bean ProjectService projectService() { return mock(ProjectService.class); }
         @Bean SearchService searchService() { return mock(SearchService.class); }
         @Bean AttachmentService attachmentService() { return mock(AttachmentService.class); }

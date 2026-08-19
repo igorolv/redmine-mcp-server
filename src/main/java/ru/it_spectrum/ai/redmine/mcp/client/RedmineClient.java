@@ -2,6 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.client;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriBuilder;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
@@ -202,12 +203,19 @@ public class RedmineClient {
      * Get a wiki page by project and page title.
      */
     public RedmineWikiPage getWikiPage(String projectId, String pageTitle) {
-        var response = restClient.get()
-                .uri("/projects/{projectId}/wiki/{page}.json?include=attachments", projectId, pageTitle)
-                .retrieve()
-                .body(RedmineWikiPage.Single.class);
+        try {
+            var response = restClient.get()
+                    .uri("/projects/{projectId}/wiki/{page}.json?include=attachments", projectId, pageTitle)
+                    .retrieve()
+                    .body(RedmineWikiPage.Single.class);
 
-        return response != null ? response.wikiPage() : null;
+            return response != null ? response.wikiPage() : null;
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                return null;
+            }
+            throw e;
+        }
     }
 
     /**

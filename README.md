@@ -33,7 +33,7 @@ AI-клиент запускает сервер как дочерний проц
 ## Инструменты
 
 По умолчанию сервер экспортирует **32 read-only MCP tools**. При
-`REDMINE_MCP_WRITE_ENABLED=true` к ним добавляются ещё 5 инструментов записи.
+`REDMINE_MCP_WRITE_ENABLED=true` к ним добавляются ещё 7 инструментов записи.
 
 ### Пользователь
 
@@ -61,7 +61,7 @@ AI-клиент запускает сервер как дочерний проц
 | `getMyIssues` | Задачи текущего пользователя. Параметры: `projectId`, `statusId`, `sort`, `limit`, `offset` |
 | `getIssueTree` | Дерево зависимостей: цепочка родителей вверх, подзадачи вниз, связи. Параметры: `issueId`, `depth` (по умолчанию 2, макс 5) |
 
-### Запись задач и трудозатрат (опционально)
+### Запись задач, трудозатрат и wiki (опционально)
 
 Эти инструменты появляются в `tools/list` только при `REDMINE_MCP_WRITE_ENABLED=true`:
 
@@ -72,15 +72,19 @@ AI-клиент запускает сервер как дочерний проц
 | `addIssueNote` | Добавляет примечание в журнал задачи |
 | `attachFileToIssue` | Загружает файл по произвольному читаемому локальному пути и прикладывает его к задаче |
 | `createTimeEntry` | Создаёт трудозатрату для пользователя из `REDMINE_API_KEY`; принимает ровно один из `issueId`/`projectId`, часы, дату, активность, комментарий и кастомные поля |
+| `createWikiPage` | Создаёт wiki-страницу и отклоняет запрос, если страница уже существует |
+| `updateWikiPage` | Полностью заменяет текст wiki-страницы с обязательной optimistic-lock версией из `getWikiPage` |
 
 Redmine сам применяет права, workflow и обязательные поля пользователя из `REDMINE_API_KEY`.
 MCP-сервер не вводит дополнительной модели «своих» задач или примечаний. Для распознавания
 AI-изменений описание создаваемой задачи, изменяемое описание, новые примечания и комментарии
-трудозатрат получают префикс `AI_EDIT:`, а имена загруженных файлов — `AI_EDIT__`.
+трудозатрат получают префикс `AI_EDIT:`. У wiki этот префикс добавляется в комментарий редакции,
+не изменяя разметку страницы. Имена загруженных файлов получают префикс `AI_EDIT__`.
 
 Редактирование и удаление существующих примечаний не реализовано: используемый Redmine 4.0.4
-не предоставляет для этого совместимый REST API. Редактирование и удаление трудозатрат, запись
-wiki и создание трудозатрат за другого пользователя также не входят в текущий набор операций.
+не предоставляет для этого совместимый REST API. Редактирование и удаление трудозатрат, удаление,
+переименование и защита wiki-страниц, а также создание трудозатрат за другого пользователя не входят
+в текущий набор операций.
 
 ### Поиск
 
@@ -204,7 +208,7 @@ $env:JAVA_HOME="C:\Program Files\Java\jdk-25"
 |---|---|
 | `REDMINE_URL` | Базовый URL Redmine (например `https://redmine.example.com`) |
 | `REDMINE_API_KEY` | API-ключ пользователя Redmine |
-| `REDMINE_MCP_WRITE_ENABLED` | Добавляет в `tools/list` инструменты `createIssue`, `updateIssue`, `addIssueNote`, `attachFileToIssue`, `createTimeEntry`; по умолчанию `false` |
+| `REDMINE_MCP_WRITE_ENABLED` | Добавляет в `tools/list` инструменты `createIssue`, `updateIssue`, `addIssueNote`, `attachFileToIssue`, `createTimeEntry`, `createWikiPage`, `updateWikiPage`; по умолчанию `false` |
 | `REDMINE_MCP_DATA_DIR` | Каталог локальных данных сервера; по умолчанию `~/.redmine-mcp-server` |
 | `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Лимит текста на один `part` (например, один файл внутри ZIP) для `getAttachment`; по умолчанию `30000` символов. Параметр `partLimit` инструмента переопределяет это значение. |
 | `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Суммарный лимит извлечённого текста на одно вложение в `getAttachment`; по умолчанию `50000` символов. Параметр `maxChars` инструмента переопределяет это значение. |
@@ -338,7 +342,7 @@ java -jar .\build\libs\redmine-mcp-server.jar
 ### Модель доступа
 
 - Сервер использует права того пользователя Redmine, чей API-ключ указан в `REDMINE_API_KEY`.
-- По умолчанию все MCP-инструменты read-only. При `REDMINE_MCP_WRITE_ENABLED=true` становятся доступны пять явно перечисленных инструментов записи задач и трудозатрат; сервер не расширяет права API-пользователя и не обходит workflow Redmine.
+- По умолчанию все MCP-инструменты read-only. При `REDMINE_MCP_WRITE_ENABLED=true` становятся доступны семь явно перечисленных инструментов записи задач, трудозатрат и wiki; сервер не расширяет права API-пользователя и не обходит workflow Redmine.
 - Доступные проекты, задачи, вложения и трудозатраты определяются правами пользователя в Redmine. Если пользователь не видит объект в Redmine, сервер тоже не должен получить к нему доступ.
 - Идентификатор `AI_EDIT` — поисковая метка, а не механизм авторизации: источник изменения надёжно определяется учётной записью Redmine, которой принадлежит API-ключ.
 - `attachFileToIssue` намеренно принимает любой читаемый локальный путь без списка разрешённых каталогов. В режиме записи запускайте сервер только рядом с доверенным AI-клиентом и учитывайте, что клиент сможет передать содержимое доступного процессу файла в Redmine.
@@ -439,10 +443,11 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   │   ├── Project.java
 │   │   ├── IssueMutationResult.java        — стабильный результат операций записи задач
 │   │   ├── TimeEntryMutationResult.java    — стабильный результат создания трудозатраты
+│   │   ├── WikiMutationResult.java         — стабильный результат записи wiki-страницы
 │   │   └── ...                             — DTO ответов инструментов и аналитики
 │   ├── client/
 │   │   ├── RedmineClient.java              — read-only обёртка над Redmine REST API
-│   │   ├── RedmineMutationClient.java      — опциональные POST/PUT для задач и трудозатрат
+│   │   ├── RedmineMutationClient.java      — опциональные POST/PUT для задач, трудозатрат и wiki
 │   │   └── model/                          — raw DTO Redmine REST API, не экспортируются напрямую в MCP
 │   │       ├── RedmineIssue.java
 │   │       ├── RedmineAttachment.java
@@ -475,6 +480,7 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │   │   ├── IssueService.java              — бизнес-логика задач и mapping client.model -> api
 │   │   ├── IssueMutationService.java      — опциональная запись задач и AI-маркировка
 │   │   ├── TimeEntryMutationService.java  — опциональное создание трудозатрат
+│   │   ├── WikiMutationService.java       — безопасная запись wiki с optimistic locking
 │   │   ├── AttachmentService.java         — snapshot, скачивание и извлечение вложений
 │   │   ├── IssueSnapshotService.java      — локальные снимки issue и вложений
 │   │   ├── AnalysisService.java           — аналитика, риски, blocker chain
@@ -493,7 +499,8 @@ REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 │       ├── TimeEntryTools.java            — 2 MCP-инструмента для трудозатрат
 │       ├── TimeEntryWriteTools.java       — 1 опциональный MCP-инструмент создания трудозатрат
 │       ├── UserTools.java                 — 1 MCP-инструмент для текущего пользователя
-│       └── WikiTools.java                 — 3 MCP-инструмента для wiki
+│       ├── WikiTools.java                 — 3 MCP-инструмента для wiki
+│       └── WikiWriteTools.java            — 2 опциональных MCP-инструмента записи wiki
 └── src/main/resources/
     ├── application.yml                    — конфигурация MCP-сервера (stdio)
     └── logback-spring.xml                 — конфигурация логирования
