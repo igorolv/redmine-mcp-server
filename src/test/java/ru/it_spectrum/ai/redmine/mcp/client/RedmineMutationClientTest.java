@@ -6,7 +6,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineCustomFieldValue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueMutation;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntryMutation;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -71,6 +73,30 @@ class RedmineMutationClientTest {
 
         client.updateIssue(123, fields);
 
+        server.verify();
+    }
+
+    @Test
+    void shouldCreateTimeEntryWithJsonBody() {
+        var fields = new RedmineTimeEntryMutation.Fields(
+                null, 123, 1.5, 9, "2026-08-19", "AI_EDIT:\n\nImplementation",
+                List.of(new RedmineCustomFieldValue(10, "remote")));
+        server.expect(once(), requestTo("http://redmine.test/time_entries.json"))
+                .andExpect(method(POST))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().json("""
+                        {"time_entry":{"issue_id":123,"hours":1.5,"activity_id":9,
+                        "spent_on":"2026-08-19","comments":"AI_EDIT:\\n\\nImplementation",
+                        "custom_fields":[{"id":10,"value":"remote"}]}}
+                        """))
+                .andRespond(withSuccess("""
+                        {"time_entry":{"id":321,"issue":{"id":123},"hours":1.5,
+                        "comments":"AI_EDIT:\\n\\nImplementation","spent_on":"2026-08-19"}}
+                        """, MediaType.APPLICATION_JSON));
+
+        var timeEntry = client.createTimeEntry(fields);
+
+        assertThat(timeEntry.id()).isEqualTo(321);
         server.verify();
     }
 

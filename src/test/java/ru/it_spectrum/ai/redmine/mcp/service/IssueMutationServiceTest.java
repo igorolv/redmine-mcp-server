@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineMutationClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineCustomFieldValue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueMutation;
@@ -48,7 +49,7 @@ class IssueMutationServiceTest {
     void setUp() {
         service = new IssueMutationService(
                 mutationClient, client, snapshotService, new AiContentMarker(),
-                new JsonConfig().redmineMcpObjectMapper());
+                new CustomFieldValuesParser(new JsonConfig().redmineMcpObjectMapper()));
     }
 
     @Test
@@ -65,8 +66,8 @@ class IssueMutationServiceTest {
         assertThat(captor.getValue().description()).isEqualTo("AI_EDIT:\n\nDescription");
         assertThat(captor.getValue().customFields())
                 .containsExactly(
-                        new RedmineIssueMutation.CustomField(10, "rtk"),
-                        new RedmineIssueMutation.CustomField(11, List.of("a", "b")));
+                        new RedmineCustomFieldValue(10, "rtk"),
+                        new RedmineCustomFieldValue(11, List.of("a", "b")));
         assertThat(result.issueId()).isEqualTo(123);
         verify(snapshotService).snapshotIssue(refreshed, "POST /issues.json");
     }

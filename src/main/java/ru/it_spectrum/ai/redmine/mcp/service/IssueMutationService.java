@@ -4,8 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 import ru.it_spectrum.ai.redmine.mcp.api.IssueMutationResult;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineMutationClient;
@@ -17,7 +15,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -32,18 +29,18 @@ public class IssueMutationService {
     private final RedmineClient client;
     private final IssueSnapshotService snapshotService;
     private final AiContentMarker marker;
-    private final ObjectMapper mapper;
+    private final CustomFieldValuesParser customFieldValuesParser;
 
     public IssueMutationService(RedmineMutationClient mutationClient,
                                 RedmineClient client,
                                 IssueSnapshotService snapshotService,
                                 AiContentMarker marker,
-                                ObjectMapper mapper) {
+                                CustomFieldValuesParser customFieldValuesParser) {
         this.mutationClient = mutationClient;
         this.client = client;
         this.snapshotService = snapshotService;
         this.marker = marker;
-        this.mapper = mapper;
+        this.customFieldValuesParser = customFieldValuesParser;
     }
 
     public IssueMutationResult createIssue(IssueFields input) {
@@ -113,7 +110,7 @@ public class IssueMutationService {
                 input.subject(), description, input.categoryId(), input.fixedVersionId(),
                 input.assignedToId(), input.parentIssueId(), input.startDate(), input.dueDate(),
                 input.doneRatio(), input.estimatedHours(), input.isPrivate(),
-                parseCustomFields(input.customFieldsJson()), null, null);
+                customFieldValuesParser.parse(input.customFieldsJson()), null, null);
     }
 
     private RedmineIssueMutation.Fields emptyFields(String description, String notes,
@@ -122,62 +119,6 @@ public class IssueMutationService {
                 null, null, null, null, null, description,
                 null, null, null, null, null, null, null, null, null,
                 null, notes, uploads);
-    }
-
-    private List<RedmineIssueMutation.CustomField> parseCustomFields(String json) {
-        if (json == null || json.isBlank()) {
-            return null;
-        }
-        try {
-            JsonNode root = mapper.readTree(json);
-            if (root == null || !root.isObject()) {
-                throw new IllegalArgumentException("customFieldsJson must be a JSON object keyed by field ID");
-            }
-            var fields = new ArrayList<RedmineIssueMutation.CustomField>();
-            root.properties().forEach(entry -> {
-                int id = parseCustomFieldId(entry.getKey());
-                fields.add(new RedmineIssueMutation.CustomField(id, customFieldValue(entry.getValue())));
-            });
-            return List.copyOf(fields);
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("customFieldsJson is not valid JSON", e);
-        }
-    }
-
-    private int parseCustomFieldId(String key) {
-        String normalized = key.startsWith("cf_") ? key.substring(3) : key;
-        try {
-            int id = Integer.parseInt(normalized);
-            if (id <= 0) {
-                throw new NumberFormatException();
-            }
-            return id;
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(
-                    "Invalid custom field key '%s'; expected a positive ID or cf_<ID>".formatted(key));
-        }
-    }
-
-    private Object customFieldValue(JsonNode value) {
-        if (value == null || value.isNull()) {
-            return "";
-        }
-        if (value.isArray()) {
-            var values = new ArrayList<String>();
-            value.forEach(item -> {
-                if (item.isObject() || item.isArray()) {
-                    throw new IllegalArgumentException("Custom field arrays must contain scalar values");
-                }
-                values.add(item.isNull() ? "" : item.asString());
-            });
-            return List.copyOf(values);
-        }
-        if (value.isObject() || value.isArray()) {
-            throw new IllegalArgumentException("Custom field values must be scalars or arrays of scalars");
-        }
-        return value.asString();
     }
 
     private RedmineIssue refreshAfterWrite(int issueId, String source) {

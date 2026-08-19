@@ -18,6 +18,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.ProjectService;
 import ru.it_spectrum.ai.redmine.mcp.service.ReferenceDataService;
 import ru.it_spectrum.ai.redmine.mcp.service.SearchService;
 import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryService;
+import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryMutationService;
 import ru.it_spectrum.ai.redmine.mcp.service.UserService;
 import ru.it_spectrum.ai.redmine.mcp.service.WikiService;
 
@@ -49,13 +50,17 @@ class ToolGroupConditionTest {
             assertThat(ctx).hasSingleBean(IssueAnalyticsTools.class);
             assertThat(ctx).hasSingleBean(ReleaseAnalyticsTools.class);
             assertThat(ctx).doesNotHaveBean(IssueWriteTools.class);
+            assertThat(ctx).doesNotHaveBean(TimeEntryWriteTools.class);
         });
     }
 
     @Test
     void writeToolsAreExposedOnlyWhenExplicitlyEnabled() {
         runner.withPropertyValues("redmine-mcp.write.enabled=true")
-                .run(ctx -> assertThat(ctx).hasSingleBean(IssueWriteTools.class));
+                .run(ctx -> {
+                    assertThat(ctx).hasSingleBean(IssueWriteTools.class);
+                    assertThat(ctx).hasSingleBean(TimeEntryWriteTools.class);
+                });
     }
 
     @Test
@@ -92,7 +97,7 @@ class ToolGroupConditionTest {
             IssueTools.class, IssueStructureTools.class, ProjectTools.class, SearchTools.class,
             AttachmentTools.class, WikiTools.class, TimeEntryTools.class, ReferenceDataTools.class,
             UserTools.class, IssueAnalyticsTools.class, ReleaseAnalyticsTools.class,
-            IssueWriteTools.class
+            IssueWriteTools.class, TimeEntryWriteTools.class
     })
     static class Tools {
     }
@@ -102,6 +107,7 @@ class ToolGroupConditionTest {
         @Bean RedmineMcpProperties properties() { return TestRedmineMcpProperties.defaults(); }
         @Bean IssueService issueService() { return mock(IssueService.class); }
         @Bean IssueMutationService issueMutationService() { return mock(IssueMutationService.class); }
+        @Bean TimeEntryMutationService timeEntryMutationService() { return mock(TimeEntryMutationService.class); }
         @Bean ProjectService projectService() { return mock(ProjectService.class); }
         @Bean SearchService searchService() { return mock(SearchService.class); }
         @Bean AttachmentService attachmentService() { return mock(AttachmentService.class); }

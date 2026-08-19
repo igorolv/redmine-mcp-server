@@ -26,7 +26,7 @@ public final class RedmineIssueMutation {
             @JsonProperty("done_ratio") Integer doneRatio,
             @JsonProperty("estimated_hours") Double estimatedHours,
             @JsonProperty("is_private") Boolean isPrivate,
-            @JsonProperty("custom_fields") List<CustomField> customFields,
+            @JsonProperty("custom_fields") List<RedmineCustomFieldValue> customFields,
             String notes,
             List<UploadReference> uploads
     ) {
@@ -40,9 +40,6 @@ public final class RedmineIssueMutation {
     }
 
     public record Request(Fields issue) {
-    }
-
-    public record CustomField(int id, Object value) {
     }
 
     public record UploadReference(

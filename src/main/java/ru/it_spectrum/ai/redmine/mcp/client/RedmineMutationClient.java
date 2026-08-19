@@ -8,6 +8,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueMutation;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntry;
+import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntryMutation;
 
 import java.nio.file.Path;
 import java.util.function.Supplier;
@@ -29,6 +31,15 @@ public class RedmineMutationClient {
                 .retrieve()
                 .body(RedmineIssue.Single.class));
         return response != null ? response.issue() : null;
+    }
+
+    public RedmineTimeEntry createTimeEntry(RedmineTimeEntryMutation.Fields fields) {
+        var response = execute(() -> restClient.post()
+                .uri("/time_entries.json")
+                .body(new RedmineTimeEntryMutation.Request(fields))
+                .retrieve()
+                .body(RedmineTimeEntryMutation.CreateResponse.class));
+        return response != null ? response.timeEntry() : null;
     }
 
     public void updateIssue(int issueId, RedmineIssueMutation.Fields fields) {
