@@ -13,6 +13,7 @@ import ru.it_spectrum.ai.redmine.mcp.focus.IssueFocus;
 import ru.it_spectrum.ai.redmine.mcp.service.AnalysisService;
 import ru.it_spectrum.ai.redmine.mcp.service.AttachmentService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueService;
+import ru.it_spectrum.ai.redmine.mcp.service.IssueMutationService;
 import ru.it_spectrum.ai.redmine.mcp.service.ProjectService;
 import ru.it_spectrum.ai.redmine.mcp.service.ReferenceDataService;
 import ru.it_spectrum.ai.redmine.mcp.service.SearchService;
@@ -47,7 +48,14 @@ class ToolGroupConditionTest {
             assertThat(ctx).hasSingleBean(UserTools.class);
             assertThat(ctx).hasSingleBean(IssueAnalyticsTools.class);
             assertThat(ctx).hasSingleBean(ReleaseAnalyticsTools.class);
+            assertThat(ctx).doesNotHaveBean(IssueWriteTools.class);
         });
+    }
+
+    @Test
+    void writeToolsAreExposedOnlyWhenExplicitlyEnabled() {
+        runner.withPropertyValues("redmine-mcp.write.enabled=true")
+                .run(ctx -> assertThat(ctx).hasSingleBean(IssueWriteTools.class));
     }
 
     @Test
@@ -83,7 +91,8 @@ class ToolGroupConditionTest {
     @Import({
             IssueTools.class, IssueStructureTools.class, ProjectTools.class, SearchTools.class,
             AttachmentTools.class, WikiTools.class, TimeEntryTools.class, ReferenceDataTools.class,
-            UserTools.class, IssueAnalyticsTools.class, ReleaseAnalyticsTools.class
+            UserTools.class, IssueAnalyticsTools.class, ReleaseAnalyticsTools.class,
+            IssueWriteTools.class
     })
     static class Tools {
     }
@@ -92,6 +101,7 @@ class ToolGroupConditionTest {
     static class Mocks {
         @Bean RedmineMcpProperties properties() { return TestRedmineMcpProperties.defaults(); }
         @Bean IssueService issueService() { return mock(IssueService.class); }
+        @Bean IssueMutationService issueMutationService() { return mock(IssueMutationService.class); }
         @Bean ProjectService projectService() { return mock(ProjectService.class); }
         @Bean SearchService searchService() { return mock(SearchService.class); }
         @Bean AttachmentService attachmentService() { return mock(AttachmentService.class); }

@@ -12,6 +12,8 @@ spring:
 # Top-level server data directory. Runtime logs are written under this directory.
 redmine-mcp:
   data-dir: ${REDMINE_MCP_DATA_DIR:${user.home}/.redmine-mcp-server}
+  write:
+    enabled: ${REDMINE_MCP_WRITE_ENABLED:false}
   # Which tool groups are exposed in the MCP tools/list manifest. All groups are on by default;
   # turn groups off (e.g. REDMINE_MCP_TOOLS_RELEASE_ANALYTICS=false) to shrink the manifest for
   # small-context (local) models that would otherwise be flooded with tool and output schemas at

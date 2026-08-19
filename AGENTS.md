@@ -14,13 +14,18 @@ and the conventions that the existing code follows consistently.
 ## 1. What this project is
 
 A local **MCP (Model Context Protocol) server** that exposes a Redmine instance to AI clients
-(Claude Code, Cursor, VS Code Copilot, Qwen Code, …) over **stdio**. It is **read-only**: it never
-creates, updates, or deletes anything in Redmine.
+(Claude Code, Cursor, VS Code Copilot, Qwen Code, …) over **stdio**. It is **read-only by default**;
+an explicit environment flag can expose a narrowly scoped set of issue write operations.
 
 Core invariants — never break these without an explicit conversation:
 
-1. **Read-only.** No MCP tool may issue `POST`, `PUT`, `DELETE`, or `PATCH` against Redmine.
-   Every `@McpTool` is annotated with `readOnlyHint = true, destructiveHint = false, idempotentHint = true`.
+1. **Write access is opt-in and narrowly scoped.** Without `REDMINE_MCP_WRITE_ENABLED=true`, no
+   write tool bean exists and no MCP tool may issue `POST`, `PUT`, `DELETE`, or `PATCH`. With the
+   flag enabled, only `IssueWriteTools` may expose the approved operations: create/update an issue,
+   add an issue note, and upload/attach a file. They use `RedmineMutationClient`, only `POST`/`PUT`,
+   and the permissions/workflow of `REDMINE_API_KEY`. Do not add `DELETE`/`PATCH`, journal mutation,
+   wiki writes, or time-entry writes without another explicit design conversation. New descriptions
+   and notes use `AI_EDIT:`; uploaded filenames use `AI_EDIT__`.
 2. **Stdio only.** The server has `spring.main.web-application-type: none`. It must never open
    an HTTP port, never write to `System.out` (stdout is the MCP transport channel — anything
    written there corrupts the JSON-RPC stream).
@@ -103,8 +108,8 @@ config/       — Spring @ConfigurationProperties, beans, MCP customizer
 |---|---|---|
 | `RedmineMcpServerApplication` | Spring Boot entry point. Empty by design. | Nothing. |
 | `tools/` | Thin `@McpTool` / `@McpPrompt` adapters. Spring `@Service` beans. | One class per logical domain / toggle group (`IssueTools`, `IssueStructureTools`, `ProjectTools`, `IssueAnalyticsTools`, `ReleaseAnalyticsTools`, `IncidentPrompts`, …). Plus the shared `ToolLogger`. |
-| `service/` | Business logic. Calls `RedmineClient`, maps `client.model.*` → `api.*`. | Domain services (`IssueService`, `AnalysisService`, `AttachmentService`, `IssueSnapshotService`, …) and the typed exceptions tools throw (`IssueNotFoundException`, `ResourceUnavailableException`, `AttachmentNotFoundException`, …). |
-| `client/` | `RedmineClient` — wrapper over Redmine REST API using `RestClient`. | HTTP/JSON glue only. No domain decisions. |
+| `service/` | Business logic. Calls Redmine clients, maps `client.model.*` → `api.*`. | Domain services (`IssueService`, `IssueMutationService`, `AnalysisService`, `AttachmentService`, `IssueSnapshotService`, …) and the typed exceptions tools throw (`IssueNotFoundException`, `ResourceUnavailableException`, `AttachmentNotFoundException`, …). |
+| `client/` | `RedmineClient` for reads and opt-in `RedmineMutationClient` for approved writes, both using `RestClient`. | HTTP/JSON glue only. No domain decisions. |
 | `client/model/` | Raw Redmine DTOs (mirror Redmine REST shape). | Add fields here when Redmine adds a field you need. **Never expose these on the MCP wire.** |
 | `api/` | Stable MCP response records. `@Schema`-annotated for output-schema generation. | Add a new record here when you add a new tool. |
 | `extraction/` | Document-to-text pipeline. | `ExtractionPipeline`, `DocumentParser` impls under `extraction/parser/`, `ExtractionLimits`, `FileTypeDetector`, `PandocAvailability`. |
@@ -128,8 +133,9 @@ Concrete walkthrough — follow the pattern of `IssueTools#getIssue`.
    with `NON_NULL` inclusion — nulls are dropped from JSON, but the schema must still permit
    them so MCP clients with strict validators do not choke).
 2. **Add the logic to a service.** Put a new method on the relevant `*Service` in `service/`.
-   The service calls `RedmineClient`, then maps the result to your new `api.*` record (or to
-   an existing one). Services never reference `tools/`.
+   The service calls `RedmineClient` (or, only for an approved opt-in write, `RedmineMutationClient`),
+   then maps the result to your new `api.*` record (or to an existing one). Services never reference
+   `tools/`.
 3. **Expose the tool.** Add a method to the appropriate `*Tools` class:
 
     ```java
@@ -161,13 +167,15 @@ Concrete walkthrough — follow the pattern of `IssueTools#getIssue`.
      `AttachmentNotFoundException`, `ResourceUnavailableException`, …). Spring AI MCP maps
      these to error responses; do not return a null or empty record as a substitute.
    - Always log `Tool call: <name> (...)` on entry and call `ToolLogger.completed` / `failed`
-     on exit. Log format is consistent across the codebase.
+      on exit. Log format is consistent across the codebase.
+   - Read tools use `readOnlyHint = true`. Write annotations must accurately describe mutability,
+     destructiveness, and idempotency; never copy the read-only annotation onto a mutation.
 4. **Test.** Add a unit test under `src/test/java/.../tools/` that mocks `RedmineClient`
    (and any other services you depend on). Use `ToolJsonTestSupport.stringify(result)` to
    assert against the *serialized JSON* — this catches Jackson misconfiguration and wire-shape
    regressions, not just Java equality. See `IssueToolsTest` for the pattern.
 5. **Document the tool in README.md.** The README table is the user-facing catalogue;
-   keep it in sync. Bump the "31 read-only MCP tools" count when adding or removing tools.
+   keep it and the default/optional tool counts in sync.
 
 ### Tool group gating
 
@@ -178,6 +186,10 @@ name = "<group>", havingValue = "true", matchIfMissing = true)`. All groups are 
 models. The group name is the kebab-case domain (`issue`, `issue-structure`, `project`, `search`,
 `attachment`, `wiki`, `time-entry`, `reference-data`, `user`, `issue-analytics`,
 `release-analytics`). `IncidentPrompts` is **not** gated — prompts stay always available.
+
+`IssueWriteTools` is the deliberate exception: it is gated by
+`redmine-mcp.write.enabled` / `REDMINE_MCP_WRITE_ENABLED`, defaults to `false`, and must not be
+folded into a default-on `redmine-mcp.tools.*` group.
 
 When you add a **new tool class** (not just a method on an existing one):
 
@@ -295,6 +307,9 @@ result. Don't call `pandoc` from a parser directly — route through `DocxPandoc
 - **Attachment text is budget-bounded.** `getAttachment` uses
   `attachment.per-part-chars` / `per-attachment-chars`. New tools that surface attachment
   text must reuse this budget rather than inventing a parallel one.
+- **Never mutation-test against a production Redmine.** Unit tests for write paths use mocks and
+  `MockRestServiceServer`. Live write verification requires an explicitly designated disposable
+  test instance and key; the normal `test`/`build` tasks must not mutate any Redmine.
 
 ---
 
@@ -330,10 +345,10 @@ result. Don't call `pandoc` from a parser directly — route through `DocxPandoc
 
 ## 11. Things NOT to do
 
-- **Do not add write/mutation tools.** No `createIssue`, `updateIssue`, `addNote`, etc.
-  This is intentional — see the `Эксплуатация и безопасность` section of README.md for
-  the security rationale. If a user genuinely needs write access, that is a design
-  conversation, not a code change.
+- **Do not expand the approved mutation surface.** The only write tools are `createIssue`,
+  `updateIssue`, `addIssueNote`, and `attachFileToIssue`, all absent unless write mode is explicitly
+  enabled. In particular, do not add update/delete journal notes: the compatibility baseline is
+  Redmine 4.0.4, whose REST API does not support that operation.
 - **Do not leak `client/model/*` types onto the MCP wire.** They mirror Redmine's REST
   schema and change when Redmine changes. Map to an `api.*` record at the service boundary.
 - **Do not put feature flags in `RedmineClientProperties`.** It is reserved for the

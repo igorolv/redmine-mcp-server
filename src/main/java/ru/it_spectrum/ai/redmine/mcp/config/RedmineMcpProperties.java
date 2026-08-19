@@ -14,7 +14,8 @@ public record RedmineMcpProperties(
         Tree tree,
         Analysis analysis,
         Extraction extraction,
-        Response response
+        Response response,
+        Write write
 ) {
     public static final String DEFAULT_DATA_DIR_NAME = ".redmine-mcp-server";
     public static final int DEFAULT_ATTACHMENT_PER_PART_CHARS = 30_000;
@@ -94,6 +95,20 @@ public record RedmineMcpProperties(
                         DEFAULT_RESPONSE_ATTACHMENT_TEXT_PART_CHARS,
                         DEFAULT_RESPONSE_JOURNAL_NOTE_CHARS,
                         DEFAULT_RESPONSE_IMAGE_PARTS_KEEP);
+        write = write != null ? write : new Write(false);
+    }
+
+    public RedmineMcpProperties(
+            String dataDir,
+            AttachmentExtraction attachment,
+            Related related,
+            Pagination pagination,
+            Tree tree,
+            Analysis analysis,
+            Extraction extraction,
+            Response response
+    ) {
+        this(dataDir, attachment, related, pagination, tree, analysis, extraction, response, null);
     }
 
     public Path resolvedDataDir() {
@@ -134,6 +149,11 @@ public record RedmineMcpProperties(
                 maxRelated = DEFAULT_RELATED_MAX_RELATED;
             }
         }
+    }
+
+    public record Write(
+            @DefaultValue("false") boolean enabled
+    ) {
     }
 
     public record Response(
