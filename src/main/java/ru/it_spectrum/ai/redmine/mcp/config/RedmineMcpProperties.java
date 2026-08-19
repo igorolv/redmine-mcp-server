@@ -98,19 +98,6 @@ public record RedmineMcpProperties(
         write = write != null ? write : new Write(false);
     }
 
-    public RedmineMcpProperties(
-            String dataDir,
-            AttachmentExtraction attachment,
-            Related related,
-            Pagination pagination,
-            Tree tree,
-            Analysis analysis,
-            Extraction extraction,
-            Response response
-    ) {
-        this(dataDir, attachment, related, pagination, tree, analysis, extraction, response, null);
-    }
-
     public Path resolvedDataDir() {
         String value = dataDir;
         if (value == null || value.isBlank()) {
