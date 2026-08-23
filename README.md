@@ -1,189 +1,192 @@
 # Redmine MCP Server
 
-Локальный MCP-сервер для доступа к корпоративному Redmine. По умолчанию сервер полностью
-read-only; опционально можно включить ограниченный набор операций записи для задач и трудозатрат.
-Позволяет AI-агентам (Claude Code, Cursor, VS Code Copilot и др.) работать с задачами, проектами, участниками, версиями, wiki, вложениями, трудозатратами и справочными данными.
+A local MCP server for accessing a corporate Redmine instance. By default the server is fully
+read-only; an optional flag enables a limited set of write operations for issues and time entries.
+It lets AI agents (Claude Code, Cursor, VS Code Copilot, etc.) work with issues, projects,
+members, versions, wiki, attachments, time entries, and reference data.
 
-## Быстрый старт
+## Quick Start
 
-Эта документация описывает установку и подключение именно Redmine MCP Server. Установка и настройка самих AI-клиентов здесь не рассматриваются.
+This documentation covers installing and connecting Redmine MCP Server itself. Installing and
+configuring the AI clients themselves is out of scope here.
 
-1. Установите JDK 25+.
-2. Соберите сервер: `./gradlew build`.
-3. Получите `REDMINE_URL` и `REDMINE_API_KEY`.
-4. Проверьте, что JAR запускается (см. [Проверка запуска](#проверка-запуска)).
-5. Добавьте собранный JAR в MCP-конфигурацию вашего клиента (см. [Подключение к AI-клиенту](#подключение-к-ai-клиенту)).
+1. Install JDK 25+.
+2. Build the server: `./gradlew build`.
+3. Obtain `REDMINE_URL` and `REDMINE_API_KEY`.
+4. Verify that the JAR starts (see [Smoke Test](#smoke-test)).
+5. Add the built JAR to your client's MCP configuration (see [Connecting to an AI Client](#connecting-to-an-ai-client)).
 
-## Архитектура
+## Architecture
 
-Сервер поддерживает только транспорт `stdio`.
+The server supports only the `stdio` transport.
 
 ### Stdio
 
 ```
 ┌─────────────┐     stdio      ┌──────────────────┐    REST API    ┌──────────┐
-│  AI-агент   │ <------------> │  redmine-mcp-    │ -------------> │ Redmine  │
-│ (Claude Code│   stdin/stdout │  server (Java)   │   HTTP + API   │ (корп.)  │
+│  AI agent   │ <------------> │  redmine-mcp-    │ -------------> │ Redmine  │
+│ (Claude Code│   stdin/stdout │  server (Java)   │   HTTP + API   │ (corp.)  │
 │  Cursor...) │                │                  │   Key          │          │
 └─────────────┘                └──────────────────┘                └──────────┘
 ```
 
-AI-клиент запускает сервер как дочерний процесс, обмен по протоколу MCP через stdin/stdout.
+The AI client launches the server as a child process; communication follows the MCP protocol
+over stdin/stdout.
 
-## Инструменты
+## Tools
 
-По умолчанию сервер экспортирует **32 read-only MCP tools**. При
-`REDMINE_MCP_WRITE_ENABLED=true` к ним добавляются ещё 7 инструментов записи.
+By default the server exports **32 read-only MCP tools**. When
+`REDMINE_MCP_WRITE_ENABLED=true` is set, 7 more write tools are added.
 
-### Пользователь
+### User
 
-| Tool | Описание |
+| Tool | Description |
 |---|---|
-| `getCurrentUser` | Текущий пользователь: ID, логин, группы, проекты. Полезен для фильтрации «мои задачи» |
+| `getCurrentUser` | Current user: ID, login, groups, projects. Useful for "my issues" filtering |
 
-### Проекты
+### Projects
 
-| Tool | Описание |
+| Tool | Description |
 |---|---|
-| `listProjects` | Список всех доступных проектов |
-| `getProject` | Детали проекта: трекеры, модули, описание |
-| `listProjectMembers` | Участники проекта с ролями |
-| `listVersions` | Версии (майлстоуны) проекта |
+| `listProjects` | List of all accessible projects |
+| `getProject` | Project details: trackers, modules, description |
+| `listProjectMembers` | Project members with roles |
+| `listVersions` | Project versions (milestones) |
 
-### Задачи
+### Issues
 
-| Tool | Описание |
+| Tool | Description |
 |---|---|
-| `listIssues` | Список задач с фильтрами: проект, статус, трекер, назначенный, приоритет, версия, сохранённый запрос, кастомные поля (`customFieldFilters` в формате `cf_<id>=value`), сортировка |
-| `searchIssues` | Полнотекстовый поиск задач с детальными результатами |
-| `getIssue` | Детали задачи: описание, статус, назначенный, даты, примечания, связи, кастомные поля, вложения, связанные редакции (`changesets`). Параметры: `issueId`, `focus` (`default`, `implementation`, `timeline`, `full`; опц.) |
-| `getIssueJournal` | Одно полное примечание/событие журнала задачи без response-компрессии. Параметры: `issueId`, `journalId` |
-| `getMyIssues` | Задачи текущего пользователя. Параметры: `projectId`, `statusId`, `sort`, `limit`, `offset` |
-| `getIssueTree` | Дерево зависимостей: цепочка родителей вверх, подзадачи вниз, связи. Параметры: `issueId`, `depth` (по умолчанию 2, макс 5) |
+| `listIssues` | Issue list with filters: project, status, tracker, assignee, priority, version, saved query, custom fields (`customFieldFilters` in `cf_<id>=value` format), sorting |
+| `searchIssues` | Full-text issue search with detailed results |
+| `getIssue` | Issue details: description, status, assignee, dates, notes, relations, custom fields, attachments, linked revisions (`changesets`). Parameters: `issueId`, `focus` (`default`, `implementation`, `timeline`, `full`; optional) |
+| `getIssueJournal` | A single complete issue journal note/event without response compression. Parameters: `issueId`, `journalId` |
+| `getMyIssues` | Issues of the current user. Parameters: `projectId`, `statusId`, `sort`, `limit`, `offset` |
+| `getIssueTree` | Dependency tree: parent chain upward, subtasks downward, relations. Parameters: `issueId`, `depth` (default 2, max 5) |
 
-### Запись задач, трудозатрат и wiki (опционально)
+### Issue, Time Entry, and Wiki Writes (optional)
 
-Эти инструменты появляются в `tools/list` только при `REDMINE_MCP_WRITE_ENABLED=true`:
+These tools appear in `tools/list` only when `REDMINE_MCP_WRITE_ENABLED=true`:
 
-| Tool | Описание |
+| Tool | Description |
 |---|---|
-| `createIssue` | Создаёт задачу. Поддерживает основные поля Redmine и кастомные поля через `customFieldsJson` |
-| `updateIssue` | Частично обновляет указанные поля существующей задачи |
-| `addIssueNote` | Добавляет примечание в журнал задачи |
-| `attachFileToIssue` | Загружает файл по произвольному читаемому локальному пути и прикладывает его к задаче |
-| `createTimeEntry` | Создаёт трудозатрату для пользователя из `REDMINE_API_KEY`; принимает ровно один из `issueId`/`projectId`, часы, дату, активность, комментарий и кастомные поля |
-| `createWikiPage` | Создаёт wiki-страницу и отклоняет запрос, если страница уже существует |
-| `updateWikiPage` | Полностью заменяет текст wiki-страницы с обязательной optimistic-lock версией из `getWikiPage` |
+| `createIssue` | Creates an issue. Supports core Redmine fields and custom fields via `customFieldsJson` |
+| `updateIssue` | Partially updates the specified fields of an existing issue |
+| `addIssueNote` | Adds a note to the issue journal |
+| `attachFileToIssue` | Uploads a file from any readable local path and attaches it to the issue |
+| `createTimeEntry` | Creates a time entry for the user from `REDMINE_API_KEY`; accepts exactly one of `issueId`/`projectId`, hours, date, activity, comment, and custom fields |
+| `createWikiPage` | Creates a wiki page and rejects the request if the page already exists |
+| `updateWikiPage` | Fully replaces the wiki page text, requiring the optimistic-lock version returned by `getWikiPage` |
 
-Redmine сам применяет права, workflow и обязательные поля пользователя из `REDMINE_API_KEY`.
-MCP-сервер не вводит дополнительной модели «своих» задач или примечаний. Для распознавания
-AI-изменений описание создаваемой задачи, изменяемое описание, новые примечания и комментарии
-трудозатрат получают префикс `AI_EDIT:`. У wiki этот префикс добавляется в комментарий редакции,
-не изменяя разметку страницы. Имена загруженных файлов получают префикс `AI_EDIT__`.
+Redmine itself enforces the permissions, workflow, and required-field rules of the `REDMINE_API_KEY`
+user. The MCP server introduces no additional model of "own" issues or notes. To make AI changes
+recognizable, created-issue descriptions, updated descriptions, new notes, and time-entry comments
+are prefixed with `AI_EDIT:`. For wiki pages this prefix goes into the revision comment,
+without changing the page markup. Uploaded file names are prefixed with `AI_EDIT__`.
 
-Редактирование и удаление существующих примечаний не реализовано: используемый Redmine 4.0.4
-не предоставляет для этого совместимый REST API. Редактирование и удаление трудозатрат, удаление,
-переименование и защита wiki-страниц, а также создание трудозатрат за другого пользователя не входят
-в текущий набор операций.
+Editing and deleting existing notes is not implemented: the targeted Redmine 4.0.4
+does not provide a compatible REST API for it. Editing and deleting time entries; deleting,
+renaming, and protecting wiki pages; and creating time entries on behalf of another user are
+outside the current operation set.
 
-### Поиск
+### Search
 
-| Tool | Описание |
+| Tool | Description |
 |---|---|
-| `searchAll` | Глобальный поиск по Redmine: задачи, wiki, новости, документы, коммиты и др. Параметры: `searchQuery`, `projectId`, `types`, `limit`, `offset` |
+| `searchAll` | Global Redmine search: issues, wiki, news, documents, commits, etc. Parameters: `searchQuery`, `projectId`, `types`, `limit`, `offset` |
 
-### Вложения и Wiki
+### Attachments and Wiki
 
-| Tool | Описание |
+| Tool | Description |
 |---|---|
-| `getAttachment` | Скачивает оригинальный файл вложения в локальный snapshot-каталог, возвращает `localPath`/`fileUri` и сразу добавляет текстовый контекст в `parts[]`, если формат поддержан: txt/log/xml/json/csv, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), ZIP. ZIP может дать отдельную часть на каждый entry. Параметры: `issueId`, `attachmentId`, `maxChars`, `partLimit` |
-| `getWikiPage` | Содержимое wiki-страницы проекта |
-| `listWikiPages` | Список всех wiki-страниц проекта |
-| `searchWikiPages` | Полнотекстовый поиск по wiki-страницам. Параметры: `searchQuery`, `projectId`, `limit`, `offset` |
+| `getAttachment` | Downloads the original attachment file into a local snapshot directory, returns `localPath`/`fileUri`, and immediately adds text context to `parts[]` if the format is supported: txt/log/xml/json/csv, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), ZIP. A ZIP may yield a separate part per entry. Parameters: `issueId`, `attachmentId`, `maxChars`, `partLimit` |
+| `getWikiPage` | Content of a project wiki page |
+| `listWikiPages` | List of all wiki pages of a project |
+| `searchWikiPages` | Full-text search across wiki pages. Parameters: `searchQuery`, `projectId`, `limit`, `offset` |
 
-### Трудозатраты
+### Time Entries
 
-| Tool | Описание |
+| Tool | Description |
 |---|---|
-| `listTimeEntries` | Залогированное время с фильтрами: проект, задача, пользователь, период |
-| `getMyTimeEntries` | Залогированное время текущего пользователя. Параметры: `projectId`, `issueId`, `from`, `to`, `limit`, `offset` |
+| `listTimeEntries` | Logged time with filters: project, issue, user, period |
+| `getMyTimeEntries` | Logged time of the current user. Parameters: `projectId`, `issueId`, `from`, `to`, `limit`, `offset` |
 
-### Справочники
+### Reference Data
 
-| Tool | Описание |
+| Tool | Description |
 |---|---|
-| `listQueries` | Сохранённые запросы (пользовательские фильтры) — ID + название. Используйте ID с `listIssues(queryId)` для применения фильтра, в т.ч. по кастомным полям |
-| `listStatuses` | Все статусы задач (ID + название) — для фильтрации в `listIssues` |
-| `listTrackers` | Все трекеры (ID + название) — для фильтрации в `listIssues` |
-| `listPriorities` | Все приоритеты (ID + название) — для фильтрации в `listIssues` |
-| `listIssueCategories` | Категории задач проекта (ID + название) |
-| `listTimeEntryActivities` | Типы активностей для интерпретации существующих трудозатрат (ID + название) |
+| `listQueries` | Saved queries (custom filters) — ID + name. Use the ID with `listIssues(queryId)` to apply the filter, including custom-field filters |
+| `listStatuses` | All issue statuses (ID + name) — for filtering in `listIssues` |
+| `listTrackers` | All trackers (ID + name) — for filtering in `listIssues` |
+| `listPriorities` | All priorities (ID + name) — for filtering in `listIssues` |
+| `listIssueCategories` | Issue categories of a project (ID + name) |
+| `listTimeEntryActivities` | Activity types for interpreting existing time entries (ID + name) |
 
-### Аналитика
+### Analytics
 
-| Tool | Описание |
+| Tool | Description |
 |---|---|
-| `getProjectSummary` | Агрегированная сводка проекта: общий счётчик open/closed; разрезы проанализированных открытых задач по статусам, трекерам, приоритетам, назначенным; просроченные; estimated/spent hours. Анализирует до 500 открытых задач и возвращает флаг усечения. Параметры: `projectId`, `versionId` (опц.) |
-| `getUserWorkload` | Анализ нагрузки: открытые задачи по проектам и приоритетам, просроченные, топ задач. Анализирует до 500 открытых задач и возвращает флаг усечения. Параметры: `userId` (опц., по умолчанию — текущий), `projectId` (опц.) |
-| `getVersionChangelog` | Задачи версии, сгруппированные по трекерам, статистика open/closed. Анализирует до 500 задач и возвращает флаг усечения. Параметры: `projectId`, `versionId` |
-| `getBlockerChain` | Рекурсивный обход цепочки блокировок (blocks/blocked_by) вверх и вниз, ограничен глубиной 10 и 30 загруженными задачами. Параметры: `issueId` |
-| `getStaleIssues` | Открытые задачи без обновлений за N дней, отсортированные по давности. Параметры: `projectId`, `daysSinceUpdate` (по умолчанию 30), `limit` |
-| `getReleaseRisks` | Оценка рисков релиза: блокеры, просроченные, высокоприоритетные, без назначенного. Анализирует до 500 открытых задач и возвращает флаг усечения. Параметры: `projectId`, `versionId` |
-| `compareVersions` | Сравнение двух версий: уникальные задачи, общие задачи, процент закрытия. Анализирует до 500 задач на версию и возвращает флаг усечения. Параметры: `projectId`, `versionId1`, `versionId2` |
+| `getProjectSummary` | Aggregated project summary: overall open/closed count; analyzed open issues broken down by status, tracker, priority, assignee; overdue issues; estimated/spent hours. Analyzes up to 500 open issues and returns a truncation flag. Parameters: `projectId`, `versionId` (optional) |
+| `getUserWorkload` | Workload analysis: open issues by project and priority, overdue issues, top issues. Analyzes up to 500 open issues and returns a truncation flag. Parameters: `userId` (optional, defaults to current user), `projectId` (optional) |
+| `getVersionChangelog` | Version issues grouped by tracker, open/closed statistics. Analyzes up to 500 issues and returns a truncation flag. Parameters: `projectId`, `versionId` |
+| `getBlockerChain` | Recursive traversal of the blocking chain (blocks/blocked_by) upward and downward, limited to depth 10 and 30 loaded issues. Parameters: `issueId` |
+| `getStaleIssues` | Open issues not updated for N days, oldest first. Parameters: `projectId`, `daysSinceUpdate` (default 30), `limit` |
+| `getReleaseRisks` | Release risk assessment: blockers, overdue items, high-priority issues, unassigned issues. Analyzes up to 500 open issues and returns a truncation flag. Parameters: `projectId`, `versionId` |
+| `compareVersions` | Compares two versions: unique issues, shared issues, closure percentage. Analyzes up to 500 issues per version and returns a truncation flag. Parameters: `projectId`, `versionId1`, `versionId2` |
 
-Без `REDMINE_MCP_WRITE_ENABLED=true` все инструменты read-only и данные в Redmine не изменяются.
+Without `REDMINE_MCP_WRITE_ENABLED=true` all tools are read-only and no data in Redmine is modified.
 
-### Группы инструментов (включение/выключение)
+### Tool Groups (enable/disable)
 
-Инструменты сгруппированы по доменам, и каждую группу можно отключить переменной окружения.
-Все группы включены по умолчанию — «из коробки» набор инструментов не меняется. Отключение
-групп уменьшает MCP-манифест `tools/list`, который клиент загружает в контекст модели при старте
-сессии. Это полезно для моделей с небольшим контекстом (локальных): отключите ненужные группы,
-чтобы оставить только те инструменты, которые модели реально нужны.
+Tools are grouped by domain, and each group can be disabled via an environment variable.
+All groups are enabled by default — the out-of-the-box tool manifest is unchanged. Disabling
+groups shrinks the MCP `tools/list` manifest that the client loads into model context at session
+start. This helps small-context (local) models: disable unneeded groups so only the tools the
+model actually needs remain.
 
-| Переменная | Группа (инструменты) |
+| Variable | Group (tools) |
 |---|---|
-| `REDMINE_MCP_TOOLS_ISSUE` | Задачи (основное): `listIssues`, `searchIssues`, `getIssue`, `getMyIssues`, `getIssueJournal` |
-| `REDMINE_MCP_TOOLS_ISSUE_STRUCTURE` | Структура/история задачи: `getIssueTree`, `getIssueHistory` |
-| `REDMINE_MCP_TOOLS_PROJECT` | Проекты: `listProjects`, `getProject`, `listProjectMembers`, `listVersions` |
-| `REDMINE_MCP_TOOLS_SEARCH` | Поиск: `searchAll` |
-| `REDMINE_MCP_TOOLS_ATTACHMENT` | Вложения: `getAttachment` |
+| `REDMINE_MCP_TOOLS_ISSUE` | Issues (core): `listIssues`, `searchIssues`, `getIssue`, `getMyIssues`, `getIssueJournal` |
+| `REDMINE_MCP_TOOLS_ISSUE_STRUCTURE` | Issue structure/history: `getIssueTree`, `getIssueHistory` |
+| `REDMINE_MCP_TOOLS_PROJECT` | Projects: `listProjects`, `getProject`, `listProjectMembers`, `listVersions` |
+| `REDMINE_MCP_TOOLS_SEARCH` | Search: `searchAll` |
+| `REDMINE_MCP_TOOLS_ATTACHMENT` | Attachments: `getAttachment` |
 | `REDMINE_MCP_TOOLS_WIKI` | Wiki: `getWikiPage`, `listWikiPages`, `searchWikiPages` |
-| `REDMINE_MCP_TOOLS_TIME_ENTRY` | Трудозатраты: `listTimeEntries`, `getMyTimeEntries` |
-| `REDMINE_MCP_TOOLS_REFERENCE_DATA` | Справочники: `listQueries`, `listStatuses`, `listTrackers`, `listPriorities`, `listIssueCategories`, `listTimeEntryActivities` |
-| `REDMINE_MCP_TOOLS_USER` | Пользователь: `getCurrentUser` |
-| `REDMINE_MCP_TOOLS_ISSUE_ANALYTICS` | Аналитика по задачам: `getBlockerChain`, `getStaleIssues` |
-| `REDMINE_MCP_TOOLS_RELEASE_ANALYTICS` | Релизная/проектная аналитика: `getProjectSummary`, `getUserWorkload`, `getVersionChangelog`, `getReleaseRisks`, `compareVersions` |
+| `REDMINE_MCP_TOOLS_TIME_ENTRY` | Time entries: `listTimeEntries`, `getMyTimeEntries` |
+| `REDMINE_MCP_TOOLS_REFERENCE_DATA` | Reference data: `listQueries`, `listStatuses`, `listTrackers`, `listPriorities`, `listIssueCategories`, `listTimeEntryActivities` |
+| `REDMINE_MCP_TOOLS_USER` | User: `getCurrentUser` |
+| `REDMINE_MCP_TOOLS_ISSUE_ANALYTICS` | Issue analytics: `getBlockerChain`, `getStaleIssues` |
+| `REDMINE_MCP_TOOLS_RELEASE_ANALYTICS` | Release/project analytics: `getProjectSummary`, `getUserWorkload`, `getVersionChangelog`, `getReleaseRisks`, `compareVersions` |
 
-Каждая переменная принимает `true` (по умолчанию) или `false`. Пример: чтобы оставить только
-работу с задачами и проектами, отключите остальные группы — `REDMINE_MCP_TOOLS_RELEASE_ANALYTICS=false`,
-`REDMINE_MCP_TOOLS_WIKI=false` и т.д. MCP-промпты (`incident-*`) этими флагами не затрагиваются.
+Each variable accepts `true` (default) or `false`. Example: to keep only issue and project work,
+disable the remaining groups — `REDMINE_MCP_TOOLS_RELEASE_ANALYTICS=false`,
+`REDMINE_MCP_TOOLS_WIKI=false`, etc. MCP prompts (`incident-*`) are not affected by these flags.
 
-## MCP-промпты
+## MCP Prompts
 
-Сервер также экспортирует **MCP prompts** для типовых сценариев работы с инцидентами:
+The server also exports **MCP prompts** for typical incident-handling scenarios:
 
-| Prompt | Описание |
+| Prompt | Description |
 |---|---|
-| `incident-brief` | Быстрый обзор инцидента: получает задачу через `getIssue`, скачивает все вложения через `getAttachment` с коротким preview и формирует краткий Markdown-отчёт |
-| `incident-implementation` | Контекст реализации: получает задачу с `focus=implementation`, загружает релевантные вложения и формирует требования, evidence по revisions и checklist для проверки |
-| `incident-timeline` | Хронология инцидента: получает задачу с `focus=timeline`, при необходимости добирает полные journal entries через `getIssueJournal` и строит timeline «кто, когда и что сделал» |
+| `incident-brief` | Quick incident overview: fetches the issue via `getIssue`, downloads all attachments via `getAttachment` with short previews, and produces a concise Markdown report |
+| `incident-implementation` | Implementation context: fetches the issue with `focus=implementation`, loads relevant attachments, and produces requirements, evidence per revision, and a verification checklist |
+| `incident-timeline` | Incident chronology: fetches the issue with `focus=timeline`, pulls complete journal entries via `getIssueJournal` when needed, and builds a timeline of who did what and when |
 
-## Стек
+## Tech Stack
 
 - Java 25, Spring Boot 4.0.0, Spring AI MCP 2.0.0-M6 (stdio transport)
-- Apache PDFBox 3.0.5 — извлечение текста из PDF
-- Apache POI 5.4.0 — извлечение текста из Word, Excel, PowerPoint
-- Apache Tika 3.2.0 (core + parsers-standard) — fallback-парсер и извлечение метаданных
-- Pandoc (опционально, внешний бинарь) — улучшенное преобразование DOCX в текст/markdown, когда доступен в `PATH`; при отсутствии сервер использует POI
-- Gradle 9.3.1 с version catalog (`gradle/libs.versions.toml`)
+- Apache PDFBox 3.0.5 — text extraction from PDFs
+- Apache POI 5.4.0 — text extraction from Word, Excel, PowerPoint
+- Apache Tika 3.2.0 (core + parsers-standard) — fallback parser and metadata extraction
+- Pandoc (optional, external binary) — improved DOCX to text/markdown conversion when available on `PATH`; otherwise the server uses POI
+- Gradle 9.3.1 with version catalog (`gradle/libs.versions.toml`)
 
-## Сборка
+## Build
 
 Linux/macOS:
 
 ```bash
-# Указать JDK 25+, если не является JDK по умолчанию:
+# Point to JDK 25+ if it is not the default JDK:
 export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 
 ./gradlew build
@@ -192,87 +195,87 @@ export JAVA_HOME="$HOME/.jdks/jdk-25.0.2"
 Windows PowerShell:
 
 ```powershell
-# Указать JDK 25+, если не является JDK по умолчанию:
+# Point to JDK 25+ if it is not the default JDK:
 $env:JAVA_HOME="C:\Program Files\Java\jdk-25"
 
 .\gradlew.bat build
 ```
 
-Результат: `build/libs/redmine-mcp-server.jar`
+Result: `build/libs/redmine-mcp-server.jar`
 
-## Настройка
+## Configuration
 
-Серверу нужны `REDMINE_URL` и `REDMINE_API_KEY`; остальные переменные опциональны:
+The server needs `REDMINE_URL` and `REDMINE_API_KEY`; the remaining variables are optional:
 
-| Переменная | Описание |
+| Variable | Description |
 |---|---|
-| `REDMINE_URL` | Базовый URL Redmine (например `https://redmine.example.com`) |
-| `REDMINE_API_KEY` | API-ключ пользователя Redmine |
-| `REDMINE_MCP_WRITE_ENABLED` | Добавляет в `tools/list` инструменты `createIssue`, `updateIssue`, `addIssueNote`, `attachFileToIssue`, `createTimeEntry`, `createWikiPage`, `updateWikiPage`; по умолчанию `false` |
-| `REDMINE_MCP_DATA_DIR` | Каталог локальных данных сервера; по умолчанию `~/.redmine-mcp-server` |
-| `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Лимит текста на один `part` (например, один файл внутри ZIP) для `getAttachment`; по умолчанию `30000` символов. Параметр `partLimit` инструмента переопределяет это значение. |
-| `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Суммарный лимит извлечённого текста на одно вложение в `getAttachment`; по умолчанию `50000` символов. Параметр `maxChars` инструмента переопределяет это значение. |
-| `REDMINE_MCP_RELATED_MAX_SIBLINGS` | Максимум sibling-задач, добавляемых в `related` при чтении задачи; по умолчанию `20` |
-| `REDMINE_MCP_RELATED_MAX_CHILDREN` | Максимум дочерних задач, добавляемых в `related` при чтении задачи; по умолчанию `20` |
-| `REDMINE_MCP_RELATED_MAX_RELATED` | Максимум связанных задач из relations, добавляемых в `related` при чтении задачи; по умолчанию `10` |
-| `REDMINE_MCP_RESPONSE_MAX_CHARS` | Целевой лимит размера ответа перед пошаговым сжатием `getIssue` и `getAttachment`; по умолчанию `50000` символов |
-| `REDMINE_MCP_RESPONSE_JOURNAL_TAIL_KEEP` | Сколько последних journal entries сохраняет budget-компрессия `getIssue` перед более агрессивным сокращением; по умолчанию `30` |
-| `REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS` | Лимит текста одного attachment part при response-компрессии `getAttachment`; по умолчанию `10000` символов |
-| `REDMINE_MCP_RESPONSE_JOURNAL_NOTE_CHARS` | Лимит текста одной journal note при response-компрессии `getIssue`; по умолчанию `5000` символов |
-| `REDMINE_MCP_RESPONSE_IMAGE_PARTS_KEEP` | Сколько image parts сохраняет response-компрессия `getAttachment`; по умолчанию `5` |
-| `REDMINE_MCP_PAGINATION_DEFAULT_LIMIT` | Лимит страницы по умолчанию для list/search-инструментов; по умолчанию `25` |
-| `REDMINE_MCP_PAGINATION_DEFAULT_OFFSET` | Offset по умолчанию для list/search-инструментов; по умолчанию `0` |
-| `REDMINE_MCP_PAGINATION_MEMBERS_DEFAULT_LIMIT` | Лимит страницы по умолчанию для `listProjectMembers`; по умолчанию `100` |
-| `REDMINE_MCP_TREE_DEFAULT_DEPTH` | Глубина по умолчанию для `getIssueTree`; по умолчанию `2` |
-| `REDMINE_MCP_TREE_MAX_DEPTH` | Максимальная глубина `getIssueTree`; по умолчанию `5` |
-| `REDMINE_MCP_TREE_MAX_ISSUES` | Максимум задач, загружаемых `getIssueTree`; по умолчанию `50` |
-| `REDMINE_MCP_ANALYSIS_MAX_PAGES` | Максимум страниц Redmine, читаемых аналитическими инструментами; по умолчанию `5` |
-| `REDMINE_MCP_ANALYSIS_PAGE_SIZE` | Размер страницы Redmine для аналитических инструментов; по умолчанию `100` |
-| `REDMINE_MCP_ANALYSIS_TOP_ISSUES_LIMIT` | Максимум задач в top-списках аналитических ответов; по умолчанию `10` |
-| `REDMINE_MCP_ANALYSIS_MAX_BLOCKER_DEPTH` | Максимальная глубина обхода для `getBlockerChain`; по умолчанию `10` |
-| `REDMINE_MCP_ANALYSIS_MAX_BLOCKER_ISSUES` | Максимум задач, загружаемых `getBlockerChain`; по умолчанию `30` |
-| `REDMINE_MCP_ANALYSIS_STALE_ISSUES_DEFAULT_DAYS_SINCE_UPDATE` | Значение `daysSinceUpdate` по умолчанию для `getStaleIssues`; по умолчанию `30` |
-| `REDMINE_MCP_ANALYSIS_STALE_ISSUES_DEFAULT_LIMIT` | Лимит результатов по умолчанию для `getStaleIssues`; по умолчанию `25` |
-| `REDMINE_MCP_ANALYSIS_STALE_ISSUES_MAX_LIMIT` | Максимальный лимит результатов для `getStaleIssues`; по умолчанию `100` |
-| `REDMINE_MCP_EXTRACTION_PANDOC_ENABLED` | Включает использование Pandoc для DOCX, если бинарь найден в `PATH`; по умолчанию `true` |
-| `REDMINE_MCP_EXTRACTION_PANDOC_PROBE_TIMEOUT_SECONDS` | Таймаут проверки доступности Pandoc при старте; по умолчанию `2` секунды |
-| `REDMINE_MCP_EXTRACTION_PANDOC_CONVERSION_TIMEOUT_SECONDS` | Таймаут одного преобразования DOCX через Pandoc; по умолчанию `30` секунд |
-| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_DEPTH` | Максимальная глубина рекурсивной обработки вложенных документов и архивов; по умолчанию `1` |
-| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_TOTAL_PARTS` | Максимум текстовых/метаданных частей за одно извлечение; по умолчанию `100` |
-| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_TOTAL_BYTES` | Суммарный лимит прочитанных данных за одно извлечение; по умолчанию `52428800` байт |
-| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_ENTRY_BYTES` | Лимит одного entry внутри архива; по умолчанию `10485760` байт |
-| `REDMINE_MCP_EXTRACTION_ZIP_MAX_ENTRIES_PER_ARCHIVE` | Максимум записей в одном ZIP-архиве; по умолчанию `100` |
-| `REDMINE_MCP_EXTRACTION_TIKA_BODY_LIMIT_BYTES` | Лимит тела, передаваемого Tika fallback-парсеру; по умолчанию `5242880` байт |
-| `REDMINE_MCP_EXTRACTION_TIKA_METADATA_MAX_FIELDS` | Максимум полей метаданных Tika в ответе; по умолчанию `40` |
+| `REDMINE_URL` | Base URL of the Redmine instance (e.g. `https://redmine.example.com`) |
+| `REDMINE_API_KEY` | Redmine user's API key |
+| `REDMINE_MCP_WRITE_ENABLED` | Adds the `createIssue`, `updateIssue`, `addIssueNote`, `attachFileToIssue`, `createTimeEntry`, `createWikiPage`, `updateWikiPage` tools to `tools/list`; defaults to `false` |
+| `REDMINE_MCP_DATA_DIR` | Local data directory of the server; defaults to `~/.redmine-mcp-server` |
+| `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Text limit per single `part` (e.g., one file inside a ZIP) for `getAttachment`; defaults to `30000` characters. The tool's `partLimit` parameter overrides this value. |
+| `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Total limit of extracted text per attachment in `getAttachment`; defaults to `50000` characters. The tool's `maxChars` parameter overrides this value. |
+| `REDMINE_MCP_RELATED_MAX_SIBLINGS` | Maximum sibling issues added to `related` when reading an issue; defaults to `20` |
+| `REDMINE_MCP_RELATED_MAX_CHILDREN` | Maximum child issues added to `related` when reading an issue; defaults to `20` |
+| `REDMINE_MCP_RELATED_MAX_RELATED` | Maximum related issues from relations added to `related` when reading an issue; defaults to `10` |
+| `REDMINE_MCP_RESPONSE_MAX_CHARS` | Target response size limit before stepwise compression of `getIssue` and `getAttachment`; defaults to `50000` characters |
+| `REDMINE_MCP_RESPONSE_JOURNAL_TAIL_KEEP` | How many most-recent journal entries the budget compression of `getIssue` keeps before more aggressive reduction; defaults to `30` |
+| `REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS` | Text limit per attachment part during response compression of `getAttachment`; defaults to `10000` characters |
+| `REDMINE_MCP_RESPONSE_JOURNAL_NOTE_CHARS` | Text limit per journal note during response compression of `getIssue`; defaults to `5000` characters |
+| `REDMINE_MCP_RESPONSE_IMAGE_PARTS_KEEP` | How many image parts the response compression of `getAttachment` keeps; defaults to `5` |
+| `REDMINE_MCP_PAGINATION_DEFAULT_LIMIT` | Default page size for list/search tools; defaults to `25` |
+| `REDMINE_MCP_PAGINATION_DEFAULT_OFFSET` | Default offset for list/search tools; defaults to `0` |
+| `REDMINE_MCP_PAGINATION_MEMBERS_DEFAULT_LIMIT` | Default page size for `listProjectMembers`; defaults to `100` |
+| `REDMINE_MCP_TREE_DEFAULT_DEPTH` | Default depth for `getIssueTree`; defaults to `2` |
+| `REDMINE_MCP_TREE_MAX_DEPTH` | Maximum depth of `getIssueTree`; defaults to `5` |
+| `REDMINE_MCP_TREE_MAX_ISSUES` | Maximum issues loaded by `getIssueTree`; defaults to `50` |
+| `REDMINE_MCP_ANALYSIS_MAX_PAGES` | Maximum Redmine pages read by analytics tools; defaults to `5` |
+| `REDMINE_MCP_ANALYSIS_PAGE_SIZE` | Redmine page size for analytics tools; defaults to `100` |
+| `REDMINE_MCP_ANALYSIS_TOP_ISSUES_LIMIT` | Maximum issues in top lists of analytics responses; defaults to `10` |
+| `REDMINE_MCP_ANALYSIS_MAX_BLOCKER_DEPTH` | Maximum traversal depth for `getBlockerChain`; defaults to `10` |
+| `REDMINE_MCP_ANALYSIS_MAX_BLOCKER_ISSUES` | Maximum issues loaded by `getBlockerChain`; defaults to `30` |
+| `REDMINE_MCP_ANALYSIS_STALE_ISSUES_DEFAULT_DAYS_SINCE_UPDATE` | Default `daysSinceUpdate` for `getStaleIssues`; defaults to `30` |
+| `REDMINE_MCP_ANALYSIS_STALE_ISSUES_DEFAULT_LIMIT` | Default result limit for `getStaleIssues`; defaults to `25` |
+| `REDMINE_MCP_ANALYSIS_STALE_ISSUES_MAX_LIMIT` | Maximum result limit for `getStaleIssues`; defaults to `100` |
+| `REDMINE_MCP_EXTRACTION_PANDOC_ENABLED` | Enables the use of Pandoc for DOCX when the binary is found on `PATH`; defaults to `true` |
+| `REDMINE_MCP_EXTRACTION_PANDOC_PROBE_TIMEOUT_SECONDS` | Timeout for probing Pandoc availability at startup; defaults to `2` seconds |
+| `REDMINE_MCP_EXTRACTION_PANDOC_CONVERSION_TIMEOUT_SECONDS` | Timeout for a single DOCX conversion via Pandoc; defaults to `30` seconds |
+| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_DEPTH` | Maximum recursion depth for processing nested documents and archives; defaults to `1` |
+| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_TOTAL_PARTS` | Maximum text/metadata parts per extraction; defaults to `100` |
+| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_TOTAL_BYTES` | Total bytes-read limit per extraction; defaults to `52428800` bytes |
+| `REDMINE_MCP_EXTRACTION_LIMITS_MAX_ENTRY_BYTES` | Limit for a single entry inside an archive; defaults to `10485760` bytes |
+| `REDMINE_MCP_EXTRACTION_ZIP_MAX_ENTRIES_PER_ARCHIVE` | Maximum entries per ZIP archive; defaults to `100` |
+| `REDMINE_MCP_EXTRACTION_TIKA_BODY_LIMIT_BYTES` | Body size limit passed to the Tika fallback parser; defaults to `5242880` bytes |
+| `REDMINE_MCP_EXTRACTION_TIKA_METADATA_MAX_FIELDS` | Maximum Tika metadata fields in the response; defaults to `40` |
 
-### Как получить `REDMINE_URL`
+### How to Get `REDMINE_URL`
 
-Откройте Redmine в браузере и скопируйте адрес из адресной строки **без** пути — только схему и домен.
+Open Redmine in your browser and copy the address-bar value **without** the path — scheme and domain only.
 
-Примеры:
+Examples:
 
-| В адресной строке браузера | Значение `REDMINE_URL` |
+| In browser address bar | `REDMINE_URL` value |
 |---|---|
 | `https://redmine.example.com/projects/myproject` | `https://redmine.example.com` |
 | `http://192.168.1.50:3000/issues/123` | `http://192.168.1.50:3000` |
 | `http://10.0.0.5/redmine/projects` | `http://10.0.0.5/redmine` |
 
-> Если Redmine доступен только по IP-адресу (без доменного имени), используйте IP как есть, включая порт, если он отличается от стандартного (80/443). Если Redmine развёрнут по подпути (например `/redmine`), его тоже нужно включить в URL.
+> If Redmine is reachable only by IP address (no domain name), use the IP as-is, including the port if it differs from the standard one (80/443). If Redmine is deployed under a subpath (e.g. `/redmine`), include it in the URL too.
 
-### Как получить `REDMINE_API_KEY`
+### How to Get `REDMINE_API_KEY`
 
-1. Войдите в Redmine под своей учётной записью
-2. Нажмите **«Моя учётная запись»** (правый верхний угол)
-3. В правой колонке найдите блок **«Ключ доступа к API»**
-4. Нажмите **«Показать»** — отобразится ваш персональный API-ключ
-5. Скопируйте ключ и используйте его как значение `REDMINE_API_KEY`
+1. Log in to Redmine with your account
+2. Click **"My account"** (top right corner)
+3. In the right column find the **"API access key"** block
+4. Click **"Show"** — your personal API key will be displayed
+5. Copy the key and use it as the `REDMINE_API_KEY` value
 
-> Если блок «Ключ доступа к API» не отображается, обратитесь к администратору Redmine — возможно, REST API отключён в настройках.
+> If the "API access key" block is not shown, contact the Redmine administrator — the REST API may be disabled in settings.
 
-## Проверка запуска
+## Smoke Test
 
-Перед подключением к AI-клиенту полезно убедиться, что JAR корректно стартует с теми же
-переменными окружения, которые потом будут указаны в конфигурации клиента.
+Before connecting an AI client it is worth verifying that the JAR starts correctly with the same
+environment variables that will later go into the client configuration.
 
 Linux/macOS:
 
@@ -289,33 +292,32 @@ $env:REDMINE_API_KEY="your_key"
 java -jar .\build\libs\redmine-mcp-server.jar
 ```
 
-Сервер работает через `stdio` и не открывает HTTP-порт: после успешного старта он молча
-ждёт MCP-запросы через `stdin/stdout`. Признаком успешного старта служит отсутствие ошибок
-в логе и отсутствие немедленного завершения процесса. Для остановки достаточно нажать
-`Ctrl+C`.
+The server runs over `stdio` and opens no HTTP port: after a successful start it silently waits
+for MCP requests on `stdin/stdout`. A successful start shows as the absence of errors in the log
+and no immediate process exit. Press `Ctrl+C` to stop.
 
-### Логи
+### Logs
 
-Логи пишутся в `${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/logs/redmine-mcp-server.log`.
-Файл ротируется по дате и размеру: `10MB`, хранение `30` дней, общий лимит `512MB`.
+Logs are written to `${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/logs/redmine-mcp-server.log`.
+The file rotates by date and size: `10MB`, retention `30` days, total cap `512MB`.
 
-### Снимки задач
+### Issue Snapshots
 
-При загрузке issue сервер сохраняет снимок на диск в
+When loading an issue the server persists a snapshot to disk under
 `${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/issues/<issue-id>/`: `issue.json`,
-`snapshot.json` с метаданными снимка, `attachments.json` и каталог `extracted/<attachment-id>/`
-для производных файлов. Вложения материализуются в `attachments/` с именами вида
-`<attachment-id>__<filename>` и могут переиспользоваться между снимками, если локальный файл
-уже существует и его размер совпадает с metadata Redmine.
+`snapshot.json` with snapshot metadata, `attachments.json`, and an `extracted/<attachment-id>/`
+directory for derived files. Attachments are materialized under `attachments/` with names like
+`<attachment-id>__<filename>` and can be reused across snapshots when the local file already
+exists and its size matches the Redmine metadata.
 
-## Подключение к AI-клиенту
+## Connecting to an AI Client
 
-Добавить в конфигурацию клиента:
+Add to the client configuration:
 
 ```json
 {
   "command": "java",
-  "args": ["-jar", "<абсолютный-путь>/redmine-mcp-server.jar"],
+  "args": ["-jar", "<absolute-path>/redmine-mcp-server.jar"],
   "env": {
     "REDMINE_URL": "https://redmine.example.com",
     "REDMINE_API_KEY": "your_api_key"
@@ -323,9 +325,9 @@ java -jar .\build\libs\redmine-mcp-server.jar
 }
 ```
 
-Куда именно:
+Where exactly:
 
-| Клиент | Способ подключения |
+| Client | How to connect |
 |---|---|
 | Claude Code | `claude mcp add --scope user -e REDMINE_URL=... -e REDMINE_API_KEY=... -- redmine java -jar /path/to/redmine-mcp-server.jar` |
 | Qwen Code | `~/.qwen/settings.json` -> `"mcpServers"` -> `"redmine"` |
@@ -333,68 +335,81 @@ java -jar .\build\libs\redmine-mcp-server.jar
 | Cursor | `.cursor/mcp.json` -> `"mcpServers"` -> `"redmine"` |
 | Claude Desktop | `claude_desktop_config.json` -> `"mcpServers"` -> `"redmine"` |
 
-После добавления перезапустить клиент.
+Restart the client afterwards.
 
-## Эксплуатация и безопасность
+## Operations and Security
 
-Этот MCP-сервер предназначен для локального запуска рядом с AI-клиентом. Он не открывает HTTP-порт и не принимает входящие сетевые подключения: клиент запускает JAR как дочерний процесс и общается с ним через `stdin/stdout`.
+This MCP server is designed to run locally alongside the AI client. It opens no HTTP port and
+accepts no incoming network connections: the client launches the JAR as a child process and
+communicates with it via `stdin/stdout`.
 
-### Модель доступа
+### Access Model
 
-- Сервер использует права того пользователя Redmine, чей API-ключ указан в `REDMINE_API_KEY`.
-- По умолчанию все MCP-инструменты read-only. При `REDMINE_MCP_WRITE_ENABLED=true` становятся доступны семь явно перечисленных инструментов записи задач, трудозатрат и wiki; сервер не расширяет права API-пользователя и не обходит workflow Redmine.
-- Доступные проекты, задачи, вложения и трудозатраты определяются правами пользователя в Redmine. Если пользователь не видит объект в Redmine, сервер тоже не должен получить к нему доступ.
-- Идентификатор `AI_EDIT` — поисковая метка, а не механизм авторизации: источник изменения надёжно определяется учётной записью Redmine, которой принадлежит API-ключ.
-- `attachFileToIssue` намеренно принимает любой читаемый локальный путь без списка разрешённых каталогов. В режиме записи запускайте сервер только рядом с доверенным AI-клиентом и учитывайте, что клиент сможет передать содержимое доступного процессу файла в Redmine.
-- API-ключ нужно хранить как секрет. Не коммитьте его в репозиторий, shell-скрипты, `.vscode/mcp.json`, `.cursor/mcp.json` или другие общие файлы проекта.
+- The server uses the permissions of the Redmine user whose API key is set in `REDMINE_API_KEY`.
+- By default all MCP tools are read-only. With `REDMINE_MCP_WRITE_ENABLED=true` seven explicitly
+  listed write tools for issues, time entries, and wiki become available; the server neither extends
+  the API user's rights nor bypasses the Redmine workflow.
+- Accessible projects, issues, attachments, and time entries are determined by the user's permissions
+  in Redmine. If a user cannot see an object in Redmine, the server must not gain access to it either.
+- The `AI_EDIT` marker is a search label, not an authorization mechanism: authorship of a change is
+  reliably established by the Redmine account that owns the API key.
+- `attachFileToIssue` deliberately accepts any readable local path without an allow-list of directories.
+  In write mode run the server only next to a trusted AI client, keeping in mind that the client will be able
+  to pass the contents of any file readable by the process into Redmine.
+- Treat the API key as a secret. Do not commit it to the repository, shell scripts, `.vscode/mcp.json`,
+  `.cursor/mcp.json`, or other shared files of the project.
 
-Для разработки и проверки операций записи используйте отдельный тестовый Redmine и отдельный
-API-ключ. Не запускайте `integrationTest` с включённой записью против боевой инсталляции.
+For development and verification of write operations use a separate test Redmine and a separate
+API key. Do not run `integrationTest` with write enabled against a production installation.
 
-### Какие данные передаются AI-клиенту
+### What Data Is Passed to the AI Client
 
-AI-клиент получает ровно те данные, которые запрашивает через MCP-инструменты:
+The AI client receives exactly the data it requests through MCP tools:
 
-- карточки задач: тема, описание, статус, приоритет, назначенный, автор, даты, связи, подзадачи, комментарии, кастомные поля;
-- сведения о проектах, версиях, участниках, справочниках и трудозатратах;
-- wiki-страницы;
-- метаданные вложений;
-- локальные пути к оригинальным файлам вложений и текст, извлечённый из PDF, DOCX, XLSX, PPTX, ZIP и текстовых файлов через `getAttachment`.
+- issue cards: subject, description, status, priority, assignee, author, dates, relations, subtasks, journals/comments, custom fields;
+- information about projects, versions, members, reference data, and time entries;
+- wiki pages;
+- attachment metadata;
+- local paths to the original attachment files and text extracted from PDF, DOCX, XLSX, PPTX, ZIP, and text files via `getAttachment`.
 
-Перед подключением к внешнему или облачному AI-клиенту проверьте внутренние правила компании: данные Redmine могут содержать коммерческую тайну, персональные данные, логи, ключи, дампы ошибок и содержимое документов.
+Before connecting an external or cloud AI client, check your company's internal policies: Redmine
+data may contain trade secrets, personal data, logs, keys, error dumps, and document contents.
 
-### Лимиты обработки
+### Processing Limits
 
-В коде есть защитные лимиты, чтобы один большой документ или связанная сеть задач не перегружали MCP-клиент:
+There are protective limits in the code so that a single large document or a related network of
+issues cannot overload the MCP client:
 
-| Область | Лимит |
+| Area | Limit |
 |---|---|
-| Каждая текстовая часть `getAttachment.parts[]` | до 30 000 символов по умолчанию, дальше текст обрезается |
-| Одно вложение в `getAttachment` суммарно | до 50 000 символов по умолчанию |
-| ZIP-глубина | 1 уровень |
-| ZIP-файлы | до 100 записей |
-| ZIP-файл внутри архива | до 10 MB |
-| ZIP-архив суммарно | до 50 MB извлечённых данных |
-| `getIssueTree` | глубина до 5, максимум 50 задач |
+| Each text part of `getAttachment.parts[]` | up to 30,000 characters by default, beyond that the text is truncated |
+| One attachment in `getAttachment` in total | up to 50,000 characters by default |
+| ZIP depth | 1 level |
+| ZIP archives | up to 100 entries |
+| ZIP file inside an archive | up to 10 MB |
+| ZIP archive in total | up to 50 MB of extracted data |
+| `getIssueTree` | depth up to 5, max 50 issues |
 
-`getIssue` поддерживает параметр `focus`. `default` сохраняет обычную
-форму ответа и применяет компрессию только при превышении бюджета ответа. `implementation`
-предназначен для работы с реализацией по задаче: полная issue всё равно сохраняется на диск,
-а в ответе tool сохраняются описание, человеческие заметки, метаданные вложений и все revisions
-changeset-ов; verbose-история и тело commit-сообщений опускаются. `timeline` предназначен для
-вопросов «кто, когда и что сделал»: сохраняет журналы и changesets, но опускает вложения,
-кастомные поля и related-контекст. `full` — явный выбор полной формы с защитной бюджетной
-компрессией.
+`getIssue` supports the `focus` parameter. `default` keeps the usual
+response shape and applies compression only when the response budget is exceeded. `implementation`
+targets implementation work on the issue: the full issue is still persisted to disk, while the tool
+response keeps the description, human notes, attachment metadata, and all changeset revisions;
+verbose history and commit message bodies are omitted. `timeline` targets
+"who did what and when" questions: it keeps journals and changesets but omits attachments,
+custom fields, and related context. `full` is an explicit choice of the full form with protective
+budget compression.
 
-Если нужное примечание было удалено из ответа `getIssue` бюджетной компрессией или note был
-укорочен, вызовите `getIssueJournal(issueId, journalId)`: он заново снимает snapshot issue и
-возвращает выбранный journal entry без response-компрессии.
+If the note you need was dropped from the `getIssue` response by budget compression or the note was
+shortened, call `getIssueJournal(issueId, journalId)`: it re-takes the issue snapshot and
+returns the selected journal entry without response compression.
 
-Часть обычных list инструментов (`listIssues`, `listProjects`, `listTimeEntries`, `listQueries`) принимает `limit` и `offset` напрямую. Для устойчивой работы лучше не запрашивать чрезмерно большие страницы; практичный диапазон — 25-100 элементов за вызов.
+Some regular list tools (`listIssues`, `listProjects`, `listTimeEntries`, `listQueries`) accept `limit`
+and `offset` directly. For reliable operation avoid requesting excessively large pages; a practical
+range is 25-100 items per call.
 
-### Диагностика
+### Diagnostics
 
-Проверка окружения:
+Environment check:
 
 ```bash
 java -version
@@ -402,112 +417,120 @@ echo "$REDMINE_URL"
 test -n "$REDMINE_API_KEY" && echo "REDMINE_API_KEY is set"
 ```
 
-Проверка доступа к Redmine REST API:
+Redmine REST API access check:
 
 ```bash
 curl -H "X-Redmine-API-Key: <key>" <url>/users/current.json
 ```
 
-Проверка сборки:
+Build check:
 
 ```bash
 ./gradlew test
 ./gradlew build
 ```
 
-Проверка интеграционных тестов с живым Redmine:
+Integration tests against a live Redmine:
 
 ```bash
 REDMINE_URL=<url> REDMINE_API_KEY=<key> ./gradlew integrationTest
 ```
 
-Интеграционные тесты требуют доступный Redmine и реальные тестовые данные. Unit-тесты по умолчанию исключают тесты с тегом `integration`.
+Integration tests require a reachable Redmine and real test data. Unit tests exclude tests tagged
+`integration` by default.
 
-### Известные эксплуатационные ограничения
+### Known Operational Limitations
 
-- HTTP-таймауты и retry-политика сейчас не настраиваются отдельно. Если Redmine долго не отвечает, MCP-вызов может ждать ответа дольше, чем удобно для AI-клиента.
-- Ошибки Redmine (`401`, `403`, `404`, `5xx`) сейчас в основном обрабатываются на уровне Spring `RestClient`; для пользователя AI-клиента сообщение может быть менее дружелюбным, чем специализированная ошибка MCP tool.
-- Примечание или вложение может быть успешно записано, но его новый `journalId`/`attachmentId` не определится, если Redmine или параллельный пользователь изменит задачу между контрольными чтениями. Сама операция при этом считается выполненной.
-- Поиск зависит от настроек Redmine. Если `/search.json` отключён администратором, `searchAll`, `searchIssues` и `searchWikiPages` могут не возвращать ожидаемые результаты.
-- Извлечение текста из PDF работает только для PDF с текстовым слоем. Сканированные документы без OCR будут определены как PDF без извлекаемого текста.
-- Изображения не перекодируются. `getAttachment` возвращает путь к оригинальному файлу; текстовые `parts[]` для изображений остаются пустыми.
+- HTTP timeouts and the retry policy are currently not configurable separately. If Redmine is slow
+  to respond, an MCP call may wait longer than is convenient for the AI client.
+- Redmine errors (`401`, `403`, `404`, `5xx`) are currently handled mostly at the Spring `RestClient`
+  level; the message seen by the AI-client user may be less friendly than a dedicated MCP tool error.
+- A note or attachment may be written successfully, but its new `journalId`/`attachmentId` may stay
+  undefined if Redmine or a concurrent user modifies the issue between confirmation reads. The operation
+  itself is still considered completed.
+- Search depends on Redmine settings. If `/search.json` is disabled by the administrator,
+  `searchAll`, `searchIssues`, and `searchWikiPages` may not return the expected results.
+- Text extraction from PDF works only for PDFs with a text layer. Scanned documents without OCR
+  are detected as PDFs with no extractable text.
+- Images are not re-encoded. `getAttachment` returns the path to the original file; text `parts[]`
+  for images remain empty.
 
-## Структура проекта
+## Project Structure
 
 ```
 ├── src/main/java/ru/it_spectrum/ai/redmine/mcp/
-│   ├── RedmineMcpServerApplication.java   — точка входа Spring Boot
-│   ├── api/                                — стабильный MCP wire format: records, возвращаемые tools/services
+│   ├── RedmineMcpServerApplication.java   — Spring Boot entry point
+│   ├── api/                                — stable MCP wire format: records returned by tools/services
 │   │   ├── Issue.java
 │   │   ├── AttachmentContent.java
 │   │   ├── Project.java
-│   │   ├── IssueMutationResult.java        — стабильный результат операций записи задач
-│   │   ├── TimeEntryMutationResult.java    — стабильный результат создания трудозатраты
-│   │   ├── WikiMutationResult.java         — стабильный результат записи wiki-страницы
-│   │   └── ...                             — DTO ответов инструментов и аналитики
+│   │   ├── IssueMutationResult.java        — stable result of issue write operations
+│   │   ├── TimeEntryMutationResult.java    — stable result of time-entry creation
+│   │   ├── WikiMutationResult.java         — stable result of wiki-page writes
+│   │   └── ...                             — tool response DTOs and analytics DTOs
 │   ├── client/
-│   │   ├── RedmineClient.java              — read-only обёртка над Redmine REST API
-│   │   ├── RedmineMutationClient.java      — опциональные POST/PUT для задач, трудозатрат и wiki
-│   │   └── model/                          — raw DTO Redmine REST API, не экспортируются напрямую в MCP
+│   │   ├── RedmineClient.java              — read-only wrapper over the Redmine REST API
+│   │   ├── RedmineMutationClient.java      — optional POST/PUT for issues, time entries, and wiki
+│   │   └── model/                          — raw Redmine REST API DTOs, never exported directly to MCP
 │   │       ├── RedmineIssue.java
 │   │       ├── RedmineAttachment.java
 │   │       ├── RedmineProject.java
 │   │       └── ...
 │   ├── config/
-│   │   ├── RedmineClientProperties.java   — url + apiKey из env
-│   │   ├── RedmineMcpProperties.java      — все runtime-настройки redmine-mcp.*
+│   │   ├── RedmineClientProperties.java   — url + apiKey from env
+│   │   ├── RedmineMcpProperties.java      — all redmine-mcp.* runtime settings
 │   │   ├── RedmineConfig.java             — RestClient
-│   │   ├── McpServerConfig.java           — stdio MCP customizer с immediateExecution(true)
-│   │   └── JsonConfig.java                — ObjectMapper для MCP JSON
+│   │   ├── McpServerConfig.java           — stdio MCP customizer with immediateExecution(true)
+│   │   └── JsonConfig.java                — ObjectMapper for MCP JSON
 │   ├── extraction/
 │   │   ├── ExtractionPipeline.java        — document-to-text pipeline
-│   │   ├── DocumentParser.java            — интерфейс парсеров
-│   │   ├── FileTypeDetector.java          — определение типа файла
-│   │   ├── PandocAvailability.java        — проба внешнего pandoc при старте
+│   │   ├── DocumentParser.java            — parser interface
+│   │   ├── FileTypeDetector.java          — file type detection
+│   │   ├── PandocAvailability.java        — external pandoc probe at startup
 │   │   └── parser/
 │   │       ├── PlainTextParser.java       — txt/log/csv/json/xml
-│   │       ├── PdfTextParser.java         — PDF через PDFBox
-│   │       ├── DocxTextParser.java        — DOCX через POI
-│   │       ├── DocxPandocParser.java      — DOCX через Pandoc, если доступен
-│   │       ├── XlsxTextParser.java        — XLSX через POI
-│   │       ├── PptxTextParser.java        — PPTX через POI
-│   │       ├── ZipParser.java             — ZIP с bounded recursion
+│   │       ├── PdfTextParser.java         — PDF via PDFBox
+│   │       ├── DocxTextParser.java        — DOCX via POI
+│   │       ├── DocxPandocParser.java      — DOCX via Pandoc when available
+│   │       ├── XlsxTextParser.java        — XLSX via POI
+│   │       ├── PptxTextParser.java        — PPTX via POI
+│   │       ├── ZipParser.java             — ZIP with bounded recursion
 │   │       ├── ImagePassthroughParser.java
 │   │       ├── TikaTextFallbackParser.java
 │   │       ├── TikaMetadataParser.java
 │   │       └── BinaryFallbackParser.java
 │   ├── service/
-│   │   ├── IssueService.java              — бизнес-логика задач и mapping client.model -> api
-│   │   ├── IssueMutationService.java      — опциональная запись задач и AI-маркировка
-│   │   ├── TimeEntryMutationService.java  — опциональное создание трудозатрат
-│   │   ├── WikiMutationService.java       — безопасная запись wiki с optimistic locking
-│   │   ├── AttachmentService.java         — snapshot, скачивание и извлечение вложений
-│   │   ├── IssueSnapshotService.java      — локальные снимки issue и вложений
-│   │   ├── AnalysisService.java           — аналитика, риски, blocker chain
-│   │   └── ...                            — сервисы проектов, wiki, поиска, справочников, трудозатрат
+│   │   ├── IssueService.java              — issue business logic and mapping client.model -> api
+│   │   ├── IssueMutationService.java      — optional issue writing and AI marking
+│   │   ├── TimeEntryMutationService.java  — optional time-entry creation
+│   │   ├── WikiMutationService.java       — safe wiki writing with optimistic locking
+│   │   ├── AttachmentService.java         — attachment snapshot, download, and extraction
+│   │   ├── IssueSnapshotService.java      — local issue and attachment snapshots
+│   │   ├── AnalysisService.java           — analytics, risks, blocker chain
+│   │   └── ...                            — services for projects, wiki, search, reference data, time entries
 │   └── tools/
-│       ├── AttachmentTools.java           — 1 MCP-инструмент для файлов и контекста вложений
-│       ├── IncidentPrompts.java           — MCP-промпт для расследования инцидентов
-│       ├── IssueAnalyticsTools.java       — 2 MCP-инструмента аналитики по задачам (blocker chain, stale)
-│       ├── IssueStructureTools.java       — 2 MCP-инструмента: дерево задачи и история изменений
-│       ├── IssueTools.java                — 5 основных MCP-инструментов для задач
-│       ├── IssueWriteTools.java           — 4 опциональных MCP-инструмента записи задач
-│       ├── ProjectTools.java              — 4 MCP-инструмента для проектов
-│       ├── ReferenceDataTools.java        — 6 MCP-инструментов для справочников
-│       ├── ReleaseAnalyticsTools.java     — 5 MCP-инструментов релизной/проектной аналитики
-│       ├── SearchTools.java               — 1 MCP-инструмент для глобального поиска
-│       ├── TimeEntryTools.java            — 2 MCP-инструмента для трудозатрат
-│       ├── TimeEntryWriteTools.java       — 1 опциональный MCP-инструмент создания трудозатрат
-│       ├── UserTools.java                 — 1 MCP-инструмент для текущего пользователя
-│       ├── WikiTools.java                 — 3 MCP-инструмента для wiki
-│       └── WikiWriteTools.java            — 2 опциональных MCP-инструмента записи wiki
+│       ├── AttachmentTools.java           — 1 MCP tool for files and attachment context
+│       ├── IncidentPrompts.java           — MCP prompt for incident investigation
+│       ├── IssueAnalyticsTools.java       — 2 issue-analytics MCP tools (blocker chain, stale)
+│       ├── IssueStructureTools.java       — 2 MCP tools: issue tree and change history
+│       ├── IssueTools.java                — 5 core issue MCP tools
+│       ├── IssueWriteTools.java           — 4 optional issue-write MCP tools
+│       ├── ProjectTools.java              — 4 project MCP tools
+│       ├── ReferenceDataTools.java        — 6 reference-data MCP tools
+│       ├── ReleaseAnalyticsTools.java     — 5 release/project analytics MCP tools
+│       ├── SearchTools.java               — 1 global-search MCP tool
+│       ├── TimeEntryTools.java            — 2 time-entry MCP tools
+│       ├── TimeEntryWriteTools.java       — 1 optional time-entry creation MCP tool
+│       ├── UserTools.java                 — 1 current-user MCP tool
+│       ├── WikiTools.java                 — 3 wiki MCP tools
+│       └── WikiWriteTools.java            — 2 optional wiki-write MCP tools
 └── src/main/resources/
-    ├── application.yml                    — конфигурация MCP-сервера (stdio)
-    └── logback-spring.xml                 — конфигурация логирования
+    ├── application.yml                    — MCP server configuration (stdio)
+    └── logback-spring.xml                 — logging configuration
 ```
 
 ## Troubleshooting
 
-- **"Gradle requires JVM 17 or later"** — установить `JAVA_HOME` на JDK 25+
-- **Connection refused / 401** — проверить `REDMINE_URL` и `REDMINE_API_KEY`. Тест: `curl -H "X-Redmine-API-Key: <key>" <url>/users/current.json`
-- **Нет результатов поиска** — убедиться, что `/search.json` доступен в Redmine (может быть отключён администратором)
+- **"Gradle requires JVM 17 or later"** — point `JAVA_HOME` at JDK 25+
+- **Connection refused / 401** — check `REDMINE_URL` and `REDMINE_API_KEY`. Test: `curl -H "X-Redmine-API-Key: <key>" <url>/users/current.json`
+- **No search results** — verify that `/search.json` is available in Redmine (it may be disabled by the administrator)

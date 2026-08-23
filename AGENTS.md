@@ -198,7 +198,7 @@ When you add a **new tool class** (not just a method on an existing one):
 1. Annotate it with `@ConditionalOnProperty` using a new `redmine-mcp.tools.<group>` name.
 2. Add the flag to `application.yml` under `redmine-mcp.tools` (default `true`, with a
    `REDMINE_MCP_TOOLS_<UPPER_SNAKE>` env override).
-3. Add a row to the *Группы инструментов* table in `README.md`.
+3. Add a row to the *Tool Groups (enable/disable)* table in `README.md`.
 4. Extend `ToolGroupConditionTest` (an `ApplicationContextRunner` test, no live Redmine) to cover
    the new group's default-on and toggled-off paths.
 
@@ -247,7 +247,7 @@ To add a new knob:
 3. Add a line to `application.yml` under `redmine-mcp.<section>` referencing a
    `REDMINE_MCP_<UPPER_SNAKE>` env var.
 4. Read it from your service / tool via `properties.<section>().<component>()`.
-5. Add the env var to the table in `README.md` (Настройка section). Users read README,
+5. Add the env var to the table in `README.md` (Configuration section). Users read README,
    not this file.
 
 `RedmineClientProperties` is separate and holds only the Redmine connection (`REDMINE_URL`,
