@@ -63,8 +63,11 @@ The build tool is **Gradle** (wrapper checked in as `./gradlew` / `gradlew.bat`)
 builds, tests, and the runnable jar through the Gradle wrapper — every command below is the
 canonical invocation.
 
-All commands assume `JAVA_HOME` points to JDK 25+. On Windows the default JDK is often older;
-set `JAVA_HOME` explicitly (e.g. `$env:JAVA_HOME = "$HOME\.jdks\jdk-25.0.2"`).
+The build needs a JDK 25 toolchain. Gradle first looks for one already installed; if none is
+found it downloads one itself (the `foojay-resolver-convention` plugin in `settings.gradle.kts`
+provides the toolchain repository, so `api.foojay.io` must be reachable for that fallback).
+To use a specific local JDK instead, point `JAVA_HOME` at it. On Windows the default JDK is
+often older; set `JAVA_HOME` explicitly (e.g. `$env:JAVA_HOME = "$HOME\.jdks\jdk-25.0.2"`).
 
 ```bash
 ./gradlew build              # compile + unit tests + bootJar

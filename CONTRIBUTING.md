@@ -8,7 +8,9 @@ For the full engineering guide (architecture, conventions, invariants) see [AGEN
 
 ## Prerequisites
 
-- **JDK 25+** (`build.gradle.kts` pins the Java toolchain to 25).
+- **JDK 25+** (`build.gradle.kts` pins the Java toolchain to 25). If your machine only has an
+  older JDK, Gradle downloads a matching toolchain on the first build — that requires network
+  access to `api.foojay.io`.
 - Git. Gradle itself is wrapped (`gradlew`) — no local installation needed.
 
 ## Building and testing
