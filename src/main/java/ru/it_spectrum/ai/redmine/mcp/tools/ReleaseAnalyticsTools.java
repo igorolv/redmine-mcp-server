@@ -33,8 +33,9 @@ public class ReleaseAnalyticsTools {
     }
 
     @McpTool(
-            description = "Get an aggregated summary of a Redmine project: counts and breakdowns by status, " +
-            "tracker, priority, and assignee, overdue count, and estimated vs spent hours.",
+            description = "Summarize one project's issue health, optionally scoped to a milestone: complete open/closed " +
+            "totals plus status, tracker, priority and assignee distributions, overdue work and estimated versus spent " +
+            "hours for the analyzed open-issue set. Use listIssues when issue records are needed instead of aggregates.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -50,8 +51,9 @@ public class ReleaseAnalyticsTools {
     }
 
     @McpTool(
-            description = "Get workload analysis for a user: open issues grouped by project and priority, " +
-            "overdue count, estimated vs spent hours, and top issues. Defaults to the current user if userId is omitted.",
+            description = "Analyze one user's open-issue workload by project and priority, including overdue count, " +
+            "estimated versus spent hours and top issues; omitting userId selects the API-key user. This returns " +
+            "aggregates, not issue records; use getMyIssues for the current user or listIssues for a specified user.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -72,8 +74,8 @@ public class ReleaseAnalyticsTools {
     }
 
     @McpTool(
-            description = "Get a changelog for a version/milestone: issues grouped by tracker, " +
-            "including both open and closed.",
+            description = "Summarize the issue scope of one known version/milestone as open and closed counts with " +
+            "issues grouped by tracker. Use getReleaseRisks for readiness risks or listVersions to discover the version ID.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -89,8 +91,9 @@ public class ReleaseAnalyticsTools {
     }
 
     @McpTool(
-            description = "Assess release risks for a version/milestone: open blockers, overdue issues, " +
-            "high-priority unresolved issues, and unassigned tasks, with a risk score.",
+            description = "Assess readiness risks for one known version/milestone: open blockers, overdue work, " +
+            "high-priority unresolved issues and unassigned tasks, with a risk score. Use getVersionChangelog for " +
+            "the milestone issue breakdown rather than risk triage.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -106,8 +109,8 @@ public class ReleaseAnalyticsTools {
     }
 
     @McpTool(
-            description = "Compare two versions/milestones: issues unique to each, shared issues, " +
-            "and status completion percentages.",
+            description = "Compare the issue scope and completion of two known versions/milestones in one project. " +
+            "Returns issues unique to each, shared issues and closure percentages; use listVersions to discover IDs.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

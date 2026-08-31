@@ -22,7 +22,8 @@ public class WikiWriteTools {
     }
 
     @McpTool(
-            description = "Create a Redmine wiki page; fails if the page already exists.",
+            description = "Create a new Redmine wiki page with its complete initial text and optional parent. This " +
+            "writes as the API-key user and fails if the title already exists; use updateWikiPage for an existing page.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(
                     readOnlyHint = false, destructiveHint = false, idempotentHint = false)
@@ -48,7 +49,8 @@ public class WikiWriteTools {
     }
 
     @McpTool(
-            description = "Replace a Redmine wiki page's complete text; pass the version returned by getWikiPage.",
+            description = "Replace the complete text of one existing Redmine wiki page; this is not a patch or " +
+            "append operation. Pass the current version from getWikiPage for optimistic locking, and use createWikiPage if absent.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(
                     readOnlyHint = false, destructiveHint = true, idempotentHint = true)

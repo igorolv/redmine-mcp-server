@@ -22,8 +22,8 @@ public class UserTools {
     }
 
     @McpTool(
-            description = "Get the currently authenticated Redmine user; source of your own user ID for " +
-            "the assignedToUserId and userId filter parameters.",
+            description = "Retrieve the identity and user ID of the currently authenticated API-key user. Use the ID " +
+            "in assignee/user filters; getMyIssues, getMyTimeEntries and the default getUserWorkload do not require it.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

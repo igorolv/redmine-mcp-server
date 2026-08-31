@@ -29,7 +29,8 @@ public class ProjectTools {
     }
 
     @McpTool(
-            description = "List all projects in Redmine.",
+            description = "Discover accessible Redmine projects and their valid identifiers before project-scoped " +
+            "operations when the target project is unknown. Returns project summaries; use getProject for one project's details.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -48,7 +49,9 @@ public class ProjectTools {
     }
 
     @McpTool(
-            description = "Get a Redmine project's details, including its trackers and enabled modules.",
+            description = "Inspect one known project's configuration and metadata, including description, trackers " +
+            "and enabled modules. Use getProjectSummary for aggregated issue metrics, listProjectMembers for people " +
+            "or listVersions for milestones.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -68,7 +71,8 @@ public class ProjectTools {
     }
 
     @McpTool(
-            description = "List members of a Redmine project with their roles.",
+            description = "Discover the users and groups that belong to one project, their IDs and assigned roles. " +
+            "Use when choosing or interpreting assignees; getUserWorkload analyzes a user's issues rather than membership.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -88,7 +92,8 @@ public class ProjectTools {
     }
 
     @McpTool(
-            description = "List versions (milestones) of a Redmine project.",
+            description = "Discover versions/milestones of one project and the IDs used by issue filters and release " +
+            "analytics. Returns milestone metadata, not issue scope or risk; use getVersionChangelog or getReleaseRisks for those.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

@@ -26,7 +26,8 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List issue statuses in Redmine; use their IDs as statusId in listIssues.",
+            description = "Discover valid Redmine issue status IDs and names for structured issue filtering or " +
+            "mutation. Reuse the IDs as statusId in listIssues, createIssue or updateIssue.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -39,7 +40,8 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List trackers (issue types) in Redmine; use their IDs as trackerId in listIssues.",
+            description = "Discover valid tracker (issue type) IDs and names before filtering, creating or updating " +
+            "issues. Reuse the IDs as trackerId in listIssues, createIssue or updateIssue.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -52,7 +54,8 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List issue priorities in Redmine; use their IDs as priorityId in listIssues.",
+            description = "Discover valid issue priority IDs and names before filtering, creating or updating issues. " +
+            "Reuse the IDs as priorityId in listIssues, createIssue or updateIssue.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -65,7 +68,8 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List issue categories of a Redmine project.",
+            description = "Discover issue category IDs and names configured for one known project. Reuse the IDs as " +
+            "categoryId in createIssue or updateIssue.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -80,7 +84,8 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List time entry activity types in Redmine, for interpreting time entries.",
+            description = "Discover valid time-entry activity IDs and names for interpreting logged hours or creating " +
+            "a time entry. Reuse an ID as activityId in createTimeEntry when the default activity is unsuitable.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -93,8 +98,8 @@ public class ReferenceDataTools {
     }
 
     @McpTool(
-            description = "List saved queries (stored filters) in Redmine; apply one via listIssues(queryId), " +
-            "especially for custom-field filters.",
+            description = "Discover saved Redmine issue queries (stored filters), especially filters involving custom " +
+            "fields. Returns query IDs and names rather than issue results; pass a selected queryId to listIssues.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

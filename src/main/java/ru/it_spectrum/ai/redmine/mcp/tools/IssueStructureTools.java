@@ -29,8 +29,9 @@ public class IssueStructureTools {
     }
 
     @McpTool(
-            description = "Build a full issue dependency tree: parent chain up to root, " +
-            "subtasks down to the given depth, and direct relations.",
+            description = "Explore structural context around one known issue: its parent chain to the root, subtasks " +
+            "down to the requested depth and direct relations. Use getBlockerChain for recursively traced blockers, " +
+            "or getIssue when only the single issue's full details are needed.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -52,8 +53,9 @@ public class IssueStructureTools {
     }
 
     @McpTool(
-            description = "Get the change-history timeline of an issue: field changes, notes, and time " +
-            "aggregated per status. Use for just the change log without the full issue context.",
+            description = "Build an interpreted change-history timeline for one issue, including field changes, notes " +
+            "and time aggregated per status. Use for history or status-duration analysis; getIssue returns the full " +
+            "issue context and journals instead.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

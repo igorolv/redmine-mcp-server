@@ -23,7 +23,8 @@ public class IssueWriteTools {
     }
 
     @McpTool(
-            description = "Create a Redmine issue.",
+            description = "Create a new Redmine issue in a known project with core or custom fields. This writes as " +
+            "the API-key user and is not idempotent; use updateIssue when the issue already exists.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(
                     readOnlyHint = false, destructiveHint = false, idempotentHint = false)
@@ -63,7 +64,8 @@ public class IssueWriteTools {
     }
 
     @McpTool(
-            description = "Update only the supplied fields of a Redmine issue.",
+            description = "Modify only the supplied fields of one existing Redmine issue; omitted fields remain " +
+            "unchanged. Use addIssueNote for a comment-only change; this tool does not edit existing journal entries.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(
                     readOnlyHint = false, destructiveHint = true, idempotentHint = true)
@@ -104,7 +106,8 @@ public class IssueWriteTools {
     }
 
     @McpTool(
-            description = "Add a note to a Redmine issue.",
+            description = "Append a new journal note to one existing Redmine issue without changing its fields. This " +
+            "is non-idempotent: retrying can add a duplicate note, and existing journal entries cannot be edited.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(
                     readOnlyHint = false, destructiveHint = false, idempotentHint = false)
@@ -127,7 +130,8 @@ public class IssueWriteTools {
     }
 
     @McpTool(
-            description = "Attach a local file to a Redmine issue.",
+            description = "Upload a readable server-local file and attach it to one existing Redmine issue. This is " +
+            "non-idempotent and retries may create duplicate attachments; getAttachment performs the reverse read/download flow.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(
                     readOnlyHint = false, destructiveHint = false, idempotentHint = false)

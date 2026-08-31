@@ -22,7 +22,8 @@ public class TimeEntryWriteTools {
     }
 
     @McpTool(
-            description = "Create a Redmine time entry; set exactly one of issueId/projectId.",
+            description = "Record logged hours for the API-key user against exactly one issue or project. This is " +
+            "non-idempotent and retries can duplicate time; use listTimeEntryActivities when an activity ID is needed.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(
                     readOnlyHint = false, destructiveHint = false, idempotentHint = false)

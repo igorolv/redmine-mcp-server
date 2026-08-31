@@ -29,8 +29,9 @@ public class IssueAnalyticsTools {
     }
 
     @McpTool(
-            description = "Trace the blocking dependency chain for an issue: what blocks it and what it blocks, " +
-            "following blocks/blocked_by relations recursively to reveal the critical path.",
+            description = "Trace only blocks/blocked_by relations recursively in both directions, returning the full " +
+            "upstream and downstream blocking dependency chains. Use getIssueTree for parent/subtask hierarchy and " +
+            "other direct relation types.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -50,7 +51,8 @@ public class IssueAnalyticsTools {
     }
 
     @McpTool(
-            description = "Find open issues not updated for a given number of days, most stale first.",
+            description = "Identify neglected open issues in one project by last-update age, ordered most stale first. " +
+            "Use listIssues for general field or status filters; this tool is for inactivity triage.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

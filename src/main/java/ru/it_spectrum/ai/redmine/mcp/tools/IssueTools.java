@@ -41,7 +41,9 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "List issues in Redmine by field filters; for free-text search use searchIssues.",
+            description = "Browse issue summaries with structured Redmine filters, saved queries, custom-field filters, " +
+            "sorting and pagination. Use searchIssues when only free text is known, or getIssue for one known issue's " +
+            "complete context.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -85,7 +87,8 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Full-text search for issues in Redmine.",
+            description = "Find issue summaries by full-text query, optionally within one project. Use listIssues for " +
+            "exact field, saved-query or custom-field filtering, then getIssue to inspect a selected result.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -106,8 +109,8 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "List issues assigned to the currently authenticated user — " +
-            "no need to call getCurrentUser first.",
+            description = "Browse issues assigned to the currently authenticated API-key user without first resolving " +
+            "their user ID. Use getUserWorkload for aggregated workload metrics or listIssues for another assignee.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -135,8 +138,10 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Get full details of a Redmine issue by ID, including subtasks, relations, " +
-            "journals (notes), attachments, and changesets.",
+            description = "Retrieve complete context for one known issue ID: core and custom fields, subtasks, direct " +
+            "relations, journals, attachments and linked changesets, with focus modes controlling compression. Use " +
+            "getIssueTree for recursive structure, getIssueJournal for a journal omitted or shortened by compression, " +
+            "or getAttachment for file content.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -163,8 +168,8 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Get one full, uncompressed journal entry from a Redmine issue; " +
-            "use when getIssue compression notes report dropped or shortened journals.",
+            description = "Retrieve one known issue journal entry in full, without response compression. Use after " +
+            "getIssue when its compression notes report a dropped or shortened journal and provide the journal ID.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

@@ -27,7 +27,8 @@ public class TimeEntryTools {
     }
 
     @McpTool(
-            description = "List time entries (logged hours) in Redmine.",
+            description = "Browse actual Redmine time-entry records using project, issue, user and date-range filters. " +
+            "Use getMyTimeEntries for the API-key user without looking up an ID; getUserWorkload returns aggregates instead.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -52,8 +53,8 @@ public class TimeEntryTools {
     }
 
     @McpTool(
-            description = "List time entries (logged hours) for the currently authenticated user — " +
-            "no need to call getCurrentUser first.",
+            description = "Browse actual time-entry records logged by the currently authenticated API-key user " +
+            "without first resolving their user ID. Use listTimeEntries for another user or broader administrative filtering.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )

@@ -25,8 +25,9 @@ public class SearchTools {
     }
 
     @McpTool(
-            description = "Search across Redmine content. Use searchIssues for issue summaries " +
-            "or searchWikiPages for wiki-only results.",
+            description = "Search by free text across mixed Redmine content such as issues, wiki pages, news, " +
+            "documents, changesets, messages and projects. Use searchIssues for richer issue-only results or " +
+            "searchWikiPages for wiki-only discovery.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
