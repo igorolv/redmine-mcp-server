@@ -71,7 +71,7 @@ class WikiToolsTest {
     @Test
     void shouldListWikiPages() {
         var pages = List.of(
-                new RedmineWikiPage("Wiki", null, 0, null, null, null, "2025-01-01", null),
+                new RedmineWikiPage("Wiki", null, null, null, null, null, null, null),
                 new RedmineWikiPage("API Guide", null, 0, null, null, null, "2025-02-15", null)
         );
         when(client.getWikiIndex("backend")).thenReturn(pages);
@@ -79,7 +79,7 @@ class WikiToolsTest {
         var result = ToolJsonTestSupport.stringify(tools.listWikiPages("backend"));
 
         assertThat(result).contains("\"title\":\"Wiki\"");
-        assertThat(result).contains("2025-01-01");
+        assertThat(result).doesNotContain("\"title\":\"Wiki\",\"version\"");
         assertThat(result).contains("\"title\":\"API Guide\"");
         assertThat(result).contains("2025-02-15");
     }

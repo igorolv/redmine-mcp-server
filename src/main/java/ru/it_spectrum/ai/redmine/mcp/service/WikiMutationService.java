@@ -40,7 +40,7 @@ public class WikiMutationService {
 
         mutationClient.putWikiPage(projectId, pageTitle,
                 new RedmineWikiPageMutation.Fields(text, marker.markText(comments), parentTitle, null));
-        return refreshedResult(projectId, pageTitle, 1);
+        return verifiedResult(projectId, pageTitle, text);
     }
 
     public WikiMutationResult updatePage(String projectId, String pageTitle, String text,
@@ -56,7 +56,7 @@ public class WikiMutationService {
         if (current == null) {
             throw new ResourceNotFoundException("wiki page", pageTitle);
         }
-        if (current.version() != version) {
+        if (current.version() == null || current.version() != version) {
             throw new WikiVersionConflictException(pageTitle, version);
         }
         if (text.equals(current.text())) {
@@ -72,22 +72,25 @@ public class WikiMutationService {
             }
             throw e;
         }
-        return refreshedResult(projectId, pageTitle, version + 1);
+        return verifiedResult(projectId, pageTitle, text);
     }
 
-    private WikiMutationResult refreshedResult(String projectId, String pageTitle, int fallbackVersion) {
+    private WikiMutationResult verifiedResult(String projectId, String pageTitle, String expectedText) {
         try {
             var refreshed = client.getWikiPage(projectId, pageTitle);
-            if (refreshed != null) {
+            if (refreshed != null && refreshed.version() != null && expectedText.equals(refreshed.text())) {
                 return new WikiMutationResult(projectId, pageTitle, refreshed.version());
             }
-            log.warn("Redmine write succeeded but wiki page {} in project {} could not be refreshed",
+            log.warn("Redmine accepted the write but wiki page {} in project {} could not be verified",
                     pageTitle, projectId);
+            throw new WikiWriteVerificationException(projectId, pageTitle);
+        } catch (WikiWriteVerificationException e) {
+            throw e;
         } catch (RuntimeException e) {
-            log.warn("Redmine write succeeded but wiki page {} in project {} could not be refreshed: {}",
+            log.warn("Redmine accepted the write but wiki page {} in project {} could not be verified: {}",
                     pageTitle, projectId, e.getMessage());
+            throw new WikiWriteVerificationException(projectId, pageTitle, e);
         }
-        return new WikiMutationResult(projectId, pageTitle, fallbackVersion);
     }
 
     private void requireText(String value, String name) {

@@ -9,7 +9,7 @@ import java.util.List;
 public record RedmineWikiPage(
         String title,
         String text,
-        int version,
+        Integer version,
         IdName author,
         String comments,
         @JsonProperty("created_on") String createdOn,

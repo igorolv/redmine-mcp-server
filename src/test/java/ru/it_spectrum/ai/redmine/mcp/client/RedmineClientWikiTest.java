@@ -6,8 +6,10 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 class RedmineClientWikiTest {
@@ -28,6 +30,21 @@ class RedmineClientWikiTest {
                 .andRespond(withStatus(NOT_FOUND));
 
         assertThat(client.getWikiPage("backend", "Missing")).isNull();
+        server.verify();
+    }
+
+    @Test
+    void wikiIndexAcceptsContentlessPageWithNullVersion() {
+        server.expect(requestTo("http://redmine.test/projects/backend/wiki/index.json"))
+                .andRespond(withSuccess("""
+                        {"wiki_pages":[{"title":"Broken page","version":null,"updated_on":null}]}
+                        """, APPLICATION_JSON));
+
+        var pages = client.getWikiIndex("backend");
+
+        assertThat(pages).hasSize(1);
+        assertThat(pages.getFirst().title()).isEqualTo("Broken page");
+        assertThat(pages.getFirst().version()).isNull();
         server.verify();
     }
 }

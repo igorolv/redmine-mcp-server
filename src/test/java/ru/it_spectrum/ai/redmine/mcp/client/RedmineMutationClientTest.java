@@ -10,6 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineCustomFieldValue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueMutation;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntryMutation;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPageMutation;
+import ru.it_spectrum.ai.redmine.mcp.config.JsonConfig;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,6 +28,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpMethod.PUT;
 import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.test.json.JsonCompareMode.STRICT;
 
 class RedmineMutationClientTest {
 
@@ -42,7 +44,7 @@ class RedmineMutationClientTest {
                 .baseUrl("http://redmine.test")
                 .defaultHeader("Content-Type", "application/json");
         server = MockRestServiceServer.bindTo(builder).build();
-        client = new RedmineMutationClient(builder.build());
+        client = new RedmineMutationClient(builder.build(), new JsonConfig().redmineMcpObjectMapper());
     }
 
     @Test
@@ -53,7 +55,7 @@ class RedmineMutationClientTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("""
                         {"issue":{"project_id":"project","subject":"Subject","description":"AI_EDIT:\\n\\nDescription"}}
-                        """))
+                        """, STRICT))
                 .andRespond(withSuccess(
                         "{\"issue\":{\"id\":123,\"done_ratio\":0,\"is_private\":false}}",
                         MediaType.APPLICATION_JSON));
@@ -69,7 +71,7 @@ class RedmineMutationClientTest {
         var fields = fields(null, null, null, "AI_EDIT:\n\nNote", null);
         server.expect(requestTo("http://redmine.test/issues/123.json"))
                 .andExpect(method(PUT))
-                .andExpect(content().json("{\"issue\":{\"notes\":\"AI_EDIT:\\n\\nNote\"}}"))
+                .andExpect(content().json("{\"issue\":{\"notes\":\"AI_EDIT:\\n\\nNote\"}}", STRICT))
                 .andRespond(withSuccess());
 
         client.updateIssue(123, fields);
@@ -89,7 +91,7 @@ class RedmineMutationClientTest {
                         {"time_entry":{"issue_id":123,"hours":1.5,"activity_id":9,
                         "spent_on":"2026-08-19","comments":"AI_EDIT:\\n\\nImplementation",
                         "custom_fields":[{"id":10,"value":"remote"}]}}
-                        """))
+                        """, STRICT))
                 .andRespond(withSuccess("""
                         {"time_entry":{"id":321,"issue":{"id":123},"hours":1.5,
                         "comments":"AI_EDIT:\\n\\nImplementation","spent_on":"2026-08-19"}}
@@ -110,7 +112,7 @@ class RedmineMutationClientTest {
                 .andExpect(content().json("""
                         {"wiki_page":{"text":"h1. Runbook","comments":"AI_EDIT:\\n\\nInitial draft",
                         "parent_title":"Operations"}}
-                        """))
+                        """, STRICT))
                 .andRespond(withStatus(org.springframework.http.HttpStatus.CREATED));
 
         client.putWikiPage("backend", "Runbook", fields);
@@ -125,7 +127,7 @@ class RedmineMutationClientTest {
                 .andExpect(method(PUT))
                 .andExpect(content().json("""
                         {"wiki_page":{"text":"Updated","comments":"AI_EDIT:","version":3}}
-                        """))
+                        """, STRICT))
                 .andRespond(withSuccess());
 
         client.putWikiPage("backend", "Runbook", fields);

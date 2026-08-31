@@ -61,6 +61,28 @@ class WikiMutationServiceTest {
     }
 
     @Test
+    void shouldReportSuccessfulWriteThatCannotBeVerified() {
+        when(client.getWikiPage("backend", "Runbook")).thenReturn(null).thenReturn(null);
+
+        assertThatThrownBy(() -> service.createPage("backend", "Runbook", "New", null, null))
+                .isInstanceOf(WikiWriteVerificationException.class)
+                .hasMessageContaining("accepted the write")
+                .hasMessageContaining("verify it before retrying");
+
+        verify(mutationClient).putWikiPage(eq("backend"), eq("Runbook"),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void shouldReportSuccessfulWriteWhoseTextDoesNotMatch() {
+        when(client.getWikiPage("backend", "Runbook"))
+                .thenReturn(null, page("Runbook", "", 1));
+
+        assertThatThrownBy(() -> service.createPage("backend", "Runbook", "New", null, null))
+                .isInstanceOf(WikiWriteVerificationException.class);
+    }
+
+    @Test
     void shouldUpdatePageWithOptimisticLock() {
         when(client.getWikiPage("backend", "Runbook"))
                 .thenReturn(page("Runbook", "Old text", 3), page("Runbook", "New text", 4));

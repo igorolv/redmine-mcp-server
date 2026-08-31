@@ -11,8 +11,8 @@ public record WikiPage(
         String title,
         @Schema(description = "Page body in Textile or Markdown markup depending on the Redmine instance. Null in index listings.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         String text,
-        @Schema(description = "Monotonic revision number of the page.", requiredMode = Schema.RequiredMode.REQUIRED)
-        int version,
+        @Schema(description = "Monotonic revision number of the page. Null for a content-less page in index listings.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+        Integer version,
         @Schema(description = "Author of the most recent revision.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         Ref author,
         @Schema(description = "Comment attached to the most recent revision.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
