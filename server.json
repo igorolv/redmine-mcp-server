@@ -1,0 +1,43 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.igorolv/redmine-mcp-server",
+  "title": "Redmine MCP Server",
+  "description": "Redmine for AI agents: issues, projects, wiki, attachments, time entries and release analytics",
+  "version": "0.0.0",
+  "websiteUrl": "https://github.com/igorolv/redmine-mcp-server#readme",
+  "repository": {
+    "url": "https://github.com/igorolv/redmine-mcp-server",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/igorolv/redmine-mcp-server:0.0.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "REDMINE_URL",
+          "description": "Base URL of the Redmine instance, e.g. https://redmine.example.com",
+          "isRequired": true,
+          "format": "string"
+        },
+        {
+          "name": "REDMINE_API_KEY",
+          "description": "Redmine API key of the user the server acts as (My account -> API access key)",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "REDMINE_MCP_WRITE_ENABLED",
+          "description": "Set to true to also expose the issue, note, attachment, time-entry and wiki write tools",
+          "default": "false",
+          "isRequired": false,
+          "format": "boolean"
+        }
+      ]
+    }
+  ]
+}

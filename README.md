@@ -1,5 +1,11 @@
 # Redmine MCP Server
 
+[![CI](https://github.com/igorolv/redmine-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/igorolv/redmine-mcp-server/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/igorolv/redmine-mcp-server?include_prereleases)](https://github.com/igorolv/redmine-mcp-server/releases/latest)
+[![License](https://img.shields.io/github/license/igorolv/redmine-mcp-server)](LICENSE)
+[![Java 25](https://img.shields.io/badge/Java-25%2B-blue?logo=openjdk)](https://adoptium.net/)
+[![MCP](https://img.shields.io/badge/MCP-server-8A2BE2)](https://modelcontextprotocol.io/)
+
 A local MCP server for accessing a corporate Redmine instance. By default the server is fully
 read-only; an optional flag enables a limited set of write operations for issues and time entries.
 It lets AI agents (Claude Code, Cursor, VS Code Copilot, etc.) work with issues, projects,
@@ -11,10 +17,18 @@ This documentation covers installing and connecting Redmine MCP Server itself. I
 configuring the AI clients themselves is out of scope here.
 
 1. Install JDK 25+.
-2. Build the server: `./gradlew build`.
-3. Obtain `REDMINE_URL` and `REDMINE_API_KEY`.
+2. Download `redmine-mcp-server.jar` from the [latest release](https://github.com/igorolv/redmine-mcp-server/releases/latest),
+   or build it yourself: `./gradlew bootJar` (see [Build](#build)). A [Docker image](#docker) is
+   published as well.
+3. Obtain `REDMINE_URL` and `REDMINE_API_KEY` (see [Configuration](#configuration)).
 4. Verify that the JAR starts (see [Smoke Test](#smoke-test)).
-5. Add the built JAR to your client's MCP configuration (see [Connecting to an AI Client](#connecting-to-an-ai-client)).
+5. Add the JAR to your client's MCP configuration (see [Connecting to an AI Client](#connecting-to-an-ai-client)).
+
+For Claude Code that is one command:
+
+```bash
+claude mcp add --scope user -e REDMINE_URL=https://redmine.example.com -e REDMINE_API_KEY=your_key -- redmine java -jar /path/to/redmine-mcp-server.jar
+```
 
 ## Architecture
 
@@ -295,6 +309,18 @@ java -jar .\build\libs\redmine-mcp-server.jar
 The server runs over `stdio` and opens no HTTP port: after a successful start it silently waits
 for MCP requests on `stdin/stdout`. A successful start shows as the absence of errors in the log
 and no immediate process exit. Press `Ctrl+C` to stop.
+
+### Docker
+
+The image is published to GHCR with every release:
+
+```bash
+docker run -i --rm   -e REDMINE_URL=https://redmine.example.com   -e REDMINE_API_KEY=your_key   ghcr.io/igorolv/redmine-mcp-server:latest
+```
+
+The same command is what an MCP client should launch (`-i` keeps stdin open for the stdio
+transport). Mount a host directory at `/data` to keep logs and issue snapshots between runs.
+To build the image locally: `docker build -t redmine-mcp-server .`
 
 ### Logs
 
