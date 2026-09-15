@@ -6,6 +6,7 @@
 [![Java 25](https://img.shields.io/badge/Java-25%2B-blue?logo=openjdk)](https://adoptium.net/)
 [![MCP](https://img.shields.io/badge/MCP-server-8A2BE2)](https://modelcontextprotocol.io/)
 [![Glama score](https://glama.ai/mcp/servers/igorolv/redmine-mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/igorolv/redmine-mcp-server)
+[![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/igorolv/redmine-mcp-server)
 
 A local MCP server for accessing a corporate Redmine instance. By default the server is fully
 read-only; an optional flag enables a limited set of write operations for issues and time entries.
