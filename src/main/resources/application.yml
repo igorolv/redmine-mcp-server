@@ -38,7 +38,8 @@ redmine-mcp:
     release-analytics: ${REDMINE_MCP_TOOLS_RELEASE_ANALYTICS:true} # getProjectSummary/getUserWorkload/getVersionChangelog/getReleaseRisks/compareVersions
   attachment:
     per-part-chars: ${REDMINE_MCP_ATTACHMENT_PER_PART_CHARS:30000}
-    per-attachment-chars: ${REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS:50000}
+    per-attachment-chars: ${REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS:40000}
+    max-request-chars: ${REDMINE_MCP_ATTACHMENT_MAX_REQUEST_CHARS:200000}
   http:
     connect-timeout-seconds: ${REDMINE_MCP_HTTP_CONNECT_TIMEOUT_SECONDS:10}
     read-timeout-seconds: ${REDMINE_MCP_HTTP_READ_TIMEOUT_SECONDS:30}

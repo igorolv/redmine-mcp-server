@@ -31,7 +31,8 @@ public class AttachmentTools {
     @McpTool(
             description = "Retrieve and inspect one known issue attachment by downloading it to the server's local " +
             "snapshot and extracting text from supported documents or archives. Use getIssue to discover attachment " +
-            "IDs; images and unsupported binaries return metadata and a local path without extracted text.",
+            "IDs; images and unsupported binaries return metadata and a local path without extracted text. " +
+            "Text cut by the limits stays readable at each part's localPath.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -39,7 +40,7 @@ public class AttachmentTools {
             @McpToolParam(description = "") int issueId,
             @McpToolParam(description = "") int attachmentId,
             @McpToolParam(description = "Total character budget for extracted text across all parts", required = false) Integer maxChars,
-            @McpToolParam(description = "Per-part character cap for extracted text", required = false) Integer partLimit
+            @McpToolParam(description = "Per-part character cap, mainly for ZIP entries; defaults to maxChars when maxChars is set", required = false) Integer partLimit
     ) {
         return getAttachmentInternal(issueId, attachmentId, maxChars, partLimit);
     }
@@ -55,7 +56,7 @@ public class AttachmentTools {
         long start = System.nanoTime();
         try {
             var result = attachmentService.getAttachment(issueId, attachmentId, maxChars, partLimit);
-            var compressed = compression.compress(result);
+            var compressed = compression.compress(result, maxChars != null || partLimit != null);
             ToolLogger.completed(log, "getAttachment", start);
             return compressed;
         } catch (AttachmentNotFoundException | IssueNotFoundException | AttachmentDownloadFailedException e) {

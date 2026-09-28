@@ -12,6 +12,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractedPart;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionPipeline;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
@@ -131,9 +132,13 @@ class AttachmentServiceTest {
         var result = service.getAttachment(1, 20);
 
         assertThat(result.truncated()).isTrue();
-        // First two parts get their full per-part budget (30K each = 60K, capped to per-attachment 50K).
+        // First part gets its full per-part budget (30K); the second gets the rest of the per-attachment total.
+        int rest = RedmineMcpProperties.DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS - 30_000;
         assertThat(result.parts().get(0).content()).hasSize(30_000);
-        assertThat(result.parts().get(1).content()).startsWith("x".repeat(20_000));
+        assertThat(result.parts().get(1).content())
+                .startsWith("x".repeat(rest))
+                .doesNotContain("x".repeat(rest + 1));
+        assertThat(result.parts().get(1).totalChars()).isEqualTo(30_000);
         // Third part is fully starved.
         assertThat(result.parts().get(2).truncated()).isTrue();
     }

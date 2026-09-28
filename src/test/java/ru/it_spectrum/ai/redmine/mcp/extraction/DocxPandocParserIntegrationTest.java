@@ -8,6 +8,7 @@ import org.junit.jupiter.api.io.TempDir;
 import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.BinaryFallbackParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxPandocParser;
+import ru.it_spectrum.ai.redmine.mcp.extraction.parser.DocxTextParser;
 import ru.it_spectrum.ai.redmine.mcp.extraction.parser.ImagePassthroughParser;
 
 import java.io.OutputStream;
@@ -42,6 +43,7 @@ class DocxPandocParserIntegrationTest {
 
         var pipeline = new ExtractionPipeline(List.of(
                 new DocxPandocParser(types, pandoc, properties),
+                new DocxTextParser(types),
                 new ImagePassthroughParser(types),
                 new BinaryFallbackParser(types)
         ), properties);
@@ -57,6 +59,10 @@ class DocxPandocParserIntegrationTest {
         assertThat(mdPart.localPath()).isNotNull();
         assertThat(Path.of(mdPart.localPath())).exists();
         assertThat(mdPart.producer()).isEqualTo("DocxPandocParser");
+        assertThat(parts)
+                .as("POI text must not duplicate the pandoc markdown")
+                .filteredOn(ExtractedPart::textExtracted)
+                .containsExactly(mdPart);
     }
 
     @SuppressWarnings("unused") // referenced by @EnabledIf

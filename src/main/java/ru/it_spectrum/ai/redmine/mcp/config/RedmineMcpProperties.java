@@ -20,7 +20,8 @@ public record RedmineMcpProperties(
 ) {
     public static final String DEFAULT_DATA_DIR_NAME = ".redmine-mcp-server";
     public static final int DEFAULT_ATTACHMENT_PER_PART_CHARS = 30_000;
-    public static final int DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS = 50_000;
+    public static final int DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS = 40_000;
+    public static final int DEFAULT_ATTACHMENT_MAX_REQUEST_CHARS = 200_000;
     public static final int DEFAULT_RELATED_MAX_SIBLINGS = 20;
     public static final int DEFAULT_RELATED_MAX_CHILDREN = 20;
     public static final int DEFAULT_RELATED_MAX_RELATED = 10;
@@ -61,7 +62,10 @@ public record RedmineMcpProperties(
     public RedmineMcpProperties {
         attachment = attachment != null
                 ? attachment
-                : new AttachmentExtraction(DEFAULT_ATTACHMENT_PER_PART_CHARS, DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS);
+                : new AttachmentExtraction(
+                        DEFAULT_ATTACHMENT_PER_PART_CHARS,
+                        DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS,
+                        DEFAULT_ATTACHMENT_MAX_REQUEST_CHARS);
         related = related != null
                 ? related
                 : new Related(
@@ -119,9 +123,16 @@ public record RedmineMcpProperties(
         return Path.of(value).toAbsolutePath().normalize();
     }
 
+    /**
+     * {@code getAttachment} text budgets. {@code perPartChars} / {@code perAttachmentChars} apply when
+     * the caller passes no limits; {@code maxRequestChars} caps the caller's explicit
+     * {@code maxChars} / {@code partLimit}. The default total stays below {@code response.max-chars}
+     * so a default response never reaches the response compressor on text alone.
+     */
     public record AttachmentExtraction(
             @DefaultValue("" + DEFAULT_ATTACHMENT_PER_PART_CHARS) int perPartChars,
-            @DefaultValue("" + DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS) int perAttachmentChars
+            @DefaultValue("" + DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS) int perAttachmentChars,
+            @DefaultValue("" + DEFAULT_ATTACHMENT_MAX_REQUEST_CHARS) int maxRequestChars
     ) {
         public AttachmentExtraction {
             if (perPartChars <= 0) {
@@ -129,6 +140,12 @@ public record RedmineMcpProperties(
             }
             if (perAttachmentChars <= 0) {
                 perAttachmentChars = DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS;
+            }
+            if (maxRequestChars <= 0) {
+                maxRequestChars = DEFAULT_ATTACHMENT_MAX_REQUEST_CHARS;
+            }
+            if (maxRequestChars < perAttachmentChars) {
+                maxRequestChars = perAttachmentChars;
             }
         }
     }

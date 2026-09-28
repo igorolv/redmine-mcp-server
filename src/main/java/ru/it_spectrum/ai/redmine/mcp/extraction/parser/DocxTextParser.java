@@ -8,9 +8,15 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ParseInput;
+import ru.it_spectrum.ai.redmine.mcp.extraction.ParseSink;
 
 import java.io.InputStream;
 
+/**
+ * Plain-text DOCX extraction via POI. Fallback for {@link DocxPandocParser}, which runs first:
+ * when pandoc already emitted the markdown text for this input, this parser skips itself so the
+ * same document is not returned twice and does not consume the attachment text budget twice.
+ */
 @Component
 @Order(300)
 public class DocxTextParser extends AbstractDocumentParser {
@@ -26,6 +32,14 @@ public class DocxTextParser extends AbstractDocumentParser {
         String ext = types.getFileExtension(in.logicalName());
         String ct = in.contentType() != null ? in.contentType() : "";
         return "docx".equals(ext) || ct.contains("wordprocessingml");
+    }
+
+    @Override
+    public void parse(ParseInput input, ParseSink sink) {
+        if (sink.hasTextPart()) {
+            return;
+        }
+        super.parse(input, sink);
     }
 
     @Override

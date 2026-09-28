@@ -12,6 +12,11 @@ import java.util.List;
  * Applies the response-size pipeline to a single {@link AttachmentContent}
  * returned by {@code getAttachment}. Step order is cheap → costly:
  * image parts first, then text-part truncation.
+ *
+ * <p>When the caller passed explicit {@code maxChars}/{@code partLimit}, the text is already
+ * bounded by those limits (capped by {@code attachment.max-request-chars}), so only image parts
+ * are collapsed and the budget grows by the allowed text size. Truncating text below an explicit
+ * request would silently override the caller.</p>
  */
 @Service
 public class AttachmentContentCompression {
@@ -25,20 +30,32 @@ public class AttachmentContentCompression {
     }
 
     public AttachmentContent compress(AttachmentContent content) {
+        return compress(content, false);
+    }
+
+    public AttachmentContent compress(AttachmentContent content, boolean explicitLimits) {
         if (content == null) {
             return null;
         }
-        var result = compressor.fit(content, buildBudgetSteps(), properties.response().maxChars());
+        int budget = properties.response().maxChars();
+        if (explicitLimits && content.limits() != null) {
+            budget += content.limits().maxChars();
+        }
+        var result = compressor.fit(content, buildBudgetSteps(explicitLimits), budget);
         if (result.notes().isEmpty()) {
             return result.value();
         }
         return result.value().withCompressionNotes(result.notes());
     }
 
-    List<CompressionStep<AttachmentContent>> buildBudgetSteps() {
+    List<CompressionStep<AttachmentContent>> buildBudgetSteps(boolean explicitLimits) {
         var response = properties.response();
+        var collapseImages = new AttachmentContentImagePartsCollapseStep(response.imagePartsKeep());
+        if (explicitLimits) {
+            return List.of(collapseImages);
+        }
         return List.of(
-                new AttachmentContentImagePartsCollapseStep(response.imagePartsKeep()),
+                collapseImages,
                 new AttachmentContentTextPartsTruncateStep(response.attachmentTextPartChars())
         );
     }

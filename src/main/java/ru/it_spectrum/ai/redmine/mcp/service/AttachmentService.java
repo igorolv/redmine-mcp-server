@@ -50,9 +50,7 @@ public class AttachmentService {
     public AttachmentContent getAttachment(int issueId, int attachmentId,
                                            Integer maxChars, Integer partLimit) {
         var attachment = findIssueAttachmentOrThrow(issueId, attachmentId);
-        int effectiveTotal = effectiveTotalBudget(maxChars);
-        int effectivePartLimit = effectivePartLimit(partLimit);
-        return getAttachmentContentWithinBudget(issueId, attachment, effectiveTotal, effectivePartLimit);
+        return getAttachmentContentWithinBudget(issueId, attachment, effectiveLimits(maxChars, partLimit));
     }
 
     public AttachmentContent getAttachmentContent(int issueId, RedmineAttachment attachment, int previewLimit) {
@@ -60,46 +58,64 @@ public class AttachmentService {
         var parts = runPipeline(issueId, attachment, localFile).stream()
                 .map(part -> toContentPart(part, previewLimit))
                 .toList();
-        return buildAttachmentContent(attachment, localFile, parts);
+        return buildAttachmentContent(attachment, localFile, null, parts);
     }
 
     public AttachmentContent getAttachmentContentWithinBudget(int issueId, RedmineAttachment attachment,
-                                                              int textBudget, int partLimit) {
+                                                              AttachmentContent.Limits limits) {
         var localFile = issueSnapshot.materializeAttachment(issueId, attachment);
         var parts = new ArrayList<AttachmentContent.Part>();
-        int remaining = Math.max(0, textBudget);
-        int effectivePartLimit = Math.max(0, partLimit);
+        int remaining = limits.maxChars();
 
         for (var extracted : runPipeline(issueId, attachment, localFile)) {
             int partBudget = extracted.textExtracted()
-                    ? Math.min(effectivePartLimit, remaining)
-                    : effectivePartLimit;
-            var part = toContentPart(extracted, partBudget);
-            parts.add(part);
-            if (part.textExtracted() && part.content() != null) {
-                remaining -= Math.min(remaining, part.content().length());
+                    ? Math.min(limits.partLimit(), remaining)
+                    : limits.partLimit();
+            parts.add(toContentPart(extracted, partBudget));
+            if (extracted.textExtracted() && extracted.content() != null) {
+                // Count only the document text taken, not the truncation marker appended to it.
+                remaining -= Math.min(partBudget, extracted.content().length());
             }
         }
-        return buildAttachmentContent(attachment, localFile, parts);
+        return buildAttachmentContent(attachment, localFile, limits, parts);
     }
 
-    private int effectiveTotalBudget(Integer requested) {
-        int configured = properties.attachment().perAttachmentChars();
-        if (requested == null) {
-            return configured;
+    /**
+     * Resolves the text limits for one call. Without caller values the configured defaults apply.
+     * Explicit values are capped by {@code attachment.max-request-chars}; when only {@code maxChars}
+     * is given it also caps each part, so a single-part document is not cut at the default per-part
+     * limit below what the caller asked for.
+     */
+    AttachmentContent.Limits effectiveLimits(Integer maxChars, Integer partLimit) {
+        var config = properties.attachment();
+        int ceiling = config.maxRequestChars();
+        var notes = new ArrayList<String>();
+        int total = maxChars == null
+                ? config.perAttachmentChars()
+                : capped("maxChars", maxChars, ceiling, notes);
+        int part;
+        if (partLimit != null) {
+            part = capped("partLimit", partLimit, ceiling, notes);
+        } else if (maxChars != null) {
+            part = total;
+        } else {
+            part = config.perPartChars();
         }
-        return Math.max(0, requested);
+        String note = notes.isEmpty() ? null : String.join("; ", notes);
+        return new AttachmentContent.Limits(total, part, note);
     }
 
-    private int effectivePartLimit(Integer requested) {
-        int configured = properties.attachment().perPartChars();
-        if (requested == null) {
-            return configured;
+    private static int capped(String name, int requested, int ceiling, List<String> notes) {
+        int value = Math.max(0, requested);
+        if (value <= ceiling) {
+            return value;
         }
-        return Math.max(0, requested);
+        notes.add("%s %d reduced to the server ceiling %d".formatted(name, value, ceiling));
+        return ceiling;
     }
 
     private AttachmentContent buildAttachmentContent(RedmineAttachment attachment, Path localFile,
+                                                     AttachmentContent.Limits limits,
                                                      List<AttachmentContent.Part> parts) {
         boolean image = types.isImage(attachment.filename(), attachment.contentType());
         String extractionType = image
@@ -118,6 +134,7 @@ public class AttachmentService {
                 extractionType,
                 textExtracted,
                 truncated,
+                limits,
                 parts,
                 note
         );
@@ -145,8 +162,12 @@ public class AttachmentService {
     AttachmentContent.Part toContentPart(ExtractedPart part, int previewLimit) {
         String content = part.content();
         boolean truncated = false;
+        Integer totalChars = null;
         if (content != null) {
             truncated = content.length() > previewLimit;
+            if (truncated) {
+                totalChars = content.length();
+            }
             content = truncatePreview(content, previewLimit);
         }
 
@@ -161,7 +182,8 @@ public class AttachmentService {
                 part.localPath(),
                 part.fileUri(),
                 part.note(),
-                part.size()
+                part.size(),
+                totalChars
         );
     }
 

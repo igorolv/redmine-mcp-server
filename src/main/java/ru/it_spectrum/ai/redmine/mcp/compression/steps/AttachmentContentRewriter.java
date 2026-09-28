@@ -54,6 +54,7 @@ public final class AttachmentContentRewriter {
                 null,
                 null,
                 "Omitted to fit the response budget. Files remain on disk under the parent attachment's localPath.",
+                null,
                 null
         );
         var merged = new ArrayList<AttachmentContent.Part>(otherParts.size() + kept.size() + 1);
@@ -76,6 +77,8 @@ public final class AttachmentContentRewriter {
                 continue;
             }
             truncated++;
+            // A part the service already cut keeps the real document length in totalChars.
+            int totalChars = part.totalChars() != null ? part.totalChars() : text.length();
             newParts.add(new AttachmentContent.Part(
                     part.name(),
                     part.parent(),
@@ -84,11 +87,12 @@ public final class AttachmentContentRewriter {
                     part.textExtracted(),
                     true,
                     text.substring(0, perPartChars)
-                            + "\n\n... (truncated by response compressor; total: %d chars)".formatted(text.length()),
+                            + "\n\n... (truncated by response compressor; total: %d chars)".formatted(totalChars),
                     part.localPath(),
                     part.fileUri(),
                     part.note(),
-                    part.size()
+                    part.size(),
+                    totalChars
             ));
         }
         if (truncated == 0) {

@@ -49,6 +49,34 @@ class AttachmentContentCompressionTest {
         assertThat(result.parts().get(0).content()).startsWith("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     }
 
+    @Test
+    void explicitLimitsKeepTextAndStillCollapseImages() {
+        var compression = TestCompression.attachmentContentCompression(props(400, 1, 30));
+        var parts = new ArrayList<AttachmentContent.Part>();
+        parts.add(textPart("doc.txt", "x".repeat(2000)));
+        IntStream.range(0, 30).forEach(i -> parts.add(imagePart("img" + i)));
+        var limits = new AttachmentContent.Limits(2000, 2000, null);
+
+        var result = compression.compress(content(parts, limits), true);
+
+        assertThat(result.parts().get(0).content()).hasSize(2000);
+        assertThat(result.parts().get(0).truncated()).isFalse();
+        assertThat(result.compressionNotes()).noneMatch(n -> n.contains("text parts truncated"));
+        assertThat(result.compressionNotes()).anyMatch(n -> n.contains("collapsed"));
+    }
+
+    @Test
+    void compressorTruncationReportsRealDocumentLength() {
+        var compression = TestCompression.attachmentContentCompression(props(400, 5, 30));
+        var alreadyCut = new AttachmentContent.Part("doc.txt", null, "text", "PlainTextParser",
+                true, true, "x".repeat(2000), "/tmp/doc.txt", "file:///tmp/doc.txt", null, null, 90_000);
+
+        var result = compression.compress(content(List.of(alreadyCut)));
+
+        assertThat(result.parts().get(0).totalChars()).isEqualTo(90_000);
+        assertThat(result.parts().get(0).content()).endsWith("total: 90000 chars)");
+    }
+
     private static RedmineMcpProperties props(int budget, int imagePartsKeep, int textPartChars) {
         return new RedmineMcpProperties(null, null, null, null, null, null, null,
                 new RedmineMcpProperties.Response(budget, 30, textPartChars, 10_000, imagePartsKeep), null, null);
@@ -56,18 +84,22 @@ class AttachmentContentCompressionTest {
 
     private static AttachmentContent.Part imagePart(String name) {
         return new AttachmentContent.Part(name, null, "image", "ImageParser",
-                false, false, null, "/tmp/" + name, "file:///tmp/" + name, null, null);
+                false, false, null, "/tmp/" + name, "file:///tmp/" + name, null, null, null);
     }
 
     private static AttachmentContent.Part textPart(String name, String text) {
         return new AttachmentContent.Part(name, null, "text", "PlainTextParser",
-                true, false, text, "/tmp/" + name, "file:///tmp/" + name, null, null);
+                true, false, text, "/tmp/" + name, "file:///tmp/" + name, null, null, null);
     }
 
     private static AttachmentContent content(List<AttachmentContent.Part> parts) {
+        return content(parts, null);
+    }
+
+    private static AttachmentContent content(List<AttachmentContent.Part> parts, AttachmentContent.Limits limits) {
         return new AttachmentContent(
                 new Attachment(1, "f", 0, null, null, null, null, null),
                 "/tmp/f", "file:///tmp/f", 0,
-                "image", true, false, List.copyOf(parts), null);
+                "image", true, false, limits, List.copyOf(parts), null);
     }
 }

@@ -119,7 +119,7 @@ outside the current operation set.
 
 | Tool | Description |
 |---|---|
-| `getAttachment` | Downloads the original attachment file into a local snapshot directory, returns `localPath`/`fileUri`, and immediately adds text context to `parts[]` if the format is supported: txt/log/xml/json/csv, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), ZIP. A ZIP may yield a separate part per entry. Parameters: `issueId`, `attachmentId`, `maxChars`, `partLimit` |
+| `getAttachment` | Downloads the original attachment file into a local snapshot directory, returns `localPath`/`fileUri`, and immediately adds text context to `parts[]` if the format is supported: txt/log/xml/json/csv, PDF, Word (.docx), Excel (.xlsx), PowerPoint (.pptx), ZIP. A ZIP may yield a separate part per entry. A .docx yields one text part: pandoc markdown when pandoc is available, POI plain text otherwise. Parameters: `issueId`, `attachmentId`, `maxChars`, `partLimit` (see *Processing Limits*) |
 | `getWikiPage` | Content of a project wiki page |
 | `listWikiPages` | List of all wiki pages of a project |
 | `searchWikiPages` | Full-text search across wiki pages. Parameters: `searchQuery`, `projectId`, `limit`, `offset` |
@@ -248,8 +248,9 @@ The server needs `REDMINE_URL` and `REDMINE_API_KEY`; the remaining variables ar
 | `REDMINE_MCP_HTTP_CONNECT_TIMEOUT_SECONDS` | Timeout for opening a connection to Redmine; defaults to `10` seconds |
 | `REDMINE_MCP_HTTP_READ_TIMEOUT_SECONDS` | Timeout for Redmine to answer one request (including the request upload); defaults to `30` seconds. Tool calls are processed one at a time, so a stalled request otherwise delays every later call |
 | `REDMINE_MCP_HTTP_SLOW_REQUEST_WARN_MILLIS` | Redmine requests slower than this are logged as warnings; defaults to `5000` ms |
-| `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Text limit per single `part` (e.g., one file inside a ZIP) for `getAttachment`; defaults to `30000` characters. The tool's `partLimit` parameter overrides this value. |
-| `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Total limit of extracted text per attachment in `getAttachment`; defaults to `50000` characters. The tool's `maxChars` parameter overrides this value. |
+| `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Text limit per single `part` (e.g., one file inside a ZIP) for `getAttachment` calls without limits; defaults to `30000` characters. The tool's `partLimit` parameter replaces it, and so does `maxChars` when `partLimit` is omitted. |
+| `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Total limit of extracted text per attachment in `getAttachment` calls without `maxChars`; defaults to `40000` characters, which keeps a default response below `REDMINE_MCP_RESPONSE_MAX_CHARS`. |
+| `REDMINE_MCP_ATTACHMENT_MAX_REQUEST_CHARS` | Ceiling for the `maxChars` and `partLimit` a caller passes to `getAttachment`; defaults to `200000` characters. Larger requests are reduced to it and the response `limits.note` says so. |
 | `REDMINE_MCP_RELATED_MAX_SIBLINGS` | Maximum sibling issues added to `related` when reading an issue; defaults to `20` |
 | `REDMINE_MCP_RELATED_MAX_CHILDREN` | Maximum child issues added to `related` when reading an issue; defaults to `20` |
 | `REDMINE_MCP_RELATED_MAX_RELATED` | Maximum related issues from relations added to `related` when reading an issue; defaults to `10` |
@@ -259,7 +260,7 @@ lookup for siblings, children and relation targets; related issues are not snaps
 `timeline` and `changesets` focus modes omit `related` and skip these requests entirely.
 | `REDMINE_MCP_RESPONSE_MAX_CHARS` | Target response size limit before stepwise compression of `getIssue` and `getAttachment`; defaults to `50000` characters |
 | `REDMINE_MCP_RESPONSE_JOURNAL_TAIL_KEEP` | How many most-recent journal entries the budget compression of `getIssue` keeps before more aggressive reduction; defaults to `30` |
-| `REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS` | Text limit per attachment part during response compression of `getAttachment`; defaults to `10000` characters |
+| `REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS` | Text limit per attachment part during response compression of `getAttachment` calls without `maxChars`/`partLimit`; defaults to `10000` characters. Calls with explicit limits are never truncated below them. |
 | `REDMINE_MCP_RESPONSE_JOURNAL_NOTE_CHARS` | Text limit per journal note during response compression of `getIssue`; defaults to `5000` characters |
 | `REDMINE_MCP_RESPONSE_IMAGE_PARTS_KEEP` | How many image parts the response compression of `getAttachment` keeps; defaults to `5` |
 | `REDMINE_MCP_PAGINATION_DEFAULT_LIMIT` | Default page size for list/search tools; defaults to `25` |
@@ -435,12 +436,20 @@ issues cannot overload the MCP client:
 | Area | Limit |
 |---|---|
 | Each text part of `getAttachment.parts[]` | up to 30,000 characters by default, beyond that the text is truncated |
-| One attachment in `getAttachment` in total | up to 50,000 characters by default |
+| One attachment in `getAttachment` in total | up to 40,000 characters by default |
+| Explicit `maxChars` / `partLimit` in `getAttachment` | honored up to 200,000 characters each |
 | ZIP depth | 1 level |
 | ZIP archives | up to 100 entries |
 | ZIP file inside an archive | up to 10 MB |
 | ZIP archive in total | up to 50 MB of extracted data |
 | `getIssueTree` | depth up to 5, max 50 issues |
+
+`getAttachment` reports the limits it applied in `limits` (`maxChars`, `partLimit`, and a `note` when
+a requested value was reduced to the ceiling); a cut part carries `totalChars` with its full length.
+Without explicit limits, a response that still exceeds `REDMINE_MCP_RESPONSE_MAX_CHARS` (for example,
+many ZIP entries) is compressed: extra image parts are collapsed, then text parts are cut to
+`REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS`. With explicit limits, only image parts are
+collapsed. The complete text always remains on disk at each part's `localPath`.
 
 `getIssue` supports the `focus` parameter. `default` keeps the usual
 response shape and applies compression only when the response budget is exceeded. `implementation`

@@ -12,13 +12,20 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionTestPipelines;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueSnapshotService;
 import ru.it_spectrum.ai.redmine.mcp.service.compression.TestCompression;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -103,7 +110,107 @@ class AttachmentToolsTest {
                 .hasMessageContaining("Failed to download attachment");
     }
 
+    // --- text limits ---
+
+    @Test
+    void explicitPartLimitAboveCompressionCapIsHonored() throws Exception {
+        String text = "abcdefghij".repeat(6_000);
+        stubTextAttachment(30, "big.txt", text);
+
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(100, 30, 100_000, 60_000));
+        var json = ToolJsonTestSupport.parse(result);
+
+        var part = json.get("parts").get(0);
+        assertThat(part.get("content").asText()).isEqualTo(text);
+        assertThat(part.get("truncated").asBoolean()).isFalse();
+        assertThat(part.has("totalChars")).isFalse();
+        assertThat(json.has("compressionNotes")).isFalse();
+        assertThat(json.get("limits").get("maxChars").asInt()).isEqualTo(100_000);
+        assertThat(json.get("limits").get("partLimit").asInt()).isEqualTo(60_000);
+        assertThat(json.get("limits").has("note")).isFalse();
+    }
+
+    @Test
+    void explicitLimitsAreCappedByServerCeiling() throws Exception {
+        int ceiling = RedmineMcpProperties.DEFAULT_ATTACHMENT_MAX_REQUEST_CHARS;
+        String text = "abcdefghij".repeat(25_000);
+        stubTextAttachment(31, "huge.txt", text);
+
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(100, 31, 500_000, 300_000));
+        var json = ToolJsonTestSupport.parse(result);
+
+        var part = json.get("parts").get(0);
+        assertThat(part.get("content").asText()).startsWith(text.substring(0, ceiling));
+        assertThat(part.get("content").asText()).doesNotContain(text.substring(0, ceiling + 1));
+        assertThat(part.get("truncated").asBoolean()).isTrue();
+        assertThat(part.get("totalChars").asInt()).isEqualTo(text.length());
+        assertThat(json.has("compressionNotes")).isFalse();
+        var limits = json.get("limits");
+        assertThat(limits.get("maxChars").asInt()).isEqualTo(ceiling);
+        assertThat(limits.get("partLimit").asInt()).isEqualTo(ceiling);
+        assertThat(limits.get("note").asText())
+                .contains("maxChars 500000 reduced to the server ceiling " + ceiling)
+                .contains("partLimit 300000 reduced to the server ceiling " + ceiling);
+    }
+
+    @Test
+    void maxCharsAloneAlsoCapsEachPart() throws Exception {
+        String text = "abcdefghij".repeat(4_500);
+        stubTextAttachment(32, "spec.txt", text);
+
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(100, 32, 50_000, null));
+        var json = ToolJsonTestSupport.parse(result);
+
+        assertThat(json.get("parts").get(0).get("content").asText()).isEqualTo(text);
+        assertThat(json.get("limits").get("partLimit").asInt()).isEqualTo(50_000);
+    }
+
+    @Test
+    void defaultBudgetFilledByTextIsNotCompressed() throws Exception {
+        String first = "abcdefghij".repeat(3_000);
+        String second = "klmnopqrst".repeat(3_000);
+        byte[] zip = zip(Map.of("a.txt", first, "b.txt", second));
+        var attachment = attachment(33, "logs.zip", "application/zip", zip.length);
+        when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(zip);
+
+        var result = ToolJsonTestSupport.stringify(tools.getAttachment(100, 33));
+        var json = ToolJsonTestSupport.parse(result);
+
+        assertThat(json.has("compressionNotes")).isFalse();
+        assertThat(json.get("limits").get("maxChars").asInt())
+                .isEqualTo(RedmineMcpProperties.DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS);
+        assertThat(result).contains(first);
+        int taken = 0;
+        for (var part : json.get("parts")) {
+            if (part.get("textExtracted").asBoolean()) {
+                String content = part.get("content").asText();
+                taken += part.has("totalChars") ? content.indexOf("\n\n... (truncated") : content.length();
+            }
+        }
+        assertThat(taken).isEqualTo(RedmineMcpProperties.DEFAULT_ATTACHMENT_PER_ATTACHMENT_CHARS);
+    }
+
     // --- helpers ---
+
+    private void stubTextAttachment(int id, String filename, String text) {
+        byte[] data = text.getBytes(StandardCharsets.UTF_8);
+        var attachment = attachment(id, filename, "text/plain", data.length);
+        when(client.getIssue(100)).thenReturn(issueWithAttachments(100, List.of(attachment)));
+        when(client.downloadAttachment(attachment.contentUrl())).thenReturn(data);
+    }
+
+    private static byte[] zip(Map<String, String> entries) throws Exception {
+        var bytes = new ByteArrayOutputStream();
+        try (var zip = new ZipOutputStream(bytes)) {
+            for (var entry : new TreeMap<>(entries).entrySet()) {
+                zip.putNextEntry(new ZipEntry(entry.getKey()));
+                zip.write(entry.getValue().getBytes(StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        return bytes.toByteArray();
+    }
 
     private static RedmineAttachment attachment(int id, String filename, String contentType, long size) {
         return new RedmineAttachment(

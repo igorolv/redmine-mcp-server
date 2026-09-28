@@ -26,12 +26,13 @@ import java.util.concurrent.TimeUnit;
  * references stay valid on disk; the media files themselves are exposed as Parts by
  * {@link DocxMediaExtractor} (which runs unconditionally), not by this parser.
  *
- * <p>Runs alongside {@link DocxTextParser} — both parsers emit independent Parts for the same
- * DOCX (POI plain text + pandoc markdown). Output is cached at
- * {@code <workDir>/docx/<hash>/pandoc.md}; subsequent calls reuse it without re-running pandoc.</p>
+ * <p>Runs before {@link DocxTextParser}: when this parser emits markdown, the POI parser skips the
+ * DOCX, so the response carries one text part per document. When pandoc is unavailable or fails,
+ * POI plain text is the fallback. Output is cached at {@code <workDir>/docx/<hash>/pandoc.md};
+ * subsequent calls reuse it without re-running pandoc.</p>
  */
 @Component
-@Order(310)
+@Order(290)
 public class DocxPandocParser implements DocumentParser {
 
     private static final Logger log = LoggerFactory.getLogger(DocxPandocParser.class);
@@ -86,7 +87,8 @@ public class DocxPandocParser implements DocumentParser {
     }
 
     private void emitMarkdownPart(ParseInput in, Path mdFile, ParseSink sink) throws IOException {
-        String markdown = Files.readString(mdFile, StandardCharsets.UTF_8);
+        // pandoc writes CRLF on Windows; each \r would cost an escaped character in the response.
+        String markdown = Files.readString(mdFile, StandardCharsets.UTF_8).replace("\r\n", "\n");
         sink.emit(new ExtractedPart(
                 in.emitName(),
                 null,

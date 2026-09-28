@@ -290,7 +290,7 @@ Existing parsers (under `extraction/parser/`):
 |---|---|
 | `PlainTextParser` | txt, log, csv, json, xml — direct UTF-8 read. |
 | `PdfTextParser` | PDF via PDFBox (text-layer only; scans without OCR yield empty text). |
-| `DocxTextParser`, `DocxPandocParser`, `DocxMediaExtractor`, `DocxEmbeddedExtractor` | DOCX via POI; pandoc path used when `extraction.pandoc.enabled` and `pandoc` is on PATH. |
+| `DocxPandocParser`, `DocxTextParser`, `DocxMediaExtractor`, `DocxEmbeddedExtractor` | DOCX yields **one** text part: pandoc markdown when `extraction.pandoc.enabled` and `pandoc` is found; `DocxTextParser` (POI) runs after it and skips itself via `ParseSink#hasTextPart()`, so it is only the fallback. Do not reintroduce a second text part for the same DOCX — it doubled the response and split the text budget. |
 | `XlsxTextParser`, `PptxTextParser` | XLSX / PPTX via POI. |
 | `ZipParser` | ZIP — recursive but **depth-bounded** by `extraction.limits.max-depth` (default 1). |
 | `ImagePassthroughParser` | Images — no text extracted; only `localPath`/`fileUri` exposed. |
@@ -328,9 +328,13 @@ result. Don't call `pandoc` from a parser directly — route through `DocxPandoc
 - **Pagination defaults are configurable, not constants.** Always read from
   `properties.pagination().defaultLimit()` / `defaultOffset()`. Hardcoded 25/0 in tools
   will be wrong as soon as a user overrides them.
-- **Attachment text is budget-bounded.** `getAttachment` uses
-  `attachment.per-part-chars` / `per-attachment-chars`. New tools that surface attachment
-  text must reuse this budget rather than inventing a parallel one.
+- **Attachment text is budget-bounded.** `getAttachment` without caller limits uses
+  `attachment.per-part-chars` / `per-attachment-chars`; the default total stays below
+  `response.max-chars` so a default response does not hit the response compressor on text alone.
+  Explicit `maxChars` / `partLimit` are capped by `attachment.max-request-chars` and then honored:
+  `AttachmentContentCompression` only collapses image parts for such calls and never truncates text
+  below the request. The applied values are returned in `limits`, a cut part carries `totalChars`.
+  New tools that surface attachment text must reuse this budget rather than inventing a parallel one.
 - **Never mutation-test against a production Redmine.** Unit tests for write paths use mocks and
   `MockRestServiceServer`. Live write verification requires an explicitly designated disposable
   test instance and key; the normal `test`/`build` tasks must not mutate any Redmine.

@@ -2,8 +2,9 @@ package ru.it_spectrum.ai.redmine.mcp.extraction;
 
 /**
  * One pluggable extractor in the pipeline. Independent of other parsers — multiple
- * applicable parsers run against the same input (POI text + pandoc markdown + media
- * extraction for a single DOCX, for example).
+ * applicable parsers run against the same input (pandoc markdown + media extraction
+ * for a single DOCX, for example). A parser may consult {@link ParseSink#hasTextPart()} to act as
+ * a fallback for an earlier one.
  */
 public interface DocumentParser {
 

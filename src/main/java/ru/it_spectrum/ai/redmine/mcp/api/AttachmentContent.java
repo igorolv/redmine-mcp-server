@@ -22,6 +22,8 @@ public record AttachmentContent(
         boolean textExtracted,
         @Schema(description = "True when at least one part's text was cut to fit response size limits.", requiredMode = Schema.RequiredMode.REQUIRED)
         boolean truncated,
+        @Schema(description = "Text limits applied to this response.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+        Limits limits,
         @Schema(description = "Extracted parser output. Text parts carry content; images and unsupported binaries carry localPath/fileUri and an explanatory note.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Part> parts,
         @Schema(description = "Free-text note explaining the result, typically present when text extraction was skipped.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
@@ -31,24 +33,36 @@ public record AttachmentContent(
 ) {
     public AttachmentContent(Attachment attachment, String localPath, String fileUri, long localSize,
                              String extractionType, boolean textExtracted, boolean truncated,
-                             List<Part> parts, String note) {
+                             Limits limits, List<Part> parts, String note) {
         this(attachment, localPath, fileUri, localSize, extractionType, textExtracted, truncated,
-                parts, note, null);
+                limits, parts, note, null);
     }
 
     public AttachmentContent withParts(List<Part> newParts) {
         return new AttachmentContent(attachment, localPath, fileUri, localSize, extractionType,
-                textExtracted, truncated, newParts, note, compressionNotes);
+                textExtracted, truncated, limits, newParts, note, compressionNotes);
     }
 
     public AttachmentContent withTruncated(boolean newTruncated) {
         return new AttachmentContent(attachment, localPath, fileUri, localSize, extractionType,
-                textExtracted, newTruncated, parts, note, compressionNotes);
+                textExtracted, newTruncated, limits, parts, note, compressionNotes);
     }
 
     public AttachmentContent withCompressionNotes(List<String> newCompressionNotes) {
         return new AttachmentContent(attachment, localPath, fileUri, localSize, extractionType,
-                textExtracted, truncated, parts, note, newCompressionNotes);
+                textExtracted, truncated, limits, parts, note, newCompressionNotes);
+    }
+
+    @Schema(description = "Effective extracted-text limits for this call: the caller's maxChars/partLimit capped by the server, or the server defaults.")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Limits(
+            @Schema(description = "Total extracted-text characters allowed across all parts.", requiredMode = Schema.RequiredMode.REQUIRED)
+            int maxChars,
+            @Schema(description = "Extracted-text characters allowed per part.", requiredMode = Schema.RequiredMode.REQUIRED)
+            int partLimit,
+            @Schema(description = "Present when a requested limit was reduced to the server ceiling.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+            String note
+    ) {
     }
 
     @Schema(description = "Single extracted text segment. For ZIP archives this is one entry; for other formats there is normally a single part.")
@@ -75,7 +89,9 @@ public record AttachmentContent(
             @Schema(description = "Free-text note about this part, typically present when extraction was skipped.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             String note,
             @Schema(description = "Size of the part's source in bytes, when available.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-            Long size
+            Long size,
+            @Schema(description = "Full length of this part's text in characters; present when the text was cut.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+            Integer totalChars
     ) {
     }
 }

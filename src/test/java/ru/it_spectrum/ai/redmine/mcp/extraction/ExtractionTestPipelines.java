@@ -35,8 +35,8 @@ public final class ExtractionTestPipelines {
         return new ExtractionPipeline(List.of(
                 new PlainTextParser(types),
                 new PdfTextParser(types),
-                new DocxTextParser(types),
                 new DocxPandocParser(types, PandocAvailability.disabled(), properties),
+                new DocxTextParser(types),
                 new DocxMediaExtractor(types),
                 new DocxEmbeddedExtractor(types),
                 new XlsxTextParser(types),
