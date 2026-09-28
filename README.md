@@ -180,17 +180,24 @@ model actually needs remain.
 
 Each variable accepts `true` (default) or `false`. Example: to keep only issue and project work,
 disable the remaining groups — `REDMINE_MCP_TOOLS_RELEASE_ANALYTICS=false`,
-`REDMINE_MCP_TOOLS_WIKI=false`, etc. MCP prompts (`incident-*`) are not affected by these flags.
+`REDMINE_MCP_TOOLS_WIKI=false`, etc. MCP prompts are not affected by these flags; a prompt tells the model
+to skip a step whose tool is disabled.
 
 ## MCP Prompts
 
-The server also exports **MCP prompts** for typical incident-handling scenarios:
+The server also exports **MCP prompts** for typical issue-handling scenarios. Each takes one required
+argument, `issueId` — the Redmine issue number (`12345` or `#12345`).
 
 | Prompt | Description |
 |---|---|
 | `incident-brief` | Quick incident overview: fetches the issue via `getIssue`, downloads all attachments via `getAttachment` with short previews, and produces a concise Markdown report |
-| `incident-implementation` | Implementation context: fetches the issue with `focus=implementation`, loads relevant attachments, and produces requirements, evidence per revision, and a verification checklist |
-| `incident-timeline` | Incident chronology: fetches the issue with `focus=timeline`, pulls complete journal entries via `getIssueJournal` when needed, and builds a timeline of who did what and when |
+| `incident-implementation` | Implementation context: fetches the issue with `focus=implementation`, picks relevant attachments by name, description and date, recovers compressed journal data only when it matters, and produces requirements, revision evidence, and a verification checklist |
+| `incident-timeline` | Incident chronology: fetches the issue with `focus=timeline`, falls back to `getIssueHistory` when journal entries or field changes were compressed away, and builds a timeline of who did what and when |
+| `issue-remaining-work` | What is still unfinished: combines `getIssue`, `getIssueTree` (including siblings when relevant), `getBlockerChain`, and `getIssueHistory` when needed, and reports open items without trusting the status alone |
+
+Clients that build command templates by requesting a prompt with a placeholder argument (for example
+opencode 1.x, which sends `$1`) get the template with the placeholder left in place, so their own
+substitution keeps working.
 
 ## Tech Stack
 
@@ -555,7 +562,7 @@ Integration tests require a reachable Redmine and real test data. Unit tests exc
 │   │   └── ...                            — services for projects, wiki, search, reference data, time entries
 │   └── tools/
 │       ├── AttachmentTools.java           — 1 MCP tool for files and attachment context
-│       ├── IncidentPrompts.java           — MCP prompt for incident investigation
+│       ├── IncidentPrompts.java           — 4 MCP prompts for issue investigation
 │       ├── IssueAnalyticsTools.java       — 2 issue-analytics MCP tools (blocker chain, stale)
 │       ├── IssueStructureTools.java       — 2 MCP tools: issue tree and change history
 │       ├── IssueTools.java                — 5 core issue MCP tools

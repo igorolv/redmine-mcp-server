@@ -223,19 +223,34 @@ Pattern:
     description = "One sentence on what this prompt does for the model."
 )
 public String myPrompt(
-    @McpArg(name = "issueId", description = "...", required = true) int issueId
+    @McpArg(name = "issueId", description = ISSUE_ID_DESCRIPTION, required = true) String issueId
 ) {
     log.info("Prompt requested: my-prompt (issueId={})", issueId);
+    String id = issueIdForTemplate(issueId);
     return """
         ...the actual prompt body, addressed to the model that will execute it...
-        """.formatted(issueId);
+
+        %2$s
+        """.formatted(id, PREAMBLE);
 }
 ```
 
 A prompt returns a **string template** that the MCP client renders as the conversation seed.
 Inside the template, refer to tool names by their short form (`getIssue`, `getAttachment`) and
-explicitly note that the client may need to prefix them with a server identifier. See
-`IncidentPrompts#incidentBrief` for a working example.
+include the shared `PREAMBLE`, which covers server prefixes, code-mode `tools.<server>.<tool>` access,
+disabled tool groups, and the no-writes rule. See `IncidentPrompts#incidentBrief` for a working example.
+
+Prompt arguments are **always declared as `String`**. MCP sends prompt arguments as strings, and
+Spring AI converts them with `Integer.parseInt` for an `int` parameter. Some clients request a prompt
+with a placeholder instead of a value — opencode 1.x sends `$1` for every argument while building its
+command list and substitutes the real value client-side later. `IncidentPrompts#issueIdForTemplate`
+passes `$N` / `$ARGUMENTS` through verbatim, normalizes `#123` to `123`, and throws
+`IllegalArgumentException` for anything else, which reaches the client as a `-32602` error with the
+message. Do not change an argument back to `int`.
+
+`IncidentPromptsTest` checks that every `tool(param=...)` call in a prompt text names an existing
+`@McpTool` method and parameter and that every `focus="..."` value is valid. Write tool calls in the
+templates in that `tool(param=value)` form so the check covers them.
 
 ---
 
