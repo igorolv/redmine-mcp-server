@@ -40,7 +40,7 @@ class RedmineMcpPropertiesTest {
                     assertThat(write.wikiCommentPrefix()).isEmpty();
                     assertThat(write.attachmentFilenamePrefix()).isEmpty();
                 });
-        assertThat(new RedmineMcpProperties(null, null, null, null, null, null, null, null, null)
+        assertThat(new RedmineMcpProperties(null, null, null, null, null, null, null, null, null, null)
                 .write().issueDescriptionPrefix()).isEqualTo("AI_EDIT:");
     }
 

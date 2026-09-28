@@ -151,13 +151,14 @@ public class IssueTools {
     ) {
         log.info("Tool call: getIssue (issueId={}, focus={})", issueId, focus);
         long start = System.nanoTime();
-        var maybeIssue = issueService.find(issueId);
+        var responseFocus = ResponseFocus.from(focus);
+        var maybeIssue = issueService.find(issueId, responseFocus.keepsRelated());
         if (maybeIssue.isEmpty()) {
             var e = new IssueNotFoundException(issueId);
             ToolLogger.failed(log, "getIssue", start, e.getMessage());
             throw e;
         }
-        var focused = issueFocus.apply(maybeIssue.get(), ResponseFocus.from(focus));
+        var focused = issueFocus.apply(maybeIssue.get(), responseFocus);
         var compressed = issueCompression.compress(focused);
         ToolLogger.completed(log, "getIssue", start);
         return compressed;

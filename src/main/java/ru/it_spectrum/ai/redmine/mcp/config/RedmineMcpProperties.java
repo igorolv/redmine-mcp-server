@@ -15,7 +15,8 @@ public record RedmineMcpProperties(
         Analysis analysis,
         Extraction extraction,
         Response response,
-        Write write
+        Write write,
+        Http http
 ) {
     public static final String DEFAULT_DATA_DIR_NAME = ".redmine-mcp-server";
     public static final int DEFAULT_ATTACHMENT_PER_PART_CHARS = 30_000;
@@ -53,6 +54,9 @@ public record RedmineMcpProperties(
     public static final int DEFAULT_TIKA_BODY_LIMIT_BYTES = 5 * 1024 * 1024;
     public static final int DEFAULT_TIKA_METADATA_MAX_FIELDS = 40;
     public static final String DEFAULT_WRITE_ISSUE_DESCRIPTION_PREFIX = "AI_EDIT:";
+    public static final int DEFAULT_HTTP_CONNECT_TIMEOUT_SECONDS = 10;
+    public static final int DEFAULT_HTTP_READ_TIMEOUT_SECONDS = 30;
+    public static final int DEFAULT_HTTP_SLOW_REQUEST_WARN_MILLIS = 5_000;
 
     public RedmineMcpProperties {
         attachment = attachment != null
@@ -99,6 +103,12 @@ public record RedmineMcpProperties(
         write = write != null
                 ? write
                 : new Write(false, DEFAULT_WRITE_ISSUE_DESCRIPTION_PREFIX, null, null, null, null);
+        http = http != null
+                ? http
+                : new Http(
+                        DEFAULT_HTTP_CONNECT_TIMEOUT_SECONDS,
+                        DEFAULT_HTTP_READ_TIMEOUT_SECONDS,
+                        DEFAULT_HTTP_SLOW_REQUEST_WARN_MILLIS);
     }
 
     public Path resolvedDataDir() {
@@ -164,6 +174,28 @@ public record RedmineMcpProperties(
 
         private static String normalizePrefix(String prefix) {
             return prefix == null ? "" : prefix.strip();
+        }
+    }
+
+    /**
+     * Redmine HTTP client limits. Tool calls run one at a time on the stdio reader thread, so a
+     * Redmine request without a timeout would stall every later call behind it.
+     */
+    public record Http(
+            @DefaultValue("" + DEFAULT_HTTP_CONNECT_TIMEOUT_SECONDS) int connectTimeoutSeconds,
+            @DefaultValue("" + DEFAULT_HTTP_READ_TIMEOUT_SECONDS) int readTimeoutSeconds,
+            @DefaultValue("" + DEFAULT_HTTP_SLOW_REQUEST_WARN_MILLIS) int slowRequestWarnMillis
+    ) {
+        public Http {
+            if (connectTimeoutSeconds <= 0) {
+                connectTimeoutSeconds = DEFAULT_HTTP_CONNECT_TIMEOUT_SECONDS;
+            }
+            if (readTimeoutSeconds <= 0) {
+                readTimeoutSeconds = DEFAULT_HTTP_READ_TIMEOUT_SECONDS;
+            }
+            if (slowRequestWarnMillis <= 0) {
+                slowRequestWarnMillis = DEFAULT_HTTP_SLOW_REQUEST_WARN_MILLIS;
+            }
         }
     }
 

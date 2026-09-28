@@ -39,6 +39,10 @@ redmine-mcp:
   attachment:
     per-part-chars: ${REDMINE_MCP_ATTACHMENT_PER_PART_CHARS:30000}
     per-attachment-chars: ${REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS:50000}
+  http:
+    connect-timeout-seconds: ${REDMINE_MCP_HTTP_CONNECT_TIMEOUT_SECONDS:10}
+    read-timeout-seconds: ${REDMINE_MCP_HTTP_READ_TIMEOUT_SECONDS:30}
+    slow-request-warn-millis: ${REDMINE_MCP_HTTP_SLOW_REQUEST_WARN_MILLIS:5000}
   related:
     max-siblings: ${REDMINE_MCP_RELATED_MAX_SIBLINGS:20}
     max-children: ${REDMINE_MCP_RELATED_MAX_CHILDREN:20}

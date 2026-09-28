@@ -238,11 +238,18 @@ The server needs `REDMINE_URL` and `REDMINE_API_KEY`; the remaining variables ar
 | `REDMINE_MCP_WRITE_WIKI_COMMENT_PREFIX` | Marker prepended to wiki revision comments of `createWikiPage` / `updateWikiPage`; empty (disabled) by default |
 | `REDMINE_MCP_WRITE_ATTACHMENT_FILENAME_PREFIX` | Prefix added to file names uploaded by `attachFileToIssue` (e.g. `AI_EDIT__`); must not contain `/ \ ? % * : \| " ' < >`; empty (disabled) by default |
 | `REDMINE_MCP_DATA_DIR` | Local data directory of the server; defaults to `~/.redmine-mcp-server` |
+| `REDMINE_MCP_HTTP_CONNECT_TIMEOUT_SECONDS` | Timeout for opening a connection to Redmine; defaults to `10` seconds |
+| `REDMINE_MCP_HTTP_READ_TIMEOUT_SECONDS` | Timeout for Redmine to answer one request (including the request upload); defaults to `30` seconds. Tool calls are processed one at a time, so a stalled request otherwise delays every later call |
+| `REDMINE_MCP_HTTP_SLOW_REQUEST_WARN_MILLIS` | Redmine requests slower than this are logged as warnings; defaults to `5000` ms |
 | `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Text limit per single `part` (e.g., one file inside a ZIP) for `getAttachment`; defaults to `30000` characters. The tool's `partLimit` parameter overrides this value. |
 | `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Total limit of extracted text per attachment in `getAttachment`; defaults to `50000` characters. The tool's `maxChars` parameter overrides this value. |
 | `REDMINE_MCP_RELATED_MAX_SIBLINGS` | Maximum sibling issues added to `related` when reading an issue; defaults to `20` |
 | `REDMINE_MCP_RELATED_MAX_CHILDREN` | Maximum child issues added to `related` when reading an issue; defaults to `20` |
 | `REDMINE_MCP_RELATED_MAX_RELATED` | Maximum related issues from relations added to `related` when reading an issue; defaults to `10` |
+
+`getIssue` resolves the `related` context with one lightweight read of the parent and one batched
+lookup for siblings, children and relation targets; related issues are not snapshotted. The
+`timeline` and `changesets` focus modes omit `related` and skip these requests entirely.
 | `REDMINE_MCP_RESPONSE_MAX_CHARS` | Target response size limit before stepwise compression of `getIssue` and `getAttachment`; defaults to `50000` characters |
 | `REDMINE_MCP_RESPONSE_JOURNAL_TAIL_KEEP` | How many most-recent journal entries the budget compression of `getIssue` keeps before more aggressive reduction; defaults to `30` |
 | `REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS` | Text limit per attachment part during response compression of `getAttachment`; defaults to `10000` characters |

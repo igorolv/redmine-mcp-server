@@ -62,13 +62,24 @@ public class IssueService {
     // --- Basic lookup ---
 
     public Optional<Issue> find(int issueId) {
+        return find(issueId, true);
+    }
+
+    /**
+     * @param withRelated resolve parent/sibling/child/relation refs; callers whose response drops
+     *                    {@code related} anyway should pass {@code false} to skip those requests
+     */
+    public Optional<Issue> find(int issueId, boolean withRelated) {
         var issue = client.getIssue(issueId);
         if (issue == null) {
             return Optional.empty();
         }
         attachmentService.snapshotIssue(issue);
-        var related = relatedRefBuilder.fetchRelated(issue).toRefs();
-        return Optional.of(Issue.from(issue).withRelated(related));
+        var result = Issue.from(issue);
+        if (withRelated) {
+            result = result.withRelated(relatedRefBuilder.fetchRelated(issue).toRefs());
+        }
+        return Optional.of(result);
     }
 
     public Journal getJournal(int issueId, int journalId) {

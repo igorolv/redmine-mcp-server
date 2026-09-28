@@ -39,7 +39,7 @@ class IssueServiceTest {
     void setUp() {
         var properties = TestRedmineMcpProperties.defaults();
         attachmentService = mock(AttachmentService.class);
-        var relatedRefBuilder = new RelatedRefBuilder(client, attachmentService, properties);
+        var relatedRefBuilder = new RelatedRefBuilder(client, properties);
         service = new IssueService(client, attachmentService, relatedRefBuilder, properties);
     }
 

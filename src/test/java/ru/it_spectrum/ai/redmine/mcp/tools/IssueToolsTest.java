@@ -23,7 +23,10 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,7 +41,7 @@ class IssueToolsTest {
     void setUp() {
         var properties = TestRedmineMcpProperties.defaults();
         var attachmentService = mock(AttachmentService.class);
-        var relatedRefBuilder = new RelatedRefBuilder(client, attachmentService, properties);
+        var relatedRefBuilder = new RelatedRefBuilder(client, properties);
         var issueService = new IssueService(client, attachmentService, relatedRefBuilder, properties);
         tools = new IssueTools(issueService, properties,
                 new IssueFocus(),
@@ -169,11 +172,10 @@ class IssueToolsTest {
                 "2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z",
                 null, null, null, null, children
         );
-        var child501 = treeIssue(501, "Fix null pointer", "Open", "my-project", null, List.of(), List.of());
-        var child502 = treeIssue(502, "Write tests", "Open", "my-project", null, List.of(), List.of());
         when(client.getIssue(100)).thenReturn(issue);
-        when(client.getIssue(501)).thenReturn(child501);
-        when(client.getIssue(502)).thenReturn(child502);
+        when(client.getIssueSummariesByIds(List.of(501, 502))).thenReturn(List.of(
+                summary(501, "Fix null pointer", "Open", "my-project"),
+                summary(502, "Write tests", "Open", "my-project")));
 
         var result = ToolJsonTestSupport.stringify(tools.getIssue(100));
 
@@ -408,6 +410,46 @@ class IssueToolsTest {
 
         assertThat(result).contains("\"id\":200");
         assertThat(result).contains("No children issue");
+    }
+
+    @Test
+    void shouldResolveRelatedContextWithParentReadAndOneBatchedLookup() {
+        var issue = treeIssue(100, "Main", "Open", "my-project", new IdName(10, "Parent"),
+                List.of(), List.of(new RedmineIssue.Relation(7, 200, 100, "blocks", null)));
+        var parent = treeIssue(10, "Parent", "Open", "my-project", null, List.of(
+                new RedmineIssue.Child(100, new IdName(1, "Task"), "Main"),
+                new RedmineIssue.Child(101, new IdName(1, "Task"), "Sibling")), List.of());
+        when(client.getIssue(100)).thenReturn(issue);
+        when(client.getIssueWithChildren(10)).thenReturn(parent);
+        // #300 is not visible to the API key: /issues.json simply omits it.
+        when(client.getIssueSummariesByIds(List.of(101, 200))).thenReturn(List.of(
+                summary(101, "Sibling", "Open", "my-project"),
+                summary(200, "Blocker", "Closed", "my-project")));
+
+        var result = ToolJsonTestSupport.stringify(tools.getIssue(100));
+
+        assertThat(result).contains("\"issueId\":10", "\"role\":\"parent\"");
+        assertThat(result).contains("\"issueId\":101", "\"role\":\"sibling\"");
+        assertThat(result).contains("\"issueId\":200", "\"relationType\":\"blocked_by\"", "Blocker");
+        verify(client, never()).getIssue(10);
+        verify(client, never()).getIssue(101);
+        verify(client, never()).getIssue(200);
+    }
+
+    @Test
+    void shouldSkipRelatedLookupsWhenFocusDropsRelatedContext() {
+        var issue = treeIssue(100, "Main", "Open", "my-project", new IdName(10, "Parent"),
+                List.of(new RedmineIssue.Child(501, new IdName(1, "Task"), "Child")),
+                List.of(new RedmineIssue.Relation(7, 100, 200, "relates", null)));
+        when(client.getIssue(100)).thenReturn(issue);
+
+        var timeline = ToolJsonTestSupport.stringify(tools.getIssue(100, "timeline"));
+        var changesets = ToolJsonTestSupport.stringify(tools.getIssue(100, "changesets"));
+
+        assertThat(timeline).doesNotContain("\"related\"");
+        assertThat(changesets).doesNotContain("\"related\"");
+        verify(client, never()).getIssueWithChildren(10);
+        verify(client, never()).getIssueSummariesByIds(anyCollection());
     }
 
     @Test

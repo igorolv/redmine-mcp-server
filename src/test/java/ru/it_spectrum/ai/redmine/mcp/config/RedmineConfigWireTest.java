@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.web.client.ResourceAccessException;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineMutationClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPageMutation;
@@ -15,9 +17,13 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RedmineConfigWireTest {
 
@@ -88,13 +94,42 @@ class RedmineConfigWireTest {
 
         String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
         var restClient = new RedmineConfig().redmineRestClient(
-                new RedmineClientProperties(baseUrl, "test-key"));
+                new RedmineClientProperties(baseUrl, "test-key"), TestRedmineMcpProperties.defaults());
 
         var page = new RedmineClient(restClient).getWikiPage("backend", "Тест страница");
 
         assertThat(page.text()).isEqualTo("Текст");
         assertThat(capturedPath.get())
                 .isEqualTo("/projects/backend/wiki/%D0%A2%D0%B5%D1%81%D1%82%20%D1%81%D1%82%D1%80%D0%B0%D0%BD%D0%B8%D1%86%D0%B0.json");
+    }
+
+    @Test
+    void readTimeoutFailsStalledRequestInsteadOfBlockingTheToolThread() {
+        var release = new CountDownLatch(1);
+        server.createContext("/", exchange -> {
+            try {
+                release.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            exchange.close();
+        });
+
+        String baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
+        var properties = new RedmineMcpProperties(null, null, null, null, null, null, null, null, null,
+                new RedmineMcpProperties.Http(1, 1, 5_000));
+        var client = new RedmineClient(new RedmineConfig().redmineRestClient(
+                new RedmineClientProperties(baseUrl, "test-key"), properties));
+
+        long start = System.nanoTime();
+        try {
+            assertThatThrownBy(() -> client.getIssue(4523))
+                    .isInstanceOf(ResourceAccessException.class)
+                    .hasMessageContaining("/issues/4523.json");
+        } finally {
+            release.countDown();
+        }
+        assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
     }
 
     private record CapturedRequest(String method, String rawPath, String contentType,

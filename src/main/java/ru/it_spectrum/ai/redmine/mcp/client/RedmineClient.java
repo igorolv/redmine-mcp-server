@@ -20,14 +20,21 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPage;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
 public class RedmineClient {
+    /** Redmine's default and maximum page size for {@code /issues.json}. */
+    private static final int ISSUE_BATCH_SIZE = 100;
+    private static final Set<String> ISSUE_SEARCH_TYPES = Set.of("issue", "issue-closed");
     private static final String FULL_ISSUE_PATH =
             "/issues/%d.json?include=attachments,journals,relations,children,changesets";
 
@@ -47,13 +54,19 @@ public class RedmineClient {
             return new SearchWithIssueSummaries(List.of(), 0, offset, limit);
         }
 
-        // Filter only issue-type results and fetch their summaries.
+        // Redmine reports closed issues as "issue-closed"; both are issues.
         List<Integer> issueIds = searchResult.results().stream()
-                .filter(r -> "issue".equals(r.type()))
+                .filter(r -> ISSUE_SEARCH_TYPES.contains(r.type()))
                 .map(RedmineSearchResult.ResultItem::id)
                 .toList();
 
-        List<RedmineIssueSummary> issues = fetchIssuesByIds(issueIds);
+        var summariesById = getIssueSummariesByIds(issueIds).stream()
+                .collect(Collectors.toMap(RedmineIssueSummary::id, summary -> summary, (a, b) -> a));
+        // Keep the search relevance order rather than the /issues.json order.
+        List<RedmineIssueSummary> issues = issueIds.stream()
+                .map(summariesById::get)
+                .filter(Objects::nonNull)
+                .toList();
 
         return new SearchWithIssueSummaries(issues, searchResult.totalCount(), offset, limit);
     }
@@ -64,6 +77,19 @@ public class RedmineClient {
     public RedmineIssue getIssue(int issueId) {
         var response = restClient.get()
                 .uri(fullIssuePath(issueId))
+                .retrieve()
+                .body(RedmineIssue.Single.class);
+
+        return response != null ? response.issue() : null;
+    }
+
+    /**
+     * Get a single issue with its child list only: enough to name it and enumerate its subtasks
+     * without paying for journals, changesets and attachments.
+     */
+    public RedmineIssue getIssueWithChildren(int issueId) {
+        var response = restClient.get()
+                .uri("/issues/{id}.json?include=children", issueId)
                 .retrieve()
                 .body(RedmineIssue.Single.class);
 
@@ -350,23 +376,27 @@ public class RedmineClient {
     }
 
     /**
-     * Fetch issue summaries by a list of IDs using /issues.json?issue_id=1,2,3
+     * Fetch summaries for the given issue IDs in batched {@code /issues.json} requests (any status,
+     * across projects). IDs the API key cannot see are silently absent from the result.
      */
-    private List<RedmineIssueSummary> fetchIssuesByIds(List<Integer> ids) {
-        if (ids.isEmpty()) {
-            return List.of();
+    public List<RedmineIssueSummary> getIssueSummariesByIds(Collection<Integer> ids) {
+        var distinct = List.copyOf(new LinkedHashSet<>(ids));
+        var result = new ArrayList<RedmineIssueSummary>(distinct.size());
+        for (int from = 0; from < distinct.size(); from += ISSUE_BATCH_SIZE) {
+            var chunk = distinct.subList(from, Math.min(from + ISSUE_BATCH_SIZE, distinct.size()));
+            String idsParam = chunk.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+
+            var response = restClient.get()
+                    .uri("/issues.json?issue_id={ids}&status_id=*&limit={limit}", idsParam, chunk.size())
+                    .retrieve()
+                    .body(RedmineIssueSummary.Page.class);
+            if (response != null && response.issues() != null) {
+                result.addAll(response.issues());
+            }
         }
-
-        String idsParam = ids.stream()
-                .map(String::valueOf)
-                .collect(Collectors.joining(","));
-
-        var response = restClient.get()
-                .uri("/issues.json?issue_id={ids}&status_id=*&limit={limit}", idsParam, ids.size())
-                .retrieve()
-                .body(RedmineIssueSummary.Page.class);
-
-        return response != null ? response.issues() : List.of();
+        return result;
     }
 
     private URI buildSearchUri(UriBuilder uriBuilder, String query, String projectId, Set<SearchType> types,

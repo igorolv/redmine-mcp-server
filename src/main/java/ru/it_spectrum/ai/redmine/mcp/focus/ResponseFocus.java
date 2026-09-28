@@ -9,6 +9,11 @@ public enum ResponseFocus {
     FULL,
     CHANGESETS;
 
+    /** Whether the focused response keeps the issue's {@code related} context. */
+    public boolean keepsRelated() {
+        return this != TIMELINE && this != CHANGESETS;
+    }
+
     public static ResponseFocus from(String value) {
         if (value == null || value.isBlank()) {
             return DEFAULT;
