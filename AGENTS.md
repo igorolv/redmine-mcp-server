@@ -1,431 +1,71 @@
-# AGENTS.md — Engineering Guide for AI Coding Agents
+# redmine-mcp-server — instructions for agents developing the MCP server
 
-This file is for AI agents (and humans) **modifying the source code** of this repository.
-It is **not** a setup guide for end users — for that, see:
+This repository builds a local stdio MCP server for Redmine. These instructions govern agents
+**changing or reviewing this repository's source, tests and engineering documentation**. An agent
+using the published MCP tools to work on Redmine issues should follow the tool schemas and MCP
+prompts supplied by the running server; this file is not a Redmine task workflow. `README.md` is
+the user-facing catalogue, setup guide and security description.
 
-- [README.md](README.md) — product description, MCP tool catalogue, env vars, security model,
-  build, smoke-test, and client connection instructions.
+## Instruction routing
 
-Read this file before changing code. It documents non-obvious invariants, the layered architecture,
-and the conventions that the existing code follows consistently.
+Read this root file first. Then read only the documents whose `When` matches the work, before
+changing the relevant code. The paths in this table are relative to the repository root.
 
----
-
-## 1. What this project is
-
-A local **MCP (Model Context Protocol) server** that exposes a Redmine instance to AI clients
-(Claude Code, Cursor, VS Code Copilot, Qwen Code, …) over **stdio**. It is **read-only by default**;
-an explicit environment flag can expose a narrowly scoped set of issue and time-entry write operations.
-
-Core invariants — never break these without an explicit conversation:
-
-1. **Write access is opt-in and narrowly scoped.** Without `REDMINE_MCP_WRITE_ENABLED=true`, no
-   write tool bean exists and no MCP tool may issue `POST`, `PUT`, `DELETE`, or `PATCH`. With the
-   flag enabled, only `IssueWriteTools`, `TimeEntryWriteTools`, and `WikiWriteTools` may expose the
-   approved operations: create/update an issue, add an issue note, upload/attach a file, create a time
-   entry for the API-key user, and create/update a wiki page. They use `RedmineMutationClient`, only
-   `POST`/`PUT`, and the permissions/workflow of `REDMINE_API_KEY`. Do not add `DELETE`/`PATCH`, journal
-   mutation, wiki deletion/rename/protection, wiki attachments, time-entry updates, or time-entry
-   deletion without another explicit design conversation. AI markers come only from
-   `AiContentMarker`, which reads one prefix per content type from `redmine-mcp.write.*-prefix`
-   (`RedmineMcpProperties.Write`): created-issue description (default `AI_EDIT:`, not applied by
-   `updateIssue`), issue note, time-entry comment, wiki revision comment, and attachment filename
-   (all empty by default). An empty prefix means "leave the content untouched". Never hardcode a
-   marker in a service or tool.
-2. **Stdio only.** The server has `spring.main.web-application-type: none`. It must never open
-   an HTTP port, never write to `System.out` (stdout is the MCP transport channel — anything
-   written there corrupts the JSON-RPC stream).
-3. **Immediate execution for tool calls.** `McpServerConfig` sets `immediateExecution(true)` on
-   the `McpSyncServer` builder. This avoids a stdout write race when boundedElastic tool
-   completions finish concurrently. Do not switch to async/reactive without re-evaluating this.
-4. **Wire format is the `api/*` package.** Tools return records from `ru.it_spectrum.ai.redmine.mcp.api`,
-   never raw `client.model.*` types. The `api` types are the **stable MCP contract**;
-   `client.model` types track Redmine's REST shape and may change when Redmine changes.
-5. **Bounded responses must remain recoverable for the LLM.** Optimize the model's context and
-   follow-up choices, not Redmine caching. When a tool omits or shortens data, its response must
-   make the missing portion identifiable and give the model a way to request it. For issues,
-   `getIssueHistory.nextOffset` leads to remaining events, `journalId` leads to the full entry via
-   `getIssueJournal`, and compact tree nodes retain issue IDs for `getIssue`. Keep these structured
-   follow-up paths; a path to raw `issue.json` is not a substitute for them. For attachments,
-   `getAttachment` saves the original file and returns its `localPath`/`fileUri` alongside bounded
-   extracted text and truncation metadata, so clients with filesystem access can inspect the
-   original when needed. Issue snapshots are local artifacts, not a general Redmine cache or the
-   primary LLM retrieval interface; do not eagerly download related issues or every attachment
-   merely to fill the snapshot directory.
-
----
-
-## 2. Tech stack and exact versions
-
-- **Java 25** toolchain (`build.gradle.kts` pins `JavaLanguageVersion.of(25)`).
-- **Spring Boot 4** + **Spring AI MCP server** (stdio transport) — version aliases in
-  `gradle/libs.versions.toml`.
-- **Apache PDFBox** — PDF text extraction.
-- **Apache POI (ooxml)** — DOCX/XLSX/PPTX text extraction.
-- **Apache Tika (core + parsers-standard)** — fallback parser and metadata extraction.
-- **Pandoc** (optional, external binary) — improved DOCX → text/markdown conversion when
-  available; probed at startup, gracefully skipped if missing.
-- **Gradle 9.x** with version catalog (`libs.versions.toml`).
-- Jackson Databind for JSON; ObjectMapper configured with `NON_NULL` inclusion (`JsonConfig`).
-
-If you change a dependency, update `libs.versions.toml`, not the build script.
-
----
-
-## 3. Build, run, test
-
-The build tool is **Gradle** (wrapper checked in as `./gradlew` / `gradlew.bat`). Always drive
-builds, tests, and the runnable jar through the Gradle wrapper — every command below is the
-canonical invocation.
-
-The build needs a JDK 25 toolchain. Gradle first looks for one already installed; if none is
-found it downloads one itself (the `foojay-resolver-convention` plugin in `settings.gradle.kts`
-provides the toolchain repository, so `api.foojay.io` must be reachable for that fallback).
-To use a specific local JDK instead, point `JAVA_HOME` at it. On Windows the default JDK is
-often older; set `JAVA_HOME` explicitly (e.g. `$env:JAVA_HOME = "$HOME\.jdks\jdk-25.0.2"`).
-
-```bash
-./gradlew build              # compile + unit tests + bootJar
-./gradlew compileJava        # compile main sources only
-./gradlew bootJar            # just the runnable jar -> build/libs/redmine-mcp-server.jar
-./gradlew test               # unit tests; the `integration` JUnit tag is EXCLUDED
-./gradlew integrationTest    # tests tagged `integration` — require live REDMINE_URL + REDMINE_API_KEY
-./gradlew check              # test + any other verification tasks
-./gradlew clean              # wipe build/
-```
-
-On Windows PowerShell, use `.\gradlew.bat` instead of `./gradlew`.
-
-The `test` task in `build.gradle.kts` uses `excludeTags("integration")`. The `integrationTest`
-task uses `includeTags("integration")` and `shouldRunAfter(tasks.test)`. Tag a JUnit test with
-`@Tag("integration")` if it needs a real Redmine.
-
-To smoke-test the server locally without an MCP client:
-
-```bash
-REDMINE_URL=https://redmine.example.com REDMINE_API_KEY=xxx \
-  java -jar build/libs/redmine-mcp-server.jar
-```
-
-It will block waiting for JSON-RPC on stdin. Log lines appear on stderr **and** in the rolling
-file `${REDMINE_MCP_DATA_DIR:-~/.redmine-mcp-server}/logs/redmine-mcp-server.log`.
-
----
-
-## 4. Source layout
-
-The package root is `ru.it_spectrum.ai.redmine.mcp`. Strict layering — dependencies flow
-**downward** only:
-
-```
-tools/        →  service/  →  client/         (and  extraction/)
-                              client/model/
-api/  ← returned by tools and services as the MCP wire format
-config/       — Spring @ConfigurationProperties, beans, MCP customizer
-```
-
-| Package | Responsibility | What goes here |
+| Document | When | What it holds |
 |---|---|---|
-| `RedmineMcpServerApplication` | Spring Boot entry point. Empty by design. | Nothing. |
-| `tools/` | Thin `@McpTool` / `@McpPrompt` adapters. Spring `@Service` beans. | One class per logical domain / toggle group (`IssueTools`, `IssueStructureTools`, `ProjectTools`, `IssueAnalyticsTools`, `ReleaseAnalyticsTools`, `IncidentPrompts`, …). Plus the shared `ToolLogger`. |
-| `service/` | Business logic. Calls Redmine clients, maps `client.model.*` → `api.*`. | Domain services (`IssueService`, `IssueMutationService`, `TimeEntryMutationService`, `AnalysisService`, `AttachmentService`, `IssueSnapshotService`, …) and the typed exceptions tools throw (`IssueNotFoundException`, `ResourceUnavailableException`, `AttachmentNotFoundException`, …). |
-| `client/` | `RedmineClient` for reads and opt-in `RedmineMutationClient` for approved writes, both using `RestClient`. | HTTP/JSON glue only. No domain decisions. |
-| `client/model/` | Raw Redmine DTOs (mirror Redmine REST shape). | Add fields here when Redmine adds a field you need. **Never expose these on the MCP wire.** |
-| `api/` | Stable MCP response records. `@Schema`-annotated for output-schema generation. | Add a new record here when you add a new tool. |
-| `extraction/` | Document-to-text pipeline. | `ExtractionPipeline`, `DocumentParser` impls under `extraction/parser/`, `ExtractionLimits`, `FileTypeDetector`, `PandocAvailability`. |
-| `config/` | Configuration. | `RedmineMcpProperties` (all knobs), `RedmineClientProperties` (url+key), `RedmineConfig` (RestClient bean), `McpServerConfig` (the stdio `immediateExecution` customizer), `JsonConfig` (ObjectMapper). |
+| `docs/architecture-agent.md` | locating code, changing dependencies, transport, or Spring wiring | package map, layer direction, technology, stdio and execution context |
+| `docs/tool-contracts-agent.md` | adding, editing, diagnosing or reviewing an MCP tool, prompt, wire record, schema or tool group | tool and prompt patterns, conditional registration, output schemas, logging, description and JSON test conventions |
+| `docs/write-surface-agent.md` | adding, editing, diagnosing or reviewing issue, time-entry or wiki writes, mutation clients or AI markers | approved operations, opt-in registration, mutation limits and safe test boundary |
+| `docs/retrieval-extraction-agent.md` | changing issue history, tree reads, snapshots, attachment responses, response budgets or parsers | recoverable truncation, snapshot layout, parser order and extraction limits |
+| `docs/build-config-agent.md` | building, testing, running the jar or adding a configuration knob | wrapper commands, JDK/toolchain, integration-test boundary and property binding |
 
-Resources: `src/main/resources/application.yml` (config defaults), `logback-spring.xml`
-(file + stderr appenders only — **no stdout appender**, see invariant #2).
+The table is the complete index of `docs/*-agent.md`. Register any new agent document here when
+creating it. Keep durable engineering contracts in these documents; keep product usage and
+connection instructions in `README.md`, and instructions to an MCP client in the server's
+`@McpPrompt` text and tool descriptions. Do not put operational Redmine task recipes in this
+instruction corpus.
 
-Tests live under `src/test/java/.../` mirroring the main package. Shared helpers:
-`TestRedmineMcpProperties`, `tools/ToolJsonTestSupport`, `extraction/ExtractionTestPipelines`.
+## Project boundaries
 
----
+- Java 25, Spring Boot 4, Spring AI MCP server, Gradle 9.x. Version aliases are in
+  `gradle/libs.versions.toml`.
+- Dependencies flow `tools/ -> service/ -> client/` (and `extraction/`). `api/` records are the
+  stable MCP wire contract; `client/model/` records mirror Redmine REST responses and never
+  cross the MCP boundary.
+- `RedmineMcpServerApplication` stays an empty entry point. `config/` owns Spring wiring and
+  `RedmineMcpProperties`; `tools/` contains thin adapters, while `service/` owns decisions and
+  maps raw Redmine data to `api/`.
 
-## 5. Adding a new MCP tool
+## Invariants that apply to every change
 
-Concrete walkthrough — follow the pattern of `IssueTools#getIssue`.
+1. **Writes are opt-in and limited.** Without `REDMINE_MCP_WRITE_ENABLED=true`, no write tool
+   bean exists and no tool issues `POST`, `PUT`, `DELETE` or `PATCH`. The only approved write
+   tools and their exact semantics are in `docs/write-surface-agent.md`; do not enlarge this
+   surface without an explicit design conversation.
+2. **Stdio is the only transport.** `spring.main.web-application-type: none`; never open an
+   HTTP port or write to `System.out`, the JSON-RPC channel. Logging goes to SLF4J and the
+   stderr/file appenders.
+3. **Tool calls execute immediately.** `McpServerConfig` sets `immediateExecution(true)` on
+   `McpSyncServer` to avoid concurrent stdout writes. Do not switch to async/reactive without
+   re-evaluating this race.
+4. **Responses stay recoverable.** If a tool shortens or omits content, identify what is
+   missing and provide a structured follow-up path: `nextOffset`, `journalId`, issue ID, or
+   attachment `localPath`/`fileUri` as appropriate. Snapshots are local artifacts, not a general
+   Redmine cache or a replacement for LLM retrieval. See `docs/retrieval-extraction-agent.md`.
+5. **Live mutation tests need a disposable instance.** Normal `test` and `build` must not
+   mutate Redmine. Unit tests for writes use mocks and `MockRestServiceServer`.
 
-1. **Decide the wire shape.** Add a record under `api/` annotated with `@Schema` on the
-   class and each component. Required fields use `requiredMode = Schema.RequiredMode.REQUIRED`;
-   anything that can legitimately be absent must be `nullable = true` (Jackson is configured
-   with `NON_NULL` inclusion — nulls are dropped from JSON, but the schema must still permit
-   them so MCP clients with strict validators do not choke).
-2. **Add the logic to a service.** Put a new method on the relevant `*Service` in `service/`.
-   The service calls `RedmineClient` (or, only for an approved opt-in write, `RedmineMutationClient`),
-   then maps the result to your new `api.*` record (or to an existing one). Services never reference
-   `tools/`.
-3. **Expose the tool.** Add a method to the appropriate `*Tools` class:
+## Editing and verification
 
-    ```java
-    @McpTool(
-        description = "<one to three sentences, written for the model that will call this>",
-        generateOutputSchema = true,
-        annotations = @McpTool.McpAnnotations(
-            readOnlyHint = true, destructiveHint = false, idempotentHint = true)
-    )
-    public MyResponseType myTool(
-        @McpToolParam(description = "...") int requiredArg,
-        @McpToolParam(description = "...", required = false) Integer optionalArg
-    ) {
-        log.info("Tool call: myTool (requiredArg={}, optionalArg={})", requiredArg, optionalArg);
-        long start = System.nanoTime();
-        try {
-            var result = myService.doIt(requiredArg, optionalArg);
-            ToolLogger.completed(log, "myTool", start);
-            return result;
-        } catch (SomeKnownException e) {
-            ToolLogger.failed(log, "myTool", start, e.getMessage());
-            throw e;
-        }
-    }
-    ```
-
-   - Read pagination defaults from `properties.pagination()`, never hardcode `25` / `0`.
-   - For "not found" paths, throw the typed exception from `service/` (`IssueNotFoundException`,
-     `AttachmentNotFoundException`, `ResourceUnavailableException`, …). Spring AI MCP maps
-     these to error responses; do not return a null or empty record as a substitute.
-   - Always log `Tool call: <name> (...)` on entry and call `ToolLogger.completed` / `failed`
-      on exit. Log format is consistent across the codebase.
-   - Read tools use `readOnlyHint = true`. Write annotations must accurately describe mutability,
-     destructiveness, and idempotency; never copy the read-only annotation onto a mutation.
-4. **Test.** Add a unit test under `src/test/java/.../tools/` that mocks `RedmineClient`
-   (and any other services you depend on). Use `ToolJsonTestSupport.stringify(result)` to
-   assert against the *serialized JSON* — this catches Jackson misconfiguration and wire-shape
-   regressions, not just Java equality. See `IssueToolsTest` for the pattern.
-5. **Document the tool in README.md.** The README table is the user-facing catalogue;
-   keep it and the default/optional tool counts in sync.
-
-### Tool group gating
-
-Each `*Tools` `@Service` is gated by `@ConditionalOnProperty(prefix = "redmine-mcp.tools",
-name = "<group>", havingValue = "true", matchIfMissing = true)`. All groups are **on by default**
-(`matchIfMissing = true`), so the out-of-the-box manifest is unchanged; operators turn a group off
-(e.g. `REDMINE_MCP_TOOLS_RELEASE_ANALYTICS=false`) to shrink the `tools/list` manifest for small-context
-models. The group name is the kebab-case domain (`issue`, `issue-structure`, `project`, `search`,
-`attachment`, `wiki`, `time-entry`, `reference-data`, `user`, `issue-analytics`,
-`release-analytics`). `IncidentPrompts` is **not** gated — prompts stay always available.
-
-`IssueWriteTools`, `TimeEntryWriteTools`, and `WikiWriteTools` are deliberate exceptions: they are gated by
-`redmine-mcp.write.enabled` / `REDMINE_MCP_WRITE_ENABLED`, which defaults to `false`, and must not be
-folded into a default-on `redmine-mcp.tools.*` group.
-
-When you add a **new tool class** (not just a method on an existing one):
-
-1. Annotate it with `@ConditionalOnProperty` using a new `redmine-mcp.tools.<group>` name.
-2. Add the flag to `application.yml` under `redmine-mcp.tools` (default `true`, with a
-   `REDMINE_MCP_TOOLS_<UPPER_SNAKE>` env override).
-3. Add a row to the *Tool Groups (enable/disable)* table in `README.md`.
-4. Extend `ToolGroupConditionTest` (an `ApplicationContextRunner` test, no live Redmine) to cover
-   the new group's default-on and toggled-off paths.
-
----
-
-## 6. Adding a new MCP prompt
-
-Prompts live in `tools/IncidentPrompts.java` (or a sibling class in the same package).
-Pattern:
-
-```java
-@McpPrompt(
-    name = "my-prompt",
-    title = "Human-readable title",
-    description = "One sentence on what this prompt does for the model."
-)
-public String myPrompt(
-    @McpArg(name = "issueId", description = ISSUE_ID_DESCRIPTION, required = true) String issueId
-) {
-    log.info("Prompt requested: my-prompt (issueId={})", issueId);
-    String id = issueIdForTemplate(issueId);
-    return """
-        ...the actual prompt body, addressed to the model that will execute it...
-
-        %2$s
-        """.formatted(id, PREAMBLE);
-}
-```
-
-A prompt returns a **string template** that the MCP client renders as the conversation seed.
-Inside the template, refer to tool names by their short form (`getIssue`, `getAttachment`) and
-include the shared `PREAMBLE`, which covers server prefixes, code-mode `tools.<server>.<tool>` access,
-disabled tool groups, and the no-writes rule. See `IncidentPrompts#incidentBrief` for a working example.
-
-Prompt arguments are **always declared as `String`**. MCP sends prompt arguments as strings, and
-Spring AI converts them with `Integer.parseInt` for an `int` parameter. Some clients request a prompt
-with a placeholder instead of a value — opencode 1.x sends `$1` for every argument while building its
-command list and substitutes the real value client-side later. `IncidentPrompts#issueIdForTemplate`
-passes `$N` / `$ARGUMENTS` through verbatim, normalizes `#123` to `123`, and throws
-`IllegalArgumentException` for anything else, which reaches the client as a `-32602` error with the
-message. Do not change an argument back to `int`.
-
-`IncidentPromptsTest` checks that every `tool(param=...)` call in a prompt text names an existing
-`@McpTool` method and parameter and that every `focus="..."` value is valid. Write tool calls in the
-templates in that `tool(param=value)` form so the check covers them.
-
----
-
-## 7. Configuration knobs
-
-All tunables live in `RedmineMcpProperties` (`config/RedmineMcpProperties.java`) and are
-bound from the `redmine-mcp.*` block of `application.yml`. Each yml value uses an
-env-var override of the form `${REDMINE_MCP_*:default}`.
-
-To add a new knob:
-
-1. Add a component to the relevant nested record (e.g. `Pagination`, `Analysis`, `Extraction`),
-   with a `@DefaultValue` annotation and a compact-constructor sanity check.
-2. Declare a `DEFAULT_*` constant in `RedmineMcpProperties` and use it from both the
-   `@DefaultValue` and the compact constructor.
-3. Add a line to `application.yml` under `redmine-mcp.<section>` referencing a
-   `REDMINE_MCP_<UPPER_SNAKE>` env var.
-4. Read it from your service / tool via `properties.<section>().<component>()`.
-5. Add the env var to the table in `README.md` (Configuration section). Users read README,
-   not this file.
-
-`RedmineClientProperties` is separate and holds only the Redmine connection (`REDMINE_URL`,
-`REDMINE_API_KEY`). Do not stuff feature knobs there.
-
-The data directory is resolved by `RedmineMcpProperties#resolvedDataDir()`. Logs and issue
-snapshots both live under it; never hardcode `${user.home}/.redmine-mcp-server`.
-
----
-
-## 8. Document extraction pipeline
-
-Located in `extraction/`. Implementations of `DocumentParser` are registered into
-`ExtractionPipeline` and tried in order based on content type detected by `FileTypeDetector`.
-Existing parsers (under `extraction/parser/`):
-
-| Parser | Purpose |
-|---|---|
-| `PlainTextParser` | txt, log, csv, json, xml — direct UTF-8 read. |
-| `PdfTextParser` | PDF via PDFBox (text-layer only; scans without OCR yield empty text). |
-| `DocxPandocParser`, `DocxTextParser`, `DocxMediaExtractor`, `DocxEmbeddedExtractor` | DOCX yields **one** text part: pandoc markdown when `extraction.pandoc.enabled` and `pandoc` is found; `DocxTextParser` (POI) runs after it and skips itself via `ParseSink#hasTextPart()`, so it is only the fallback. Do not reintroduce a second text part for the same DOCX — it doubled the response and split the text budget. |
-| `XlsxTextParser`, `PptxTextParser` | XLSX / PPTX via POI. |
-| `ZipParser` | ZIP — recursive but **depth-bounded** by `extraction.limits.max-depth` (default 1). |
-| `ImagePassthroughParser` | Images — no text extracted; only `localPath`/`fileUri` exposed. |
-| `TikaTextFallbackParser`, `TikaMetadataParser` | Tika fallback when nothing else matched. |
-| `BinaryFallbackParser` | Last resort — no text, metadata only. |
-
-When you add a parser:
-
-- Implement `DocumentParser` (typically extending `AbstractDocumentParser`).
-- Register it in the parser list inside `ExtractionPipeline` (order matters — first
-  `canParse(...) == true` wins).
-- **Respect `ExtractionLimits`**: `maxTotalBytes`, `maxTotalParts`, `maxEntryBytes`,
-  `maxDepth`. Use `ParseSink#shouldStop()` to bail out early; do not buffer entire archives
-  into memory.
-- Apply the per-part char budget (`AttachmentExtraction.perPartChars`) before returning text.
-  This is the layer that protects MCP clients from being flooded by a single huge document.
-
-`PandocAvailability` probes for pandoc once at startup with a short timeout and caches the
-result. Don't call `pandoc` from a parser directly — route through `DocxPandocParser`.
-
----
-
-## 9. Runtime invariants (what would silently break things)
-
-- **Don't write to `System.out`.** Stdout is the MCP transport. Always use the SLF4J logger.
-  `logback-spring.xml` defines only `FILE` and `STDERR` appenders for that reason.
-- **Don't switch tool execution to async/reactive.** `McpServerConfig` deliberately enables
-  `immediateExecution(true)` to avoid concurrent stdout writes. Removing it reintroduces a
-  bug fixed in commit `3138a4a`.
-- **Issue snapshots persist on disk.** `IssueSnapshotService` writes
-  `${dataDir}/issues/<id>/issue.json`, `snapshot.json`, `attachments.json`, and
-  `attachments/<id>__<filename>`. Treat the layout as a contract — other tools (especially
-  `getAttachment`) return `localPath` values pointing into it. Don't rename directories
-  without updating `IssueSnapshotService` and the affected services together.
-- **Tree reads keep full snapshots.** `getIssueTree` loads and snapshots every fetched root,
-  ancestor, and expanded child in full, then returns compact `Issue` projections in `root` and
-  `ancestors`. Never persist a light/partial Redmine response over `issue.json`. Lightweight
-  lookups for `getIssue.related` are references only and do not create related-issue snapshots.
-- **History compression keeps events.** `getIssueHistory` includes creation and every journal,
-  shortens text before constructing `Opaque` fields, and returns `nextOffset` when events need
-  another page. Status intervals are page-local. Keep `journalId` so `getIssueJournal` can recover
-  full text, and include compression notes in the measured JSON size. An individually oversized
-  event is reduced to recoverable metadata; its omitted status intervals are called out explicitly.
-- **Pagination defaults are configurable, not constants.** Always read from
-  `properties.pagination().defaultLimit()` / `defaultOffset()`. Hardcoded 25/0 in tools
-  will be wrong as soon as a user overrides them.
-- **Attachment text is budget-bounded.** `getAttachment` without caller limits uses
-  `attachment.per-part-chars` / `per-attachment-chars`; the default total stays below
-  `response.max-chars` so a default response does not hit the response compressor on text alone.
-  Explicit `maxChars` / `partLimit` are capped by `attachment.max-request-chars` and then honored:
-  `AttachmentContentCompression` only collapses image parts for such calls and never truncates text
-  below the request. The applied values are returned in `limits`, a cut part carries `totalChars`.
-  New tools that surface attachment text must reuse this budget rather than inventing a parallel one.
-- **Never mutation-test against a production Redmine.** Unit tests for write paths use mocks and
-  `MockRestServiceServer`. Live write verification requires an explicitly designated disposable
-  test instance and key; the normal `test`/`build` tasks must not mutate any Redmine.
-
----
-
-## 10. Coding conventions
-
-- **Records for DTOs.** Both `api/*` and most `client/model/*` are Java records. Add new
-  fields as record components, not setters.
-- **Jackson `NON_NULL` is global.** Configured in `JsonConfig#redmineMcpObjectMapper`.
-  Null fields are dropped from JSON; design records to use `null` for "absent" rather than
-  empty strings or sentinel zeros.
-- **Schema annotations matter.** `generateOutputSchema = true` on `@McpTool` triggers
-  JSON-Schema generation from your `api.*` record. Use `@Schema(nullable = true)` for any
-  optional component, and `requiredMode = REQUIRED` for ones the consumer can always rely on.
-  Get this wrong and strict MCP clients reject responses at runtime.
-- **Exceptions over null returns at the tool boundary.** Services often return `Optional<T>`;
-  tools unwrap and throw a typed exception (`IssueNotFoundException`, …) when empty. This
-  produces a clean MCP error response.
-- **Logging format.** `log.info("Tool call: <name> (k1={}, k2={})", ...)` on entry,
-  `ToolLogger.completed/failed` on exit. Don't invent variants.
-- **Tool descriptions consume model context.** Every `@McpTool.description` and
-  `@McpToolParam.description` is part of the `tools/list` manifest and repeatedly inflates the
-  model context, even when that tool is not called. Treat every word as a recurring cost. Keep
-  only facts needed to select the tool or form valid arguments: non-obvious constraints, accepted
-  formats, lookup sources, and surprising semantics. Use an empty parameter description when its
-  name, Java type, and `required` flag are sufficient. Never restate the parameter name/type,
-  optionality, internal markers, enforced defaults/caps, or the same rule on multiple parameters.
-  Avoid cryptic abbreviations, but do not expand text that adds no calling signal.
-- **Tests assert on JSON, not Java equality.** Use `ToolJsonTestSupport.stringify(result)`
-  and `assertThat(json).contains(...)`. This catches Jackson misconfigurations that pure
-  Java equality misses.
-
----
-
-## 11. Things NOT to do
-
-- **Do not expand the approved mutation surface.** The only write tools are `createIssue`,
-  `updateIssue`, `addIssueNote`, `attachFileToIssue`, `createTimeEntry`, `createWikiPage`, and
-  `updateWikiPage`, all absent unless write mode is explicitly enabled. `createTimeEntry` always
-  creates the entry for the API-key user. `updateWikiPage` replaces the complete page body and
-  requires the current version returned by `getWikiPage`; wiki AI markers belong in revision comments,
-  not page text. In particular, do not add update/delete journal notes, update/delete time entries,
-  or wiki deletion/rename/protection/attachments: the compatibility baseline is Redmine 4.0.4 and
-  those operations require a separate design conversation.
-- **Do not leak `client/model/*` types onto the MCP wire.** They mirror Redmine's REST
-  schema and change when Redmine changes. Map to an `api.*` record at the service boundary.
-- **Do not put feature flags in `RedmineClientProperties`.** It is reserved for the
-  Redmine connection. Put feature knobs in `RedmineMcpProperties`.
-- **Do not hardcode the data directory or its subpaths.** Always go through
-  `properties.resolvedDataDir()`.
-- **Do not depend on the developer's home directory in tests.** Use `@TempDir` or
-  `TestRedmineMcpProperties` overrides.
-- **Do not edit README.md when you mean to update internal architecture notes.** README is
-  user-facing (product description, tool catalogue, env vars). AGENTS.md is for engineering
-  context. They serve different audiences.
-
----
-
-## 12. Where to look for more
-
-- **README.md** — product overview, full tool catalogue, env-var table, security model,
-  build, smoke-test, client connection, troubleshooting. The first place to look when a
-  user asks "what does this server do?" or "how do I install it?".
-- **`build.gradle.kts` + `gradle/libs.versions.toml`** — the source of truth for dependency
-  versions and the `integrationTest` task definition.
-- **`application.yml`** — every knob the server has, with its env-var override name.
-- **Recent commits** — many runtime decisions are non-obvious. Notable commits:
-  - `3138a4a` — why stdio MCP uses `immediateExecution(true)` (stdout race).
-  - `4890f73` — addition of the `incident-brief` MCP prompt.
-  - `1410e66` — per-attachment / per-part char budgets for `getAttachment`.
-  - `d2aaf37` — schema relaxation for optional fields (the reason `nullable = true` is
-    important on `api/*` records).
+- Drive Gradle through the checked-in wrapper (`.\gradlew.bat` in PowerShell). `test` excludes
+  JUnit's `integration` tag; `integrationTest` requires live `REDMINE_URL` and
+  `REDMINE_API_KEY`. Use `docs/build-config-agent.md` for commands and configuration changes.
+- Follow the surrounding Java style and keep `api/` records and schema annotations aligned
+  with serialized JSON. Check the relevant focused tests for code changes. Documentation-only
+  routing changes can be checked by path/index and diff review.
+- Use `README.md` for user-facing tool catalogue, env vars and setup; use this instruction
+  corpus for engineering decisions. Keep `CONTRIBUTING.md` consistent if contributor workflow
+  changes.
+- Write `AGENTS.md` and `docs/*-agent.md` in English. State current contracts and
+  non-obvious reasons, avoid task-specific history, and keep each fact in one owning document.
+  Make `When` describe a task trigger, and `What it holds` describe the destination content.

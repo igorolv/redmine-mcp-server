@@ -4,7 +4,7 @@ Thank you for considering a contribution! This document covers how to set up the
 what conventions the codebase follows, and how to submit changes.
 
 For the product overview, tool catalogue and configuration see [README.md](README.md).
-For the full engineering guide (architecture, conventions, invariants) see [AGENTS.md](AGENTS.md).
+For engineering rules and their topic-specific guides, start with [AGENTS.md](AGENTS.md).
 
 ## Prerequisites
 
