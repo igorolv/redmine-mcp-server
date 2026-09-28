@@ -3,6 +3,7 @@ package ru.it_spectrum.ai.redmine.mcp.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import ru.it_spectrum.ai.redmine.mcp.api.Issue;
@@ -15,7 +16,14 @@ import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssueSummary;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineUser;
+import ru.it_spectrum.ai.redmine.mcp.config.JsonConfig;
+import ru.it_spectrum.ai.redmine.mcp.compression.HistoryCompression;
+import ru.it_spectrum.ai.redmine.mcp.compression.ResponseCompressor;
+import ru.it_spectrum.ai.redmine.mcp.extraction.ExtractionPipeline;
+import ru.it_spectrum.ai.redmine.mcp.extraction.FileTypeDetector;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -40,7 +48,9 @@ class IssueServiceTest {
         var properties = TestRedmineMcpProperties.defaults();
         attachmentService = mock(AttachmentService.class);
         var relatedRefBuilder = new RelatedRefBuilder(client, properties);
-        service = new IssueService(client, attachmentService, relatedRefBuilder, properties);
+        var mapper = new JsonConfig().redmineMcpObjectMapper();
+        service = new IssueService(client, attachmentService, relatedRefBuilder,
+                new HistoryCompression(new ResponseCompressor(mapper), mapper, properties), properties);
     }
 
     // --- find / findOrThrow ---
@@ -49,6 +59,49 @@ class IssueServiceTest {
     void findShouldReturnEmptyWhenIssueMissing() {
         when(client.getIssue(99)).thenReturn(null);
         assertThat(service.find(99)).isEmpty();
+    }
+
+    @Test
+    void findingIssueShouldNotOverwriteFullSnapshotsOfLightweightRelatedIssues(@TempDir Path dataDir)
+            throws Exception {
+        var properties = TestRedmineMcpProperties.withDataDir(dataDir);
+        var snapshotService = new IssueSnapshotService(client,
+                new JsonConfig().redmineMcpObjectMapper(), properties);
+        var attachments = new AttachmentService(client, mock(ExtractionPipeline.class),
+                mock(FileTypeDetector.class), snapshotService, properties);
+        var mapper = new JsonConfig().redmineMcpObjectMapper();
+        var issueService = new IssueService(client, attachments,
+                new RelatedRefBuilder(client, properties),
+                new HistoryCompression(new ResponseCompressor(mapper), mapper, properties), properties);
+
+        var savedParent = issueWithJournals(10, "Parent with full history", new IdName(1, "New"),
+                new IdName(42, "John"), List.of(new RedmineIssue.Journal(
+                        76, new IdName(42, "John"), "Parent's preserved note",
+                        "2025-01-11T14:30:00Z", List.of())));
+        var lightParent = treeIssue(10, "Parent", null, List.of(child(100, "Main"), child(101, "Sibling")));
+        var sibling = issueWithJournals(101, "Sibling", new IdName(1, "New"),
+                new IdName(42, "John"), List.of(new RedmineIssue.Journal(
+                        77, new IdName(42, "John"), "Preserved full note",
+                        "2025-01-12T14:30:00Z", List.of())));
+        var main = treeIssue(100, "Main", new IdName(10, "Parent"), List.of());
+        snapshotService.snapshotIssue(savedParent);
+        snapshotService.snapshotIssue(sibling);
+        Path parentSnapshot = snapshotService.issueDirectory(10).resolve("issue.json");
+        Path siblingSnapshot = snapshotService.issueDirectory(101).resolve("issue.json");
+        byte[] parentBefore = Files.readAllBytes(parentSnapshot);
+        byte[] siblingBefore = Files.readAllBytes(siblingSnapshot);
+
+        when(client.getIssue(100)).thenReturn(main);
+        when(client.getIssueWithChildren(10)).thenReturn(lightParent);
+        when(client.getIssueSummariesByIds(List.of(101))).thenReturn(List.of(summary(101, "Sibling")));
+
+        assertThat(issueService.find(100)).isPresent();
+
+        assertThat(snapshotService.issueDirectory(100).resolve("issue.json")).isRegularFile();
+        assertThat(Files.readAllBytes(parentSnapshot)).isEqualTo(parentBefore);
+        assertThat(Files.readAllBytes(siblingSnapshot)).isEqualTo(siblingBefore);
+        verify(client, times(0)).getIssue(10);
+        verify(client, times(0)).getIssue(101);
     }
 
     @Test
@@ -174,6 +227,33 @@ class IssueServiceTest {
         assertThat(view.subtree().unwrap().id()).isEqualTo(3);
         assertThat(view.fetchedCount()).isEqualTo(3);
         assertThat(view.limitReached()).isFalse();
+    }
+
+    @Test
+    void getTreeShouldPersistFullFetchedIssuesWhileReturningCompactContext(@TempDir Path dataDir)
+            throws Exception {
+        var properties = TestRedmineMcpProperties.withDataDir(dataDir);
+        var mapper = new JsonConfig().redmineMcpObjectMapper();
+        var snapshots = new IssueSnapshotService(client, mapper, properties);
+        var attachments = new AttachmentService(client, mock(ExtractionPipeline.class),
+                mock(FileTypeDetector.class), snapshots, properties);
+        var issueService = new IssueService(client, attachments, new RelatedRefBuilder(client, properties),
+                new HistoryCompression(new ResponseCompressor(mapper), mapper, properties), properties);
+        var parent = issueWithJournals(10, "Parent", new IdName(1, "New"),
+                new IdName(42, "John"), List.of(new RedmineIssue.Journal(
+                        76, new IdName(42, "John"), "Parent's full note",
+                        "2025-01-11T14:30:00Z", List.of())));
+        var root = treeIssue(100, "Main", new IdName(10, "Parent"), List.of());
+        when(client.getIssue(100)).thenReturn(root);
+        when(client.getIssue(10)).thenReturn(parent);
+
+        var tree = issueService.getTree(100, 0);
+
+        assertThat(tree.root().unwrap().journals()).isNull();
+        assertThat(tree.ancestors().getFirst().unwrap().journals()).isNull();
+        assertThat(Files.readString(snapshots.issueDirectory(10).resolve("issue.json")))
+                .contains("Parent's full note");
+        assertThat(snapshots.issueDirectory(100).resolve("issue.json")).isRegularFile();
     }
 
     @Test

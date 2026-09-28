@@ -13,6 +13,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.User;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
+import ru.it_spectrum.ai.redmine.mcp.compression.HistoryCompression;
 import ru.it_spectrum.ai.redmine.mcp.config.RedmineMcpProperties;
 
 import java.net.URLDecoder;
@@ -48,14 +49,16 @@ public class IssueService {
     private final RedmineClient client;
     private final AttachmentService attachmentService;
     private final RelatedRefBuilder relatedRefBuilder;
+    private final HistoryCompression historyCompression;
     private final RedmineMcpProperties properties;
 
     public IssueService(RedmineClient client, AttachmentService attachmentService,
                         RelatedRefBuilder relatedRefBuilder,
-                        RedmineMcpProperties properties) {
+                        HistoryCompression historyCompression, RedmineMcpProperties properties) {
         this.client = client;
         this.attachmentService = attachmentService;
         this.relatedRefBuilder = relatedRefBuilder;
+        this.historyCompression = historyCompression;
         this.properties = properties;
     }
 
@@ -191,8 +194,8 @@ public class IssueService {
 
         boolean limitReached = fetchCount[0] >= properties.tree().maxIssues();
         return new IssueTree(
-                Opaque.of(Issue.from(root)),
-                ancestors.stream().map(Issue::from).map(Opaque::of).toList(),
+                Opaque.of(Issue.treeContextFrom(root)),
+                ancestors.stream().map(Issue::treeContextFrom).map(Opaque::of).toList(),
                 Opaque.of(subtree),
                 fetchCount[0],
                 limitReached
@@ -201,26 +204,30 @@ public class IssueService {
 
     // --- History ---
 
-    public Optional<IssueHistory> getHistory(int issueId) {
+    public Optional<IssueHistory> getHistory(int issueId, Integer offset) {
         var issue = client.getIssue(issueId);
         if (issue == null) {
             return Optional.empty();
         }
-        return Optional.of(buildHistory(issue));
+        return Optional.of(buildHistory(issue, new IssueFetchContext(client), offset));
     }
 
     public IssueHistory buildHistory(RedmineIssue issue) {
-        return buildHistory(issue, new IssueFetchContext(client));
+        return buildHistory(issue, new IssueFetchContext(client), null);
     }
 
     public IssueHistory buildHistory(RedmineIssue issue, IssueFetchContext ctx) {
+        return buildHistory(issue, ctx, null);
+    }
+
+    public IssueHistory buildHistory(RedmineIssue issue, IssueFetchContext ctx, Integer offset) {
         var timeline = new ArrayList<IssueHistory.TimelineEntry>();
         var statusSnapshots = new ArrayList<StatusSnapshot>();
 
         var customFieldNames = customFieldNames(issue);
 
         String initialStatus = findInitialStatus(issue, ctx);
-        statusSnapshots.add(new StatusSnapshot(initialStatus, issue.createdOn()));
+        statusSnapshots.add(new StatusSnapshot(initialStatus, issue.createdOn(), 0));
 
         var createdChanges = new ArrayList<IssueHistory.FieldChange>();
         createdChanges.add(new IssueHistory.FieldChange("Status", null, nameOf(issue.status())));
@@ -230,6 +237,7 @@ public class IssueService {
         }
         timeline.add(new IssueHistory.TimelineEntry(
                 IssueHistory.Kind.CREATED,
+                null,
                 issue.createdOn(),
                 nameOf(issue.author()),
                 List.copyOf(createdChanges),
@@ -238,9 +246,16 @@ public class IssueService {
 
         if (issue.journals() != null) {
             for (var journal : issue.journals()) {
+                if (journal == null) {
+                    continue;
+                }
+                int eventIndex = timeline.size();
                 var changes = new ArrayList<IssueHistory.FieldChange>();
                 if (journal.details() != null) {
                     for (var detail : journal.details()) {
+                        if (detail == null) {
+                            continue;
+                        }
                         var fc = toFieldChange(detail, ctx, issue, customFieldNames);
                         if (fc != null) {
                             changes.add(fc);
@@ -248,27 +263,25 @@ public class IssueService {
                         if ("attr".equals(detail.property()) && "status_id".equals(detail.name())
                                 && detail.newValue() != null) {
                             String statusName = resolveRefValue(ctx.statuses(), detail.newValue());
-                            statusSnapshots.add(new StatusSnapshot(statusName, journal.createdOn()));
+                            statusSnapshots.add(new StatusSnapshot(statusName, journal.createdOn(), eventIndex));
                         }
                     }
                 }
                 boolean hasNotes = journal.notes() != null && !journal.notes().isBlank();
-                if (!changes.isEmpty() || hasNotes) {
-                    timeline.add(new IssueHistory.TimelineEntry(
-                            IssueHistory.Kind.UPDATED,
-                            journal.createdOn(),
-                            journal.user() != null ? journal.user().name() : "unknown",
-                            List.copyOf(changes),
-                            hasNotes ? journal.notes() : null
-                    ));
-                }
+                timeline.add(new IssueHistory.TimelineEntry(
+                        IssueHistory.Kind.UPDATED,
+                        journal.id(),
+                        journal.createdOn(),
+                        journal.user() != null ? journal.user().name() : "unknown",
+                        List.copyOf(changes),
+                        hasNotes ? journal.notes() : null
+                ));
             }
         }
 
         var durations = computeStatusDurations(statusSnapshots);
-        return new IssueHistory(
-                List.copyOf(timeline).stream().map(Opaque::of).toList(),
-                durations.stream().map(Opaque::of).toList());
+        return historyCompression.compress(issue.id(), issue.updatedOn(),
+                List.copyOf(timeline), durations, offset);
     }
 
     // --- Tree helpers ---
@@ -330,14 +343,15 @@ public class IssueService {
 
     // --- History helpers ---
 
-    private record StatusSnapshot(String statusName, String timestamp) {
+    private record StatusSnapshot(String statusName, String timestamp, int eventIndex) {
     }
 
     private String findInitialStatus(RedmineIssue issue, IssueFetchContext ctx) {
         if (issue.journals() != null) {
             for (var journal : issue.journals()) {
-                if (journal.details() == null) continue;
+                if (journal == null || journal.details() == null) continue;
                 for (var detail : journal.details()) {
+                    if (detail == null) continue;
                     if ("attr".equals(detail.property()) && "status_id".equals(detail.name())
                             && detail.oldValue() != null) {
                         return resolveRefValue(ctx.statuses(), detail.oldValue());
@@ -351,14 +365,14 @@ public class IssueService {
     private IssueHistory.FieldChange toFieldChange(RedmineIssue.Detail detail, IssueFetchContext ctx,
                                                    RedmineIssue issue, Map<String, String> customFieldNames) {
         if (!"attr".equals(detail.property()) && !"cf".equals(detail.property())) {
-            return null;
+            String label = "%s%s".formatted(
+                    detail.property() != null ? detail.property() : "Change",
+                    detail.name() != null ? ": " + detail.name() : "");
+            return new IssueHistory.FieldChange(label, detail.oldValue(), detail.newValue());
         }
         String fieldLabel = formatFieldLabel(detail.property(), detail.name(), customFieldNames);
         String oldVal = resolveDetailValue(detail.property(), detail.name(), detail.oldValue(), ctx, issue);
         String newVal = resolveDetailValue(detail.property(), detail.name(), detail.newValue(), ctx, issue);
-        if (oldVal == null && newVal == null) {
-            return null;
-        }
         return new IssueHistory.FieldChange(fieldLabel, oldVal, newVal);
     }
 
@@ -436,21 +450,21 @@ public class IssueService {
         return map;
     }
 
-    private List<IssueHistory.StatusDuration> computeStatusDurations(List<StatusSnapshot> snapshots) {
-        var durations = new ArrayList<IssueHistory.StatusDuration>();
+    private List<HistoryCompression.IndexedDuration> computeStatusDurations(List<StatusSnapshot> snapshots) {
+        var durations = new ArrayList<HistoryCompression.IndexedDuration>();
         for (int i = 0; i < snapshots.size(); i++) {
             var s = snapshots.get(i);
             if (i + 1 < snapshots.size()) {
                 var next = snapshots.get(i + 1);
-                durations.add(new IssueHistory.StatusDuration(
+                durations.add(new HistoryCompression.IndexedDuration(s.eventIndex(), new IssueHistory.StatusDuration(
                         s.statusName(), s.timestamp(), next.timestamp(),
                         formatDuration(s.timestamp(), next.timestamp())
-                ));
+                )));
             } else {
-                durations.add(new IssueHistory.StatusDuration(
+                durations.add(new HistoryCompression.IndexedDuration(s.eventIndex(), new IssueHistory.StatusDuration(
                         s.statusName(), s.timestamp(), null,
                         formatDuration(s.timestamp(), null)
-                ));
+                )));
             }
         }
         return List.copyOf(durations);

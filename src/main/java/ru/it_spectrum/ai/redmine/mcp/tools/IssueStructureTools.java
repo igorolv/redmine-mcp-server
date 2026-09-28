@@ -29,9 +29,8 @@ public class IssueStructureTools {
     }
 
     @McpTool(
-            description = "Explore structural context around one known issue: its parent chain to the root, subtasks " +
-            "down to the requested depth and direct relations. Use getBlockerChain for recursively traced blockers, " +
-            "or getIssue when only the single issue's full details are needed.",
+            description = "Explore one issue's parent chain and subtasks down to the requested depth. " +
+            "Root and ancestors are compact; use getIssue for full details or relations and getBlockerChain for blockers.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
@@ -53,18 +52,18 @@ public class IssueStructureTools {
     }
 
     @McpTool(
-            description = "Build an interpreted change-history timeline for one issue, including field changes, notes " +
-            "and time aggregated per status. Use for history or status-duration analysis; getIssue returns the full " +
-            "issue context and journals instead.",
+            description = "Read an issue's chronological journal events and status intervals. Long text is shortened; " +
+            "use journalId with getIssueJournal for full text, and nextOffset to read any remaining events.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public IssueHistory getIssueHistory(
-            @McpToolParam(description = "") int issueId
+            @McpToolParam(description = "") int issueId,
+            @McpToolParam(description = "Next page index from nextOffset", required = false) Integer offset
     ) {
-        log.info("Tool call: getIssueHistory (issueId={})", issueId);
+        log.info("Tool call: getIssueHistory (issueId={}, offset={})", issueId, offset);
         long start = System.nanoTime();
-        var maybeHistory = issueService.getHistory(issueId);
+        var maybeHistory = issueService.getHistory(issueId, offset);
         if (maybeHistory.isEmpty()) {
             var e = new IssueNotFoundException(issueId);
             ToolLogger.failed(log, "getIssueHistory", start, e.getMessage());
@@ -72,5 +71,9 @@ public class IssueStructureTools {
         }
         ToolLogger.completed(log, "getIssueHistory", start);
         return maybeHistory.get();
+    }
+
+    public IssueHistory getIssueHistory(int issueId) {
+        return getIssueHistory(issueId, null);
     }
 }

@@ -78,7 +78,8 @@ By default the server exports **32 read-only MCP tools**. When
 | `getIssue` | Issue details: description, status, assignee, dates, notes, relations, custom fields, attachments, linked revisions (`changesets`). Parameters: `issueId`, `focus` (`default`, `implementation`, `timeline`, `full`; optional) |
 | `getIssueJournal` | A single complete issue journal note/event without response compression. Parameters: `issueId`, `journalId` |
 | `getMyIssues` | Issues of the current user. Parameters: `projectId`, `statusId`, `sort`, `limit`, `offset` |
-| `getIssueTree` | Dependency tree: parent chain upward, subtasks downward, relations. Parameters: `issueId`, `depth` (default 2, max 5) |
+| `getIssueTree` | Parent chain and subtasks. `root` and `ancestors` keep the `Issue` JSON shape but contain compact context; call `getIssue` for full details or relations. Parameters: `issueId`, `depth` (default 2, max 5) |
+| `getIssueHistory` | Creation and every journal event, with status intervals. Long text is shortened; `journalId` identifies the full entry for `getIssueJournal`. Follow `nextOffset` with the optional `offset` parameter until it is absent. |
 
 ### Issue, Time Entry, and Wiki Writes (optional)
 
@@ -192,7 +193,7 @@ argument, `issueId` — the Redmine issue number (`12345` or `#12345`).
 |---|---|
 | `incident-brief` | Quick incident overview: fetches the issue via `getIssue`, downloads all attachments via `getAttachment` with short previews, and produces a concise Markdown report |
 | `incident-implementation` | Implementation context: fetches the issue with `focus=implementation`, picks relevant attachments by name, description and date, recovers compressed journal data only when it matters, and produces requirements, revision evidence, and a verification checklist |
-| `incident-timeline` | Incident chronology: fetches the issue with `focus=timeline`, falls back to `getIssueHistory` when journal entries or field changes were compressed away, and builds a timeline of who did what and when |
+| `incident-timeline` | Incident chronology: uses `getIssue(focus=timeline)` for issue and changeset context, then reads every `getIssueHistory` page for journal events and status intervals |
 | `issue-remaining-work` | What is still unfinished: combines `getIssue`, `getIssueTree` (including siblings when relevant), `getBlockerChain`, and `getIssueHistory` when needed, and reports open items without trusting the status alone |
 
 Clients that build command templates by requesting a prompt with a placeholder argument (for example
@@ -443,13 +444,16 @@ issues cannot overload the MCP client:
 | ZIP file inside an archive | up to 10 MB |
 | ZIP archive in total | up to 50 MB of extracted data |
 | `getIssueTree` | depth up to 5, max 50 issues |
+| `getIssueHistory` | Each JSON page fits `REDMINE_MCP_RESPONSE_MAX_CHARS` in both characters and UTF-8 bytes; all events remain available through `nextOffset` |
 
 `getAttachment` reports the limits it applied in `limits` (`maxChars`, `partLimit`, and a `note` when
 a requested value was reduced to the ceiling); a cut part carries `totalChars` with its full length.
 Without explicit limits, a response that still exceeds `REDMINE_MCP_RESPONSE_MAX_CHARS` (for example,
 many ZIP entries) is compressed: extra image parts are collapsed, then text parts are cut to
 `REDMINE_MCP_RESPONSE_ATTACHMENT_TEXT_PART_CHARS`. With explicit limits, only image parts are
-collapsed. The complete text always remains on disk at each part's `localPath`.
+collapsed. The original file remains on disk at `localPath`; for pandoc DOCX extraction, the
+markdown part also points to its saved text file. Other document parts can point to a PDF or Office
+source file rather than a separate extracted-text file.
 
 `getIssue` supports the `focus` parameter. `default` keeps the usual
 response shape and applies compression only when the response budget is exceeded. `implementation`
@@ -459,6 +463,25 @@ verbose history and commit message bodies are omitted. `timeline` targets
 "who did what and when" questions: it keeps journals and changesets but omits attachments,
 custom fields, and related context. `full` is an explicit choice of the full form with protective
 budget compression.
+
+`getIssueTree` still loads and snapshots every fetched issue in full, but returns only compact
+`Issue` context for `root` and `ancestors`; their description, journals, custom fields, attachments,
+and changesets are omitted from this view. Its `subtree` remains the hierarchy view. This changes
+the contents of those existing `Issue` fields: clients that previously read full details from the
+tree should call `getIssue(id)` instead. `getIssueTree` does not include direct relations.
+
+`getIssueHistory` includes the creation event and each journal event, including journals without a
+note or a recognized field change. It shortens long notes and old/new field values when needed,
+keeps `journalId` on each update, and explains reductions in `compressionNotes`. For exact wording
+or a complete old/new value, call `getIssueJournal(issueId, journalId)`. Start with
+`getIssueHistory(issueId)`; when `nextOffset` is present, pass that number as `offset` in the next
+call. Continue until `nextOffset` is absent. `totalEvents` includes creation. Status intervals in
+`statusDurations` belong to events on that page; combine them across pages. Compare
+`sourceUpdatedOn` across pages and restart if it changes. The server uses the existing
+`REDMINE_MCP_RESPONSE_MAX_CHARS` setting; no new environment variable is needed.
+If one event cannot fit after text shortening, its page keeps the event and `journalId` but
+reduces the event to metadata; `compressionNotes` identify any omitted status intervals and
+point to `getIssueJournal` for the full entry.
 
 If the note you need was dropped from the `getIssue` response by budget compression or the note was
 shortened, call `getIssueJournal(issueId, journalId)`: it re-takes the issue snapshot and

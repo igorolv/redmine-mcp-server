@@ -96,6 +96,22 @@ public record Issue(
         );
     }
 
+    /** Compact tree context; the full source issue is snapshotted before this projection is made. */
+    public static Issue treeContextFrom(RedmineIssue source) {
+        if (source == null) {
+            return null;
+        }
+        return new Issue(
+                source.id(), Ref.from(source.project()), Ref.from(source.tracker()),
+                Ref.from(source.status()), Ref.from(source.priority()), Ref.from(source.author()),
+                Ref.from(source.assignedTo()), Ref.from(source.fixedVersion()), Ref.from(source.category()),
+                source.subject(), null, source.startDate(), source.dueDate(), source.doneRatio(),
+                source.estimatedHours(), source.spentHours(), source.createdOn(), source.updatedOn(),
+                null, null, null, null, null,
+                List.of("Tree context omits description, journals, custom fields, attachments and changesets; call getIssue with this id for full details"),
+                null);
+    }
+
     public Issue withChangesets(List<Changeset> newChangesets) {
         return new Issue(id, project, tracker, status, priority, author, assignedTo,
                 fixedVersion, category, subject, description, startDate, dueDate, doneRatio,

@@ -169,14 +169,14 @@ public class IssueTools {
     }
 
     @McpTool(
-            description = "Retrieve one known issue journal entry in full, without response compression. Use after " +
-            "getIssue when its compression notes report a dropped or shortened journal and provide the journal ID.",
+            description = "Retrieve one known issue journal entry in full, without response compression. " +
+            "Use a journal ID from getIssue or getIssueHistory when exact text is needed.",
             generateOutputSchema = true,
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = true)
     )
     public Journal getIssueJournal(
             @McpToolParam(description = "") int issueId,
-            @McpToolParam(description = "Journal entry ID; from getIssue journals") int journalId
+            @McpToolParam(description = "Journal entry ID from getIssue or getIssueHistory") int journalId
     ) {
         log.info("Tool call: getIssueJournal (issueId={}, journalId={})", issueId, journalId);
         long start = System.nanoTime();

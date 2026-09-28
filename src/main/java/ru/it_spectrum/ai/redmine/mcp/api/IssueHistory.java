@@ -5,13 +5,23 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(description = "Interpreted history timeline for an issue: human-readable field changes plus aggregated time spent in each status.")
+@Schema(description = "Interpreted issue history. Read pages until nextOffset is absent to cover every event.")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record IssueHistory(
         @Schema(description = "Chronological timeline of creation and update events.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
         List<Opaque<TimelineEntry>> timeline,
-        @Schema(description = "How long the issue stayed in each status, derived from journal entries.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
-        List<Opaque<StatusDuration>> statusDurations
+        @Schema(description = "Status intervals beginning in this page's events.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+        List<Opaque<StatusDuration>> statusDurations,
+        @Schema(description = "Index of this page's first event.", requiredMode = Schema.RequiredMode.REQUIRED)
+        int offset,
+        @Schema(description = "Total creation and journal events available.", requiredMode = Schema.RequiredMode.REQUIRED)
+        int totalEvents,
+        @Schema(description = "Pass this as offset to getIssueHistory for the next page; absent when complete.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+        Integer nextOffset,
+        @Schema(description = "Issue update timestamp; compare across pages to detect intervening edits.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+        String sourceUpdatedOn,
+        @Schema(description = "What text was shortened and how to retrieve it in full.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+        List<String> compressionNotes
 ) {
 
     @Schema(description = "Kind of timeline entry.")
@@ -25,11 +35,13 @@ public record IssueHistory(
     public record TimelineEntry(
             @Schema(description = "Event kind.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             Kind kind,
+            @Schema(description = "Redmine journal ID for updates; absent for creation. Use with getIssueJournal for full text.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+            Integer journalId,
             @Schema(description = "Event timestamp in ISO-8601.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, format = "date-time", nullable = true)
             String timestamp,
             @Schema(description = "Name of the user who performed the action.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             String actor,
-            @Schema(description = "Field-level changes recorded with this entry; empty when the entry only carries a note.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
+            @Schema(description = "Field-level changes; may be empty for a note-only or otherwise detail-free journal.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             List<FieldChange> changes,
             @Schema(description = "Free-text note attached to the entry, when present.", requiredMode = Schema.RequiredMode.NOT_REQUIRED, nullable = true)
             String note

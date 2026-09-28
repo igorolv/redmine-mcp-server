@@ -325,6 +325,15 @@ result. Don't call `pandoc` from a parser directly — route through `DocxPandoc
   `attachments/<id>__<filename>`. Treat the layout as a contract — other tools (especially
   `getAttachment`) return `localPath` values pointing into it. Don't rename directories
   without updating `IssueSnapshotService` and the affected services together.
+- **Tree reads keep full snapshots.** `getIssueTree` loads and snapshots every fetched root,
+  ancestor, and expanded child in full, then returns compact `Issue` projections in `root` and
+  `ancestors`. Never persist a light/partial Redmine response over `issue.json`. Lightweight
+  lookups for `getIssue.related` are references only and do not create related-issue snapshots.
+- **History compression keeps events.** `getIssueHistory` includes creation and every journal,
+  shortens text before constructing `Opaque` fields, and returns `nextOffset` when events need
+  another page. Status intervals are page-local. Keep `journalId` so `getIssueJournal` can recover
+  full text, and include compression notes in the measured JSON size. An individually oversized
+  event is reduced to recoverable metadata; its omitted status intervals are called out explicitly.
 - **Pagination defaults are configurable, not constants.** Always read from
   `properties.pagination().defaultLimit()` / `defaultOffset()`. Hardcoded 25/0 in tools
   will be wrong as soon as a user overrides them.

@@ -33,6 +33,7 @@ public class IncidentPrompts {
             Reading getIssue responses:
             - focusNotes describe what the chosen focus omits by design. compressionNotes describe what the server dropped to fit the response budget; retrying with focus="full" is compressed the same way.
             - "kept N most recent of M journal entries" or "omitted field-change details": that history is not in the response and the omitted journal IDs are unknown. Call getIssueHistory(issueId=%1$s) when it matters for the answer.
+            - When getIssueHistory returns nextOffset, call getIssueHistory(issueId=%1$s, offset=<nextOffset>) and repeat until nextOffset is absent. Compare sourceUpdatedOn across pages; restart if it changes. Use each event's journalId with getIssueJournal for full text when needed.
             - A note ending in "(truncated by response compressor; total: N chars)": call getIssueJournal(issueId=%1$s, journalId=<that journal's id>) only when the full wording matters.
             - If your client saved an oversized tool response to a file, the file holds that whole response, but not data the server had already omitted.""";
 
@@ -156,7 +157,7 @@ public class IncidentPrompts {
                 Steps:
                 1. Call getIssue(issueId=%1$s, focus="timeline").
                    This focus keeps core fields, journals with their field changes, and changesets, and omits attachments, custom fields, and related issues.
-                2. Call getIssueHistory(issueId=%1$s) if compressionNotes report omitted journal entries or field-change details, or if the user asks how long the issue spent in each status.
+                2. Call getIssueHistory(issueId=%1$s) for every journal event and status interval; follow nextOffset as described below.
                 3. Do not call getAttachment unless the user explicitly asks for attachment content.
 
                 %3$s
@@ -173,7 +174,7 @@ public class IncidentPrompts {
                 | <created/updated/journal/change time> | <user or system> | <status/assignee/field change, note, or revision summary> |
 
                 ### Time In Status
-                <only if getIssueHistory was called: one line per status with its total duration>
+                <one line per status interval from all getIssueHistory pages>
 
                 ### Changesets
                 - `<revision>` — <timestamp/author if available, and how it relates to the incident if known>
