@@ -95,10 +95,14 @@ These tools appear in `tools/list` only when `REDMINE_MCP_WRITE_ENABLED=true`:
 | `updateWikiPage` | Fully replaces the wiki page text, requiring the optimistic-lock version returned by `getWikiPage` |
 
 Redmine itself enforces the permissions, workflow, and required-field rules of the `REDMINE_API_KEY`
-user. The MCP server introduces no additional model of "own" issues or notes. To make AI changes
-recognizable, created-issue descriptions, updated descriptions, new notes, and time-entry comments
-are prefixed with `AI_EDIT:`. For wiki pages this prefix goes into the revision comment,
-without changing the page markup. Uploaded file names are prefixed with `AI_EDIT__`.
+user. The MCP server introduces no additional model of "own" issues or notes. To make AI-created
+issues recognizable, the description of an issue created by `createIssue` is prefixed with `AI_EDIT:`
+by default (`updateIssue` does not add it). Notes, time-entry comments, wiki revision comments, and
+uploaded file names are not marked by default; each marker is configured separately with a
+`REDMINE_MCP_WRITE_*_PREFIX` variable (see [Configuration](#configuration)), and an empty value
+turns it off. Issue descriptions and notes get the prefix on its own line followed by a blank line;
+single-line fields (time-entry and wiki revision comments) get the prefix and a space; file names
+get the prefix with no separator. Wiki page markup itself is never changed.
 
 Editing and deleting existing notes is not implemented: the targeted Redmine 4.0.4
 does not provide a compatible REST API for it. Editing and deleting time entries; deleting,
@@ -228,6 +232,11 @@ The server needs `REDMINE_URL` and `REDMINE_API_KEY`; the remaining variables ar
 | `REDMINE_URL` | Base URL of the Redmine instance (e.g. `https://redmine.example.com`) |
 | `REDMINE_API_KEY` | Redmine user's API key |
 | `REDMINE_MCP_WRITE_ENABLED` | Adds the `createIssue`, `updateIssue`, `addIssueNote`, `attachFileToIssue`, `createTimeEntry`, `createWikiPage`, `updateWikiPage` tools to `tools/list`; defaults to `false` |
+| `REDMINE_MCP_WRITE_ISSUE_DESCRIPTION_PREFIX` | Marker prepended to the description of issues created by `createIssue`; defaults to `AI_EDIT:`. Set to an empty value to disable |
+| `REDMINE_MCP_WRITE_ISSUE_NOTE_PREFIX` | Marker prepended to notes added by `addIssueNote`; empty (disabled) by default |
+| `REDMINE_MCP_WRITE_TIME_ENTRY_COMMENT_PREFIX` | Marker prepended to `createTimeEntry` comments; counts toward Redmine's 1024-character limit; empty (disabled) by default |
+| `REDMINE_MCP_WRITE_WIKI_COMMENT_PREFIX` | Marker prepended to wiki revision comments of `createWikiPage` / `updateWikiPage`; empty (disabled) by default |
+| `REDMINE_MCP_WRITE_ATTACHMENT_FILENAME_PREFIX` | Prefix added to file names uploaded by `attachFileToIssue` (e.g. `AI_EDIT__`); must not contain `/ \ ? % * : \| " ' < >`; empty (disabled) by default |
 | `REDMINE_MCP_DATA_DIR` | Local data directory of the server; defaults to `~/.redmine-mcp-server` |
 | `REDMINE_MCP_ATTACHMENT_PER_PART_CHARS` | Text limit per single `part` (e.g., one file inside a ZIP) for `getAttachment`; defaults to `30000` characters. The tool's `partLimit` parameter overrides this value. |
 | `REDMINE_MCP_ATTACHMENT_PER_ATTACHMENT_CHARS` | Total limit of extracted text per attachment in `getAttachment`; defaults to `50000` characters. The tool's `maxChars` parameter overrides this value. |
@@ -379,8 +388,9 @@ communicates with it via `stdin/stdout`.
   the API user's rights nor bypasses the Redmine workflow.
 - Accessible projects, issues, attachments, and time entries are determined by the user's permissions
   in Redmine. If a user cannot see an object in Redmine, the server must not gain access to it either.
-- The `AI_EDIT` marker is a search label, not an authorization mechanism: authorship of a change is
-  reliably established by the Redmine account that owns the API key.
+- The `REDMINE_MCP_WRITE_*_PREFIX` markers (such as the default `AI_EDIT:` on created issues) are
+  search labels, not an authorization mechanism: authorship of a change is reliably established by
+  the Redmine account that owns the API key.
 - `attachFileToIssue` deliberately accepts any readable local path without an allow-list of directories.
   In write mode run the server only next to a trusted AI client, keeping in mind that the client will be able
   to pass the contents of any file readable by the process into Redmine.

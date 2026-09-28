@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineMutationClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
@@ -48,7 +49,9 @@ class IssueMutationServiceTest {
     @BeforeEach
     void setUp() {
         service = new IssueMutationService(
-                mutationClient, client, snapshotService, new AiContentMarker(),
+                mutationClient, client, snapshotService,
+                new AiContentMarker(TestRedmineMcpProperties.withWritePrefixes(
+                        "AI_EDIT:", "[AI note]", "[AI time]", "[AI wiki]", "AI_EDIT__")),
                 new CustomFieldValuesParser(new JsonConfig().redmineMcpObjectMapper()));
     }
 
@@ -80,7 +83,7 @@ class IssueMutationServiceTest {
     }
 
     @Test
-    void shouldMarkUpdatedDescription() {
+    void shouldNotMarkUpdatedDescription() {
         var refreshed = issue(123, "Updated", null, null);
         when(client.getIssue(123)).thenReturn(refreshed);
 
@@ -88,7 +91,7 @@ class IssueMutationServiceTest {
 
         var captor = ArgumentCaptor.forClass(RedmineIssueMutation.Fields.class);
         verify(mutationClient).updateIssue(eq(123), captor.capture());
-        assertThat(captor.getValue().description()).isEqualTo("AI_EDIT:\n\nNew description");
+        assertThat(captor.getValue().description()).isEqualTo("New description");
         verify(snapshotService).snapshotIssue(refreshed, "PUT /issues/123.json");
     }
 
@@ -105,14 +108,14 @@ class IssueMutationServiceTest {
     @Test
     void shouldAddMarkedNoteAndResolveNewJournalId() {
         var before = issue(123, "Issue", List.of(journal(10, "Old")), null);
-        var after = issue(123, "Issue", List.of(journal(10, "Old"), journal(11, "AI_EDIT:\n\nNew")), null);
+        var after = issue(123, "Issue", List.of(journal(10, "Old"), journal(11, "[AI note]\n\nNew")), null);
         when(client.getIssue(123)).thenReturn(before, after);
 
         var result = service.addIssueNote(123, "New");
 
         var captor = ArgumentCaptor.forClass(RedmineIssueMutation.Fields.class);
         verify(mutationClient).updateIssue(eq(123), captor.capture());
-        assertThat(captor.getValue().notes()).isEqualTo("AI_EDIT:\n\nNew");
+        assertThat(captor.getValue().notes()).isEqualTo("[AI note]\n\nNew");
         assertThat(result.journalId()).isEqualTo(11);
         verify(snapshotService).snapshotIssue(after, "PUT /issues/123.json (note)");
     }

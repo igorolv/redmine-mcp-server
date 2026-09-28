@@ -56,7 +56,7 @@ public class IssueMutationService {
     }
 
     public IssueMutationResult updateIssue(int issueId, IssueFields input) {
-        var fields = toMutationFields(input, input.description() != null);
+        var fields = toMutationFields(input, false);
         if (!fields.hasChanges()) {
             throw new IllegalArgumentException("At least one issue field must be provided");
         }
@@ -70,7 +70,7 @@ public class IssueMutationService {
         var before = getIssueOrThrow(issueId);
         Set<Integer> previousJournalIds = journalIds(before);
 
-        mutationClient.updateIssue(issueId, emptyFields(null, marker.markText(notes), null));
+        mutationClient.updateIssue(issueId, emptyFields(null, marker.markIssueNote(notes), null));
         var refreshed = refreshAfterWrite(issueId, "PUT /issues/%d.json (note)".formatted(issueId));
         Integer journalId = refreshed == null || refreshed.journals() == null ? null : refreshed.journals().stream()
                 .filter(journal -> !previousJournalIds.contains(journal.id()))
@@ -104,7 +104,7 @@ public class IssueMutationService {
     }
 
     private RedmineIssueMutation.Fields toMutationFields(IssueFields input, boolean markDescription) {
-        String description = markDescription ? marker.markText(input.description()) : input.description();
+        String description = markDescription ? marker.markIssueDescription(input.description()) : input.description();
         return new RedmineIssueMutation.Fields(
                 input.projectId(), input.trackerId(), input.statusId(), input.priorityId(),
                 input.subject(), description, input.categoryId(), input.fixedVersionId(),

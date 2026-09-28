@@ -58,8 +58,9 @@ A PR will be rejected if it breaks any of these (details in AGENTS.md):
    and do not add `DELETE` / `PATCH` without a separate design conversation.
 2. **Stdio transport only.** Never open an HTTP port, never write to `System.out`.
 3. **Wire format is `api/*`.** Raw client DTOs stay inside the service/client layers.
-4. **AI markers stay consistent.** New descriptions, notes, time-entry comments, and wiki
-   revision comments use `AI_EDIT:`; uploaded filenames use `AI_EDIT__`.
+4. **AI markers are configurable.** Every marker goes through `AiContentMarker` and its
+   per-content-type `REDMINE_MCP_WRITE_*_PREFIX` setting; only the created-issue description
+   is marked by default (`AI_EDIT:`). Do not hardcode markers in services or tools.
 
 ## Coding conventions
 

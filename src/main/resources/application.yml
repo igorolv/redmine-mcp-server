@@ -14,6 +14,12 @@ redmine-mcp:
   data-dir: ${REDMINE_MCP_DATA_DIR:${user.home}/.redmine-mcp-server}
   write:
     enabled: ${REDMINE_MCP_WRITE_ENABLED:false}
+    # Markers prepended to AI-written content; an empty value disables marking for that content type.
+    issue-description-prefix: "${REDMINE_MCP_WRITE_ISSUE_DESCRIPTION_PREFIX:AI_EDIT:}"   # createIssue only
+    issue-note-prefix: "${REDMINE_MCP_WRITE_ISSUE_NOTE_PREFIX:}"
+    time-entry-comment-prefix: "${REDMINE_MCP_WRITE_TIME_ENTRY_COMMENT_PREFIX:}"
+    wiki-comment-prefix: "${REDMINE_MCP_WRITE_WIKI_COMMENT_PREFIX:}"                     # revision comment, not page text
+    attachment-filename-prefix: "${REDMINE_MCP_WRITE_ATTACHMENT_FILENAME_PREFIX:}"
   # Which tool groups are exposed in the MCP tools/list manifest. All groups are on by default;
   # turn groups off (e.g. REDMINE_MCP_TOOLS_RELEASE_ANALYTICS=false) to shrink the manifest for
   # small-context (local) models that would otherwise be flooded with tool and output schemas at

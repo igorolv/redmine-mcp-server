@@ -32,10 +32,10 @@ public class TimeEntryMutationService {
             throw new IllegalArgumentException("hours must be a finite non-negative number");
         }
 
-        String markedComments = marker.markText(comments);
-        if (markedComments.length() > MAX_COMMENTS_LENGTH) {
+        String markedComments = marker.markTimeEntryComment(comments);
+        if (markedComments != null && markedComments.length() > MAX_COMMENTS_LENGTH) {
             throw new IllegalArgumentException(
-                    "comments must not exceed %d characters including the AI_EDIT marker"
+                    "comments must not exceed %d characters including the configured prefix"
                             .formatted(MAX_COMMENTS_LENGTH));
         }
 

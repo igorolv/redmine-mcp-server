@@ -26,8 +26,12 @@ Core invariants — never break these without an explicit conversation:
    entry for the API-key user, and create/update a wiki page. They use `RedmineMutationClient`, only
    `POST`/`PUT`, and the permissions/workflow of `REDMINE_API_KEY`. Do not add `DELETE`/`PATCH`, journal
    mutation, wiki deletion/rename/protection, wiki attachments, time-entry updates, or time-entry
-   deletion without another explicit design conversation. New descriptions, notes, time-entry
-   comments, and wiki revision comments use `AI_EDIT:`; uploaded filenames use `AI_EDIT__`.
+   deletion without another explicit design conversation. AI markers come only from
+   `AiContentMarker`, which reads one prefix per content type from `redmine-mcp.write.*-prefix`
+   (`RedmineMcpProperties.Write`): created-issue description (default `AI_EDIT:`, not applied by
+   `updateIssue`), issue note, time-entry comment, wiki revision comment, and attachment filename
+   (all empty by default). An empty prefix means "leave the content untouched". Never hardcode a
+   marker in a service or tool.
 2. **Stdio only.** The server has `spring.main.web-application-type: none`. It must never open
    an HTTP port, never write to `System.out` (stdout is the MCP transport channel — anything
    written there corrupts the JSON-RPC stream).

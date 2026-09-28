@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineMutationClient;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineMutationException;
@@ -31,7 +32,9 @@ class WikiMutationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new WikiMutationService(mutationClient, client, new AiContentMarker());
+        service = new WikiMutationService(mutationClient, client,
+                new AiContentMarker(TestRedmineMcpProperties.withWritePrefixes(
+                        "AI_EDIT:", "[AI note]", "[AI time]", "[AI wiki]", "AI_EDIT__")));
     }
 
     @Test
@@ -44,7 +47,7 @@ class WikiMutationServiceTest {
         var fields = ArgumentCaptor.forClass(RedmineWikiPageMutation.Fields.class);
         verify(mutationClient).putWikiPage(eq("backend"), eq("Runbook"), fields.capture());
         assertThat(fields.getValue().text()).isEqualTo("New text");
-        assertThat(fields.getValue().comments()).isEqualTo("AI_EDIT:\n\nInitial draft");
+        assertThat(fields.getValue().comments()).isEqualTo("[AI wiki] Initial draft");
         assertThat(fields.getValue().parentTitle()).isEqualTo("Operations");
         assertThat(fields.getValue().version()).isNull();
         assertThat(result.version()).isEqualTo(1);
@@ -92,7 +95,7 @@ class WikiMutationServiceTest {
         var fields = ArgumentCaptor.forClass(RedmineWikiPageMutation.Fields.class);
         verify(mutationClient).putWikiPage(eq("backend"), eq("Runbook"), fields.capture());
         assertThat(fields.getValue().text()).isEqualTo("New text");
-        assertThat(fields.getValue().comments()).isEqualTo("AI_EDIT:\n\nRefresh steps");
+        assertThat(fields.getValue().comments()).isEqualTo("[AI wiki] Refresh steps");
         assertThat(fields.getValue().parentTitle()).isNull();
         assertThat(fields.getValue().version()).isEqualTo(3);
         assertThat(result.version()).isEqualTo(4);

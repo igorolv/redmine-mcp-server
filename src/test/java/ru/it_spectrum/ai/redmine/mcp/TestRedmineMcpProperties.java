@@ -20,4 +20,12 @@ public final class TestRedmineMcpProperties {
     public static RedmineMcpProperties withDataDir(String dataDir) {
         return new RedmineMcpProperties(dataDir, null, null, null, null, null, null, null, null);
     }
+
+    public static RedmineMcpProperties withWritePrefixes(String issueDescription, String issueNote,
+                                                         String timeEntryComment, String wikiComment,
+                                                         String attachmentFilename) {
+        return new RedmineMcpProperties(null, null, null, null, null, null, null, null,
+                new RedmineMcpProperties.Write(true, issueDescription, issueNote,
+                        timeEntryComment, wikiComment, attachmentFilename));
+    }
 }

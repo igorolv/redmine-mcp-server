@@ -39,7 +39,7 @@ public class WikiMutationService {
         }
 
         mutationClient.putWikiPage(projectId, pageTitle,
-                new RedmineWikiPageMutation.Fields(text, marker.markText(comments), parentTitle, null));
+                new RedmineWikiPageMutation.Fields(text, marker.markWikiComment(comments), parentTitle, null));
         return verifiedResult(projectId, pageTitle, text);
     }
 
@@ -65,7 +65,7 @@ public class WikiMutationService {
 
         try {
             mutationClient.putWikiPage(projectId, pageTitle,
-                    new RedmineWikiPageMutation.Fields(text, marker.markText(comments), null, version));
+                    new RedmineWikiPageMutation.Fields(text, marker.markWikiComment(comments), null, version));
         } catch (RedmineMutationException e) {
             if (e.statusCode() == 409) {
                 throw new WikiVersionConflictException(pageTitle, version);

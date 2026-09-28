@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.it_spectrum.ai.redmine.mcp.TestRedmineMcpProperties;
 import ru.it_spectrum.ai.redmine.mcp.client.RedmineMutationClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineCustomFieldValue;
@@ -33,7 +34,8 @@ class TimeEntryMutationServiceTest {
     void setUp() {
         service = new TimeEntryMutationService(
                 mutationClient,
-                new AiContentMarker(),
+                new AiContentMarker(TestRedmineMcpProperties.withWritePrefixes(
+                        "AI_EDIT:", "[AI note]", "[AI time]", "[AI wiki]", "AI_EDIT__")),
                 new CustomFieldValuesParser(new JsonConfig().redmineMcpObjectMapper()));
     }
 
@@ -49,7 +51,7 @@ class TimeEntryMutationServiceTest {
         assertThat(captor.getValue()).satisfies(fields -> {
             assertThat(fields.issueId()).isEqualTo(123);
             assertThat(fields.projectId()).isNull();
-            assertThat(fields.comments()).isEqualTo("AI_EDIT:\n\nImplementation");
+            assertThat(fields.comments()).isEqualTo("[AI time] Implementation");
             assertThat(fields.customFields()).containsExactly(new RedmineCustomFieldValue(10, "remote"));
         });
         assertThat(result.timeEntryId()).isEqualTo(321);
@@ -64,7 +66,22 @@ class TimeEntryMutationServiceTest {
         var captor = ArgumentCaptor.forClass(RedmineTimeEntryMutation.Fields.class);
         org.mockito.Mockito.verify(mutationClient).createTimeEntry(captor.capture());
         assertThat(captor.getValue().projectId()).isEqualTo(7);
-        assertThat(captor.getValue().comments()).isEqualTo("AI_EDIT:");
+        assertThat(captor.getValue().comments()).isEqualTo("[AI time]");
+    }
+
+    @Test
+    void shouldLeaveCommentsUntouchedWhenPrefixIsEmpty() {
+        var unmarked = new TimeEntryMutationService(
+                mutationClient,
+                new AiContentMarker(TestRedmineMcpProperties.defaults()),
+                new CustomFieldValuesParser(new JsonConfig().redmineMcpObjectMapper()));
+        when(mutationClient.createTimeEntry(any())).thenReturn(timeEntry(323));
+
+        unmarked.createTimeEntry(null, 7, 1, null, null, null, null);
+
+        var captor = ArgumentCaptor.forClass(RedmineTimeEntryMutation.Fields.class);
+        org.mockito.Mockito.verify(mutationClient).createTimeEntry(captor.capture());
+        assertThat(captor.getValue().comments()).isNull();
     }
 
     @Test
@@ -91,6 +108,6 @@ class TimeEntryMutationServiceTest {
         return new RedmineTimeEntry(
                 id, new IdName(7, "project"), new IdName(123, "Issue"),
                 new IdName(42, "API User"), new IdName(9, "Development"),
-                1.5, "AI_EDIT:", "2026-08-19", null, null);
+                1.5, "[AI time]", "2026-08-19", null, null);
     }
 }
