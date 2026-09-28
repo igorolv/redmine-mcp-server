@@ -194,7 +194,7 @@ The server also exports **MCP prompts** for typical incident-handling scenarios:
 
 ## Tech Stack
 
-- Java 25, Spring Boot 4.0.0, Spring AI MCP 2.0.0-M6 (stdio transport)
+- Java 25, Spring Boot 4.2.0-M2, Spring AI MCP 2.1.0-M1 (stdio transport)
 - Apache PDFBox 3.0.5 — text extraction from PDFs
 - Apache POI 5.4.0 — text extraction from Word, Excel, PowerPoint
 - Apache Tika 3.2.0 (core + parsers-standard) — fallback parser and metadata extraction

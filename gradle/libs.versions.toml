@@ -1,6 +1,6 @@
 [versions]
-spring-boot = "4.0.0"
-spring-ai = "2.0.0"
+spring-boot = "4.2.0-M2"
+spring-ai = "2.1.0-M1"
 poi = "5.4.0"
 pdfbox = "3.0.5"
 tika = "3.2.0"

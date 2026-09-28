@@ -2,7 +2,7 @@ package ru.it_spectrum.ai.redmine.mcp.api;
 
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.util.json.JsonParser;
+import org.springframework.ai.util.JsonHelper;
 import ru.it_spectrum.ai.redmine.mcp.client.model.IdName;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineAttachment;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineIssue;
@@ -40,7 +40,7 @@ class ApiSerializationTest {
 
         var issue = Issue.from(source);
         var jacksonJson = new ObjectMapper().writeValueAsString(issue);
-        var springAiJson = JsonParser.toJson(issue);
+        var springAiJson = new JsonHelper().toJson(issue);
 
         assertThat(issue.customFields()).hasSize(1);
         assertThat(issue.attachments()).hasSize(1);
