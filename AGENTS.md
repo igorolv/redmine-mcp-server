@@ -41,6 +41,17 @@ Core invariants — never break these without an explicit conversation:
 4. **Wire format is the `api/*` package.** Tools return records from `ru.it_spectrum.ai.redmine.mcp.api`,
    never raw `client.model.*` types. The `api` types are the **stable MCP contract**;
    `client.model` types track Redmine's REST shape and may change when Redmine changes.
+5. **Bounded responses must remain recoverable for the LLM.** Optimize the model's context and
+   follow-up choices, not Redmine caching. When a tool omits or shortens data, its response must
+   make the missing portion identifiable and give the model a way to request it. For issues,
+   `getIssueHistory.nextOffset` leads to remaining events, `journalId` leads to the full entry via
+   `getIssueJournal`, and compact tree nodes retain issue IDs for `getIssue`. Keep these structured
+   follow-up paths; a path to raw `issue.json` is not a substitute for them. For attachments,
+   `getAttachment` saves the original file and returns its `localPath`/`fileUri` alongside bounded
+   extracted text and truncation metadata, so clients with filesystem access can inspect the
+   original when needed. Issue snapshots are local artifacts, not a general Redmine cache or the
+   primary LLM retrieval interface; do not eagerly download related issues or every attachment
+   merely to fill the snapshot directory.
 
 ---
 
