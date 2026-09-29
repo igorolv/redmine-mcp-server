@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  * An empty prefix leaves the content untouched.
  */
 @Component
-@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class AiContentMarker {
     private static final int MAX_FILENAME_LENGTH = 255;
     private static final String MULTILINE_SEPARATOR = "\n\n";

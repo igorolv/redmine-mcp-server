@@ -10,7 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.WikiMutationResult;
 import ru.it_spectrum.ai.redmine.mcp.service.WikiMutationService;
 
 @Service
-@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class WikiWriteTools {
 
     private static final Logger log = LoggerFactory.getLogger(WikiWriteTools.class);

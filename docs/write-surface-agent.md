@@ -1,11 +1,11 @@
-# docs/write-surface-agent.md — opt-in Redmine mutation boundary
+# docs/write-surface-agent.md — default-on Redmine mutation boundary
 
 Read this when changing write tools, mutation clients, AI markers, write settings or tests of mutations.
 
 ## Approved operations
 
-The server is read-only by default. Without `REDMINE_MCP_WRITE_ENABLED=true`, no write tool bean
-exists and no MCP tool may issue `POST`, `PUT`, `DELETE` or `PATCH`. With the flag enabled, only
+Write mode is on by default. With `REDMINE_MCP_WRITE_ENABLED=false` no write tool bean exists and
+no MCP tool may issue `POST`, `PUT`, `DELETE` or `PATCH`. With writes enabled, only
 `IssueWriteTools`, `TimeEntryWriteTools` and `WikiWriteTools` expose these operations:
 
 | Tool | Scope |
@@ -22,8 +22,8 @@ These tools use `RedmineMutationClient`, only `POST` and `PUT`, and the permissi
 of `REDMINE_API_KEY`. Do not add `DELETE`/`PATCH`, journal mutation, wiki deletion, rename,
 protection or attachments, or time-entry updates or deletion without a separate design
 conversation. The compatibility baseline is Redmine 4.0.4. Write tools are gated by
-`redmine-mcp.write.enabled` / `REDMINE_MCP_WRITE_ENABLED`, which defaults to `false`; do not fold
-them into a default-on `redmine-mcp.tools.*` group.
+`redmine-mcp.write.enabled` / `REDMINE_MCP_WRITE_ENABLED`, which defaults to `true` and is switched
+off with `false`; keep this write gate separate from the `redmine-mcp.tools.*` group toggles.
 
 ## AI content markers
 

@@ -11,7 +11,7 @@ import ru.it_spectrum.ai.redmine.mcp.service.IssueMutationService;
 import ru.it_spectrum.ai.redmine.mcp.service.IssueMutationService.IssueFields;
 
 @Service
-@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class IssueWriteTools {
 
     private static final Logger log = LoggerFactory.getLogger(IssueWriteTools.class);

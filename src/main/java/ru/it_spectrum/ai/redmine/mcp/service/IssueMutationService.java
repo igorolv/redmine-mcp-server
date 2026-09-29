@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Set;
 
 @Service
-@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class IssueMutationService {
 
     private static final Logger log = LoggerFactory.getLogger(IssueMutationService.class);

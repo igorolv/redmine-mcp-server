@@ -54,6 +54,7 @@ public record RedmineMcpProperties(
     public static final int DEFAULT_ZIP_MAX_ENTRIES_PER_ARCHIVE = 100;
     public static final int DEFAULT_TIKA_BODY_LIMIT_BYTES = 5 * 1024 * 1024;
     public static final int DEFAULT_TIKA_METADATA_MAX_FIELDS = 40;
+    public static final boolean DEFAULT_WRITE_ENABLED = true;
     public static final String DEFAULT_WRITE_ISSUE_DESCRIPTION_PREFIX = "AI_EDIT:";
     public static final int DEFAULT_HTTP_CONNECT_TIMEOUT_SECONDS = 10;
     public static final int DEFAULT_HTTP_READ_TIMEOUT_SECONDS = 30;
@@ -106,7 +107,7 @@ public record RedmineMcpProperties(
                         DEFAULT_RESPONSE_IMAGE_PARTS_KEEP);
         write = write != null
                 ? write
-                : new Write(false, DEFAULT_WRITE_ISSUE_DESCRIPTION_PREFIX, null, null, null, null);
+                : new Write(DEFAULT_WRITE_ENABLED, DEFAULT_WRITE_ISSUE_DESCRIPTION_PREFIX, null, null, null, null);
         http = http != null
                 ? http
                 : new Http(
@@ -169,12 +170,13 @@ public record RedmineMcpProperties(
     }
 
     /**
-     * Opt-in write mode and the markers prepended to AI-written content. An empty prefix disables
+     * Write mode and the markers prepended to AI-written content. Writes are on by default and an
+     * operator opts out with {@code REDMINE_MCP_WRITE_ENABLED=false}. An empty prefix disables
      * marking for that content type; {@code null} is treated as empty (not as the default), so an
      * operator can switch off even the issue-description marker with an empty env var.
      */
     public record Write(
-            @DefaultValue("false") boolean enabled,
+            @DefaultValue("" + DEFAULT_WRITE_ENABLED) boolean enabled,
             @DefaultValue(DEFAULT_WRITE_ISSUE_DESCRIPTION_PREFIX) String issueDescriptionPrefix,
             String issueNotePrefix,
             String timeEntryCommentPrefix,

@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class CustomFieldValuesParser {
 
     private final ObjectMapper mapper;

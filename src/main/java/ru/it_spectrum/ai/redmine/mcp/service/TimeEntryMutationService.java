@@ -7,7 +7,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineMutationClient;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineTimeEntryMutation;
 
 @Service
-@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class TimeEntryMutationService {
 
     private static final int MAX_COMMENTS_LENGTH = 1024;

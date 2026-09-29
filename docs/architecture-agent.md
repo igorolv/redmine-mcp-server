@@ -42,7 +42,7 @@ config/       — Spring @ConfigurationProperties, beans, MCP customizer
 | `RedmineMcpServerApplication` | Spring Boot entry point. Empty by design. | Nothing. |
 | `tools/` | Thin `@McpTool` / `@McpPrompt` adapters. Spring `@Service` beans. | One class per logical domain / toggle group (`IssueTools`, `IssueStructureTools`, `ProjectTools`, `IssueAnalyticsTools`, `ReleaseAnalyticsTools`, `IncidentPrompts`, …). Plus the shared `ToolLogger`. |
 | `service/` | Business logic. Calls Redmine clients, maps `client.model.*` → `api.*`. | Domain services (`IssueService`, `IssueMutationService`, `TimeEntryMutationService`, `AnalysisService`, `AttachmentService`, `IssueSnapshotService`, …) and the typed exceptions tools throw (`IssueNotFoundException`, `ResourceUnavailableException`, `AttachmentNotFoundException`, …). |
-| `client/` | `RedmineClient` for reads and opt-in `RedmineMutationClient` for approved writes, both using `RestClient`. | HTTP/JSON glue only. No domain decisions. |
+| `client/` | `RedmineClient` for reads and write-mode `RedmineMutationClient` for approved writes, both using `RestClient`. | HTTP/JSON glue only. No domain decisions. |
 | `client/model/` | Raw Redmine DTOs (mirror Redmine REST shape). | Add fields here when Redmine adds a field you need. **Never expose these on the MCP wire.** |
 | `api/` | Stable MCP response records. `@Schema`-annotated for output-schema generation. | Add a new record here when you add a new tool. |
 | `extraction/` | Document-to-text pipeline. | `ExtractionPipeline`, `DocumentParser` impls under `extraction/parser/`, `ExtractionLimits`, `FileTypeDetector`, `PandocAvailability`. |

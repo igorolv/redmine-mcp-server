@@ -51,11 +51,11 @@ directly and never return `client.model.*` types — everything crossing the wir
 
 A PR will be rejected if it breaks any of these (details in AGENTS.md):
 
-1. **Write access is opt-in and narrowly scoped.** Without `REDMINE_MCP_WRITE_ENABLED=true`
-   no write tool bean exists and no tool may issue `POST` / `PUT` / `DELETE` / `PATCH`.
-   With the flag enabled, only the approved operations in `IssueWriteTools`,
-   `TimeEntryWriteTools`, and `WikiWriteTools` are available — do not expand that surface
-   and do not add `DELETE` / `PATCH` without a separate design conversation.
+1. **Write access is enabled by default and narrowly scoped.** Write tool beans exist unless
+   `REDMINE_MCP_WRITE_ENABLED=false` is set; with writes disabled no tool may issue
+   `POST` / `PUT` / `DELETE` / `PATCH`. When enabled, only the approved operations in
+   `IssueWriteTools`, `TimeEntryWriteTools`, and `WikiWriteTools` are available — do not expand
+   that surface and do not add `DELETE` / `PATCH` without a separate design conversation.
 2. **Stdio transport only.** Never open an HTTP port, never write to `System.out`.
 3. **Wire format is `api/*`.** Raw client DTOs stay inside the service/client layers.
 4. **AI markers are configurable.** Every marker goes through `AiContentMarker` and its

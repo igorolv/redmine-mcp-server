@@ -32,8 +32,8 @@
         },
         {
           "name": "REDMINE_MCP_WRITE_ENABLED",
-          "description": "Set to true to also expose the issue, note, attachment, time-entry and wiki write tools",
-          "default": "false",
+          "description": "Set to false to remove the issue, note, attachment, time-entry and wiki write tools and run read-only",
+          "default": "true",
           "isRequired": false,
           "format": "boolean"
         }

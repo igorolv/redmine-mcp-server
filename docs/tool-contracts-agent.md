@@ -15,7 +15,7 @@ Concrete walkthrough — follow the pattern of `IssueTools#getIssue`.
    with `NON_NULL` inclusion — nulls are dropped from JSON, but the schema must still permit
    them so MCP clients with strict validators do not choke).
 2. **Add the logic to a service.** Put a new method on the relevant `*Service` in `service/`.
-   The service calls `RedmineClient` (or, only for an approved opt-in write, `RedmineMutationClient`),
+   The service calls `RedmineClient` (or, only for an approved write when write mode is on, `RedmineMutationClient`),
    then maps the result to your new `api.*` record (or to an existing one). Services never reference
    `tools/`.
 3. **Expose the tool.** Add a method to the appropriate `*Tools` class:
@@ -70,8 +70,8 @@ models. The group name is the kebab-case domain (`issue`, `issue-structure`, `pr
 `release-analytics`). `IncidentPrompts` is **not** gated — prompts stay always available.
 
 `IssueWriteTools`, `TimeEntryWriteTools`, and `WikiWriteTools` are deliberate exceptions: they are gated by
-`redmine-mcp.write.enabled` / `REDMINE_MCP_WRITE_ENABLED`, which defaults to `false`, and must not be
-folded into a default-on `redmine-mcp.tools.*` group.
+`redmine-mcp.write.enabled` / `REDMINE_MCP_WRITE_ENABLED`, which defaults to `true` (opt out with
+`false`), and must not be folded into a `redmine-mcp.tools.*` group.
 
 When you add a **new tool class** (not just a method on an existing one):
 

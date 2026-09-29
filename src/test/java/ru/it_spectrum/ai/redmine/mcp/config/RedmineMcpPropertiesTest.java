@@ -63,10 +63,11 @@ class RedmineMcpPropertiesTest {
     }
 
     @Test
-    void applicationYmlDefaultsMarkOnlyIssueDescriptions() {
+    void applicationYmlDefaultsEnableWritesAndMarkOnlyIssueDescriptions() {
         runner.withInitializer(new ConfigDataApplicationContextInitializer())
                 .run(context -> {
                     var write = context.getBean(RedmineMcpProperties.class).write();
+                    assertThat(write.enabled()).isTrue();
                     assertThat(write.issueDescriptionPrefix()).isEqualTo("AI_EDIT:");
                     assertThat(write.issueNotePrefix()).isEmpty();
                     assertThat(write.timeEntryCommentPrefix()).isEmpty();

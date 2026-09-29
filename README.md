@@ -8,10 +8,11 @@
 [![Glama score](https://glama.ai/mcp/servers/igorolv/redmine-mcp-server/badges/score.svg)](https://glama.ai/mcp/servers/igorolv/redmine-mcp-server)
 [![Listed on mcpservers.org](https://mcpservers.org/badge.svg)](https://mcpservers.org/servers/igorolv/redmine-mcp-server)
 
-A local MCP server for accessing a corporate Redmine instance. By default the server is fully
-read-only; an optional flag enables a limited set of write operations for issues and time entries.
-It lets AI agents (Claude Code, Cursor, VS Code Copilot, etc.) work with issues, projects,
-members, versions, wiki, attachments, time entries, and reference data.
+A local MCP server for accessing a corporate Redmine instance. It exposes a limited set of write
+operations for issues, time entries, and wiki alongside the read tools; set
+`REDMINE_MCP_WRITE_ENABLED=false` to run fully read-only. It lets AI agents (Claude Code, Cursor,
+VS Code Copilot, etc.) work with issues, projects, members, versions, wiki, attachments, time
+entries, and reference data.
 
 ## Quick Start
 
@@ -51,8 +52,8 @@ over stdin/stdout.
 
 ## Tools
 
-By default the server exports **32 read-only MCP tools**. When
-`REDMINE_MCP_WRITE_ENABLED=true` is set, 7 more write tools are added.
+The server exports **32 read-only MCP tools** plus **7 write tools** by default. Set
+`REDMINE_MCP_WRITE_ENABLED=false` to remove the write tools and run fully read-only.
 
 ### User
 
@@ -83,7 +84,7 @@ By default the server exports **32 read-only MCP tools**. When
 
 ### Issue, Time Entry, and Wiki Writes (optional)
 
-These tools appear in `tools/list` only when `REDMINE_MCP_WRITE_ENABLED=true`:
+These tools appear in `tools/list` by default; set `REDMINE_MCP_WRITE_ENABLED=false` to remove them:
 
 | Tool | Description |
 |---|---|
@@ -155,7 +156,7 @@ outside the current operation set.
 | `getReleaseRisks` | Release risk assessment: blockers, overdue items, high-priority issues, unassigned issues. Analyzes up to 500 open issues and returns a truncation flag. Parameters: `projectId`, `versionId` |
 | `compareVersions` | Compares two versions: unique issues, shared issues, closure percentage. Analyzes up to 500 issues per version and returns a truncation flag. Parameters: `projectId`, `versionId1`, `versionId2` |
 
-Without `REDMINE_MCP_WRITE_ENABLED=true` all tools are read-only and no data in Redmine is modified.
+With `REDMINE_MCP_WRITE_ENABLED=false` all tools are read-only and no data in Redmine is modified.
 
 ### Tool Groups (enable/disable)
 
@@ -239,7 +240,7 @@ The server needs `REDMINE_URL` and `REDMINE_API_KEY`; the remaining variables ar
 |---|---|
 | `REDMINE_URL` | Base URL of the Redmine instance (e.g. `https://redmine.example.com`) |
 | `REDMINE_API_KEY` | Redmine user's API key |
-| `REDMINE_MCP_WRITE_ENABLED` | Adds the `createIssue`, `updateIssue`, `addIssueNote`, `attachFileToIssue`, `createTimeEntry`, `createWikiPage`, `updateWikiPage` tools to `tools/list`; defaults to `false` |
+| `REDMINE_MCP_WRITE_ENABLED` | Adds the `createIssue`, `updateIssue`, `addIssueNote`, `attachFileToIssue`, `createTimeEntry`, `createWikiPage`, `updateWikiPage` tools to `tools/list`; set to `false` to remove them and run read-only; defaults to `true` |
 | `REDMINE_MCP_WRITE_ISSUE_DESCRIPTION_PREFIX` | Marker prepended to the description of issues created by `createIssue`; defaults to `AI_EDIT:`. Set to an empty value to disable |
 | `REDMINE_MCP_WRITE_ISSUE_NOTE_PREFIX` | Marker prepended to notes added by `addIssueNote`; empty (disabled) by default |
 | `REDMINE_MCP_WRITE_TIME_ENTRY_COMMENT_PREFIX` | Marker prepended to `createTimeEntry` comments; counts toward Redmine's 1024-character limit; empty (disabled) by default |
@@ -399,22 +400,23 @@ communicates with it via `stdin/stdout`.
 ### Access Model
 
 - The server uses the permissions of the Redmine user whose API key is set in `REDMINE_API_KEY`.
-- By default all MCP tools are read-only. With `REDMINE_MCP_WRITE_ENABLED=true` seven explicitly
-  listed write tools for issues, time entries, and wiki become available; the server neither extends
-  the API user's rights nor bypasses the Redmine workflow.
+- Seven explicitly listed write tools for issues, time entries, and wiki are available by default;
+  set `REDMINE_MCP_WRITE_ENABLED=false` to run fully read-only. The server neither extends the API
+  user's rights nor bypasses the Redmine workflow.
 - Accessible projects, issues, attachments, and time entries are determined by the user's permissions
   in Redmine. If a user cannot see an object in Redmine, the server must not gain access to it either.
 - The `REDMINE_MCP_WRITE_*_PREFIX` markers (such as the default `AI_EDIT:` on created issues) are
   search labels, not an authorization mechanism: authorship of a change is reliably established by
   the Redmine account that owns the API key.
 - `attachFileToIssue` deliberately accepts any readable local path without an allow-list of directories.
-  In write mode run the server only next to a trusted AI client, keeping in mind that the client will be able
-  to pass the contents of any file readable by the process into Redmine.
+  Since write tools are on by default, run the server only next to a trusted AI client, keeping in mind
+  that the client will be able to pass the contents of any file readable by the process into Redmine.
 - Treat the API key as a secret. Do not commit it to the repository, shell scripts, `.vscode/mcp.json`,
   `.cursor/mcp.json`, or other shared files of the project.
 
 For development and verification of write operations use a separate test Redmine and a separate
-API key. Do not run `integrationTest` with write enabled against a production installation.
+API key. Because writes are on by default, set `REDMINE_MCP_WRITE_ENABLED=false` when pointing
+`integrationTest` or a manual smoke test at a production installation.
 
 ### What Data Is Passed to the AI Client
 

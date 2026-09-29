@@ -15,7 +15,7 @@ changing the relevant code. The paths in this table are relative to the reposito
 |---|---|---|
 | `docs/architecture-agent.md` | locating code, changing dependencies, transport, or Spring wiring | package map, layer direction, technology, stdio and execution context |
 | `docs/tool-contracts-agent.md` | adding, editing, diagnosing or reviewing an MCP tool, prompt, wire record, schema or tool group | tool and prompt patterns, conditional registration, output schemas, logging, description and JSON test conventions |
-| `docs/write-surface-agent.md` | adding, editing, diagnosing or reviewing issue, time-entry or wiki writes, mutation clients or AI markers | approved operations, opt-in registration, mutation limits and safe test boundary |
+| `docs/write-surface-agent.md` | adding, editing, diagnosing or reviewing issue, time-entry or wiki writes, mutation clients or AI markers | approved operations, default-on write registration, mutation limits and safe test boundary |
 | `docs/retrieval-extraction-agent.md` | changing issue history, tree reads, snapshots, attachment responses, response budgets or parsers | recoverable truncation, snapshot layout, parser order and extraction limits |
 | `docs/build-config-agent.md` | building, testing, running the jar or adding a configuration knob | wrapper commands, JDK/toolchain, integration-test boundary and property binding |
 
@@ -38,10 +38,11 @@ instruction corpus.
 
 ## Invariants that apply to every change
 
-1. **Writes are opt-in and limited.** Without `REDMINE_MCP_WRITE_ENABLED=true`, no write tool
-   bean exists and no tool issues `POST`, `PUT`, `DELETE` or `PATCH`. The only approved write
-   tools and their exact semantics are in `docs/write-surface-agent.md`; do not enlarge this
-   surface without an explicit design conversation.
+1. **Writes are enabled by default and limited.** Write tool beans exist unless
+   `REDMINE_MCP_WRITE_ENABLED=false` is set; with writes disabled no tool issues `POST`, `PUT`,
+   `DELETE` or `PATCH`. The only approved write tools and their exact semantics are in
+   `docs/write-surface-agent.md`; do not enlarge this surface without an explicit design
+   conversation.
 2. **Stdio is the only transport.** `spring.main.web-application-type: none`; never open an
    HTTP port or write to `System.out`, the JSON-RPC channel. Logging goes to SLF4J and the
    stderr/file appenders.

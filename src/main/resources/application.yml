@@ -13,7 +13,7 @@ spring:
 redmine-mcp:
   data-dir: ${REDMINE_MCP_DATA_DIR:${user.home}/.redmine-mcp-server}
   write:
-    enabled: ${REDMINE_MCP_WRITE_ENABLED:false}
+    enabled: ${REDMINE_MCP_WRITE_ENABLED:true}
     # Markers prepended to AI-written content; an empty value disables marking for that content type.
     issue-description-prefix: "${REDMINE_MCP_WRITE_ISSUE_DESCRIPTION_PREFIX:AI_EDIT:}"   # createIssue only
     issue-note-prefix: "${REDMINE_MCP_WRITE_ISSUE_NOTE_PREFIX:}"

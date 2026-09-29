@@ -18,7 +18,7 @@ import java.nio.file.Path;
 import java.util.function.Supplier;
 
 @Component
-@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RedmineMutationClient {
 
     private final RestClient restClient;

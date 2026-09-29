@@ -29,7 +29,9 @@ import static org.mockito.Mockito.mock;
 /**
  * Verifies the {@code redmine-mcp.tools.*} group toggles: each tool {@code @Service} is gated by
  * {@code @ConditionalOnProperty}. All groups are on by default (so the manifest is unchanged out of
- * the box); turning a group off removes its tools from the MCP {@code tools/list} manifest.
+ * the box); turning a group off removes its tools from the MCP {@code tools/list} manifest. The
+ * {@code redmine-mcp.write.*} tools follow the same default-on rule and are removed by
+ * {@code redmine-mcp.write.enabled=false}.
  */
 class ToolGroupConditionTest {
 
@@ -50,19 +52,19 @@ class ToolGroupConditionTest {
             assertThat(ctx).hasSingleBean(UserTools.class);
             assertThat(ctx).hasSingleBean(IssueAnalyticsTools.class);
             assertThat(ctx).hasSingleBean(ReleaseAnalyticsTools.class);
-            assertThat(ctx).doesNotHaveBean(IssueWriteTools.class);
-            assertThat(ctx).doesNotHaveBean(TimeEntryWriteTools.class);
-            assertThat(ctx).doesNotHaveBean(WikiWriteTools.class);
+            assertThat(ctx).hasSingleBean(IssueWriteTools.class);
+            assertThat(ctx).hasSingleBean(TimeEntryWriteTools.class);
+            assertThat(ctx).hasSingleBean(WikiWriteTools.class);
         });
     }
 
     @Test
-    void writeToolsAreExposedOnlyWhenExplicitlyEnabled() {
-        runner.withPropertyValues("redmine-mcp.write.enabled=true")
+    void writeToolsAreRemovedWhenExplicitlyDisabled() {
+        runner.withPropertyValues("redmine-mcp.write.enabled=false")
                 .run(ctx -> {
-                    assertThat(ctx).hasSingleBean(IssueWriteTools.class);
-                    assertThat(ctx).hasSingleBean(TimeEntryWriteTools.class);
-                    assertThat(ctx).hasSingleBean(WikiWriteTools.class);
+                    assertThat(ctx).doesNotHaveBean(IssueWriteTools.class);
+                    assertThat(ctx).doesNotHaveBean(TimeEntryWriteTools.class);
+                    assertThat(ctx).doesNotHaveBean(WikiWriteTools.class);
                 });
     }
 

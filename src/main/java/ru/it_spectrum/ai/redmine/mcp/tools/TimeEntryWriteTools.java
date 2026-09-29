@@ -10,7 +10,7 @@ import ru.it_spectrum.ai.redmine.mcp.api.TimeEntryMutationResult;
 import ru.it_spectrum.ai.redmine.mcp.service.TimeEntryMutationService;
 
 @Service
-@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class TimeEntryWriteTools {
 
     private static final Logger log = LoggerFactory.getLogger(TimeEntryWriteTools.class);

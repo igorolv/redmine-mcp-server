@@ -16,10 +16,10 @@ Describe the expected behavior or tool API.
 
 ## Scope
 
-If this proposal affects an MCP tool, state whether it fits the default read-only surface or
-requires write access. Write access is opt-in and narrowly scoped (issues, issue notes, file
-attachments, time entries, wiki pages) — explain why the requested operation belongs to the
-approved surface and how result size should be bounded.
+If this proposal affects an MCP tool, state whether it fits the read-only surface or requires
+write access. Write access is limited and narrowly scoped (issues, issue notes, file attachments,
+time entries, wiki pages) — explain why the requested operation belongs to the approved surface
+and how result size should be bounded.
 
 ## Alternatives
 

@@ -11,7 +11,7 @@ import ru.it_spectrum.ai.redmine.mcp.client.RedmineMutationException;
 import ru.it_spectrum.ai.redmine.mcp.client.model.RedmineWikiPageMutation;
 
 @Service
-@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "redmine-mcp.write", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class WikiMutationService {
 
     private static final Logger log = LoggerFactory.getLogger(WikiMutationService.class);
